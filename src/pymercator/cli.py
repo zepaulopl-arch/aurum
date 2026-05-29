@@ -37,7 +37,7 @@ from pymercator.features_matrix import (
     render_feature_matrix_summary,
     write_feature_matrix,
 )
-from pymercator.human_confirmation import register_human_confirmation
+# moved confirm handler to pymercator.cli_confirm
 from pymercator.indices_catalog import (
     render_indices_catalog,
     validate_indices_catalog,
@@ -1610,30 +1610,9 @@ def _run_execution_command(args: argparse.Namespace) -> int:
 
 
 def _run_confirm_command(args: argparse.Namespace) -> int:
-    payload = register_human_confirmation(
-        pack=args.pack,
-        ticker=args.ticker,
-        decision=args.decision,
-        notes=args.notes,
-        operator=args.operator,
-        execution_policy_path=args.execution_policy,
-    )
+    from pymercator.cli_confirm import run_confirm_command
 
-    if args.json:
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
-    else:
-        print("PYMERCATOR HUMAN CONFIRMATION")
-        print("-" * 100)
-        print(f"{'PACK':<20} {payload['pack']}")
-        print(f"{'TICKER':<20} {payload['ticker']}")
-        print(f"{'DECISION':<20} {payload['human_decision']}")
-        print(f"{'FOUND IN PACK':<20} {payload['found_in_pack']}")
-        print(f"{'COUNT':<20} {payload['confirmation_count']}")
-        print(f"{'MODE':<20} {payload['execution_mode']}")
-        print(f"{'JSON':<20} {payload['json_path']}")
-        print(f"{'TXT':<20} {payload['txt_path']}")
-
-    return 0
+    return run_confirm_command(args)
 
 
 def _resolve_market_context_args(args: argparse.Namespace) -> dict[str, Any]:

@@ -107,10 +107,14 @@ def build_feature_matrix(
 
     matrix_rows: list[dict[str, Any]] = []
     missing_price_files: list[str] = []
+    matrix_tickers: set[str] = set()
 
     for asset in universe_rows:
         ticker = str(asset.get("ticker", "")).strip()
         sector = str(asset.get("sector", "")).strip()
+
+        if ticker:
+            matrix_tickers.add(ticker.upper())
 
         price_file = _price_file_for_ticker(prices_dir, ticker)
         closes = _read_closes(price_file)
@@ -155,6 +159,11 @@ def build_feature_matrix(
         "context": str(context),
         "features": str(features),
         "rows": len(matrix_rows),
+        "assets": len(matrix_tickers),
+        "universe_assets": len(
+            {str(row.get("ticker", "")).strip().upper() for row in universe_rows}
+            - {""}
+        ),
         "columns": ["ticker", "sector", *feature_names],
         "missing_price_files": sorted(set(missing_price_files)),
         "missing_price_files_count": len(set(missing_price_files)),
@@ -202,6 +211,7 @@ def render_feature_matrix_summary(payload: dict[str, Any]) -> str:
         f"{'FEATURES':<22} {payload['features']}",
         f"{'OUTPUT':<22} {payload.get('output', '-')}",
         f"{'ROWS':<22} {payload['rows']}",
+        f"{'ASSETS':<22} {payload.get('assets', payload['rows'])}",
         f"{'COLUMNS':<22} {len(payload['columns'])}",
         f"{'MISSING PRICES':<22} {payload['missing_price_files_count']}",
         "",

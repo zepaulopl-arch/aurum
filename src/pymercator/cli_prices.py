@@ -55,8 +55,14 @@ def _render_prices_fetch(payload: dict[str, Any]) -> str:
         line,
         f"{'OUTPUT DIR':<20} {payload['output_dir']}",
         f"{'REQUESTED':<20} {payload['requested']}",
+        f"{'AVAILABLE':<20} {payload.get('available', payload.get('fetched', 0))}",
         f"{'FETCHED':<20} {payload['fetched']}",
+        f"{'UPDATED':<20} {payload.get('updated', 0)}",
+        f"{'BACKFILLED':<20} {payload.get('backfilled', 0)}",
+        f"{'CACHE HITS':<20} {payload.get('cache_hits', 0)}",
+        f"{'CACHE FALLBACKS':<20} {payload.get('cache_fallbacks', 0)}",
         f"{'FAILED':<20} {payload['failed']}",
+        f"{'CACHE':<20} {'ON' if payload.get('use_cache', True) else 'OFF'}",
         f"{'START':<20} {payload['start']}",
         f"{'END':<20} {payload['end'] or '-'}",
         "",
@@ -65,7 +71,7 @@ def _render_prices_fetch(payload: dict[str, Any]) -> str:
     ]
 
     for item in payload['results']:
-        status = 'OK' if item['valid'] else 'FAILED'
+        status = str(item.get('status') or ('OK' if item['valid'] else 'FAILED'))
         lines.append(
             f"{item['ticker']:<12} "
             f"{status:<8} "
@@ -119,6 +125,7 @@ def run_prices_command(args: Any) -> int:
             start=args.start,
             end=args.end or None,
             output_dir=args.output,
+            use_cache=not getattr(args, "no_cache", False),
         )
 
         if getattr(args, 'json', False):
@@ -134,6 +141,7 @@ def run_prices_command(args: Any) -> int:
             start=args.start,
             end=args.end or None,
             output_dir=args.output,
+            use_cache=not getattr(args, "no_cache", False),
         )
 
         if getattr(args, 'json', False):

@@ -159,6 +159,10 @@ def _feature_vector(row: dict[str, Any]) -> list[float]:
     return [_feature_value(row, feature) for feature in FEATURE_COLUMNS]
 
 
+def _feature_matrix(rows: list[dict[str, Any]]) -> list[list[float]]:
+    return [_feature_vector(row) for row in rows]
+
+
 def _target_return_values(
     rows: list[dict[str, Any]],
     target_return_column: str,
@@ -560,6 +564,17 @@ def predict_legacy_engine(model: Any, row: dict[str, Any]) -> float:
     return _clip_return_value(value)
 
 
+def predict_legacy_engine_many(
+    model: Any,
+    rows: list[dict[str, Any]],
+) -> list[float]:
+    if model is None or not rows:
+        return [0.0 for _ in rows]
+
+    values = model.predict(_feature_matrix(rows))
+    return [_clip_return_value(float(value)) for value in values]
+
+
 def majority_prediction(train_rows: list[dict[str, Any]], target_up_column: str) -> int:
     if not train_rows:
         return 0
@@ -745,11 +760,15 @@ def _evaluate_ridge_ensemble_temporal(
     reason = ""
 
     if len(valid_base_engines) >= 2 and test_rows:
+        train_predictions = {
+            engine: predict_legacy_engine_many(base_models[engine], train_rows)
+            for engine in valid_base_engines
+        }
         ridge_x: list[list[float]] = []
         ridge_y: list[float] = []
-        for row in train_rows:
+        for row_index, row in enumerate(train_rows):
             base_pred = {
-                engine: predict_legacy_engine(base_models[engine], row)
+                engine: train_predictions[engine][row_index]
                 for engine in valid_base_engines
             }
             guarded = apply_consensus_guard(base_pred)
@@ -766,9 +785,13 @@ def _evaluate_ridge_ensemble_temporal(
             },
         }
 
-        for row in test_rows:
+        test_predictions = {
+            engine: predict_legacy_engine_many(base_models[engine], test_rows)
+            for engine in valid_base_engines
+        }
+        for row_index, _row in enumerate(test_rows):
             base_pred = {
-                engine: predict_legacy_engine(base_models[engine], row)
+                engine: test_predictions[engine][row_index]
                 for engine in valid_base_engines
             }
             guarded = apply_consensus_guard(base_pred)

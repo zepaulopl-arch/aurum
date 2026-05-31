@@ -178,3 +178,104 @@ def test_fetch_indices_prices_sanitizes_incomplete_ohlc(tmp_path: Path, monkeypa
     content = (output / "^BVSP.csv").read_text(encoding="utf-8")
     assert "2025-01-03,101.5,101.5,101.5,101.5,1200" in content
 
+
+def test_fetch_indices_prices_uses_cache_when_end_is_covered(
+    tmp_path: Path,
+    monkeypatch,
+):
+    catalog = tmp_path / "indices_catalog.json"
+    output = tmp_path / "indices"
+    output.mkdir()
+
+    catalog.write_text(
+        """
+{
+  "indices": [
+    {
+      "name": "Ibovespa",
+      "symbol": "^BVSP",
+      "provider": "yfinance",
+      "category": "market",
+      "description": "",
+      "required": true,
+      "enabled": true
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+    (output / "^BVSP.csv").write_text(
+        "date,open,high,low,close,volume\n"
+        "2025-01-02,100,101,99,100.5,1000\n"
+        "2025-01-03,101,102,100,101.5,1200\n",
+        encoding="utf-8",
+    )
+
+    def fail_download(symbol: str, start: str, end: str | None = None):
+        raise AssertionError("cache hit should not download")
+
+    monkeypatch.setattr("pymercator.indices_prices._download_yfinance", fail_download)
+
+    payload = fetch_indices_prices(
+        catalog=catalog,
+        start="2000-01-01",
+        end="2025-01-03",
+        output=output,
+    )
+
+    assert payload["status"] == "OK"
+    assert payload["required_failed"] == 0
+    assert payload["cache_hits"] == 1
+    assert payload["results"][0]["status"] == "CACHED"
+
+
+def test_fetch_indices_prices_preserves_cache_on_provider_failure(
+    tmp_path: Path,
+    monkeypatch,
+):
+    catalog = tmp_path / "indices_catalog.json"
+    output = tmp_path / "indices"
+    output.mkdir()
+
+    catalog.write_text(
+        """
+{
+  "indices": [
+    {
+      "name": "Ibovespa",
+      "symbol": "^BVSP",
+      "provider": "yfinance",
+      "category": "market",
+      "description": "",
+      "required": true,
+      "enabled": true
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+    (output / "^BVSP.csv").write_text(
+        "date,open,high,low,close,volume\n"
+        "2025-01-02,100,101,99,100.5,1000\n",
+        encoding="utf-8",
+    )
+
+    def fail_download(symbol: str, start: str, end: str | None = None):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr("pymercator.indices_prices._download_yfinance", fail_download)
+
+    payload = fetch_indices_prices(
+        catalog=catalog,
+        start="2025-01-01",
+        end="2025-01-04",
+        output=output,
+    )
+
+    assert payload["status"] == "OK"
+    assert payload["required_failed"] == 0
+    assert payload["cache_fallbacks"] == 1
+    assert payload["results"][0]["status"] == "CACHE_FALLBACK"
+

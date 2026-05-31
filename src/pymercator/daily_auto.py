@@ -66,7 +66,7 @@ def _attach_prediction_lab_to_manifest(
 def run_daily_auto(
     *,
     indices_catalog: str = "config/indices_catalog.json",
-    indices_start: str = "2025-01-01",
+    indices_start: str = "1900-01-01",
     indices_dir: str = "data/indices",
     context_output: str = "config/market_context_auto.json",
     features_file: str = "config/features_catalog.json",
@@ -83,7 +83,7 @@ def run_daily_auto(
     prediction_autotune_cv: int = 3,
     tickers_file: str = "data/universes/ibov_tickers.csv",
     sentiment_dir: str = "data/sentiment",
-    prices_start: str = "2025-01-01",
+    prices_start: str = "1900-01-01",
     prices_dir: str = "data/prices",
     universe_output: str = "data/universes/ibov_live.csv",
     run_dir: str = "storage/scenario_runs",
@@ -94,6 +94,7 @@ def run_daily_auto(
     require_human_confirmation: bool = True,
     skip_asset_fetch: bool = True,
     fetch_indices: bool = True,
+    use_cache: bool = True,
     limit: int = 20,
 ) -> dict[str, Any]:
     indices_fetch = {
@@ -112,6 +113,7 @@ def run_daily_auto(
             catalog=indices_catalog,
             start=indices_start,
             output=indices_dir,
+            use_cache=use_cache,
         )
 
     indices_check = check_indices_prices_dir(indices_dir)

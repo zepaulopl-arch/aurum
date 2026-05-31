@@ -84,12 +84,60 @@ def _download_yfinance(symbol: str, start: str, end: str | None = None) -> pd.Da
     return _sanitize_ohlcv_rows(rows)
 
 
+def _read_cached_frame(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame(columns=list(PRICE_COLUMNS))
+
+    try:
+        rows = pd.read_csv(path)
+    except Exception:
+        return pd.DataFrame(columns=list(PRICE_COLUMNS))
+
+    if rows.empty:
+        return pd.DataFrame(columns=list(PRICE_COLUMNS))
+
+    missing = [column for column in PRICE_COLUMNS if column not in rows.columns]
+    if missing:
+        return pd.DataFrame(columns=list(PRICE_COLUMNS))
+
+    return _sanitize_ohlcv_rows(rows)
+
+
+def _frame_span(rows: pd.DataFrame) -> tuple[str | None, str | None]:
+    if rows.empty or "date" not in rows.columns:
+        return None, None
+
+    dates = sorted(str(item) for item in rows["date"].dropna().tolist())
+    if not dates:
+        return None, None
+
+    return dates[0], dates[-1]
+
+
+def _merge_frames(existing: pd.DataFrame, fetched: pd.DataFrame) -> pd.DataFrame:
+    if existing.empty:
+        return _sanitize_ohlcv_rows(fetched)
+
+    if fetched.empty:
+        return _sanitize_ohlcv_rows(existing)
+
+    merged = pd.concat([existing, fetched], ignore_index=True)
+
+    if merged.empty:
+        return pd.DataFrame(columns=list(PRICE_COLUMNS))
+
+    merged = _sanitize_ohlcv_rows(merged)
+    merged = merged.sort_values("date").drop_duplicates("date", keep="last")
+    return merged[list(PRICE_COLUMNS)]
+
+
 def fetch_indices_prices(
     *,
     catalog: str | Path,
     start: str,
     output: str | Path,
     end: str | None = None,
+    use_cache: bool = True,
 ) -> dict[str, Any]:
     catalog_payload = read_indices_catalog(catalog)
     output_dir = Path(output)
@@ -103,6 +151,8 @@ def fetch_indices_prices(
         enabled = bool(item.get("enabled", True))
         filename = f"{_safe_filename(symbol)}.csv"
         output_path = output_dir / filename
+        cached_rows = _read_cached_frame(output_path) if use_cache else pd.DataFrame()
+        cached_start, cached_end = _frame_span(cached_rows)
 
         if not enabled:
             results.append(
@@ -122,10 +172,50 @@ def fetch_indices_prices(
             continue
 
         try:
-            rows = _download_yfinance(symbol, start=start, end=end)
+            if use_cache and not cached_rows.empty and end and cached_end and cached_end >= end:
+                results.append(
+                    {
+                        "name": item["name"],
+                        "symbol": symbol,
+                        "required": required,
+                        "enabled": enabled,
+                        "status": "CACHED",
+                        "mode": "cache_hit",
+                        "rows": len(cached_rows),
+                        "start": cached_start or "",
+                        "end": cached_end or "",
+                        "path": str(output_path),
+                        "error": "",
+                    }
+                )
+                continue
+
+            fetch_start = start
+            if use_cache and not cached_rows.empty and cached_start and cached_end:
+                fetch_start = start if start < cached_start else cached_end
+
+            rows = _download_yfinance(symbol, start=fetch_start, end=end)
             rows = _sanitize_ohlcv_rows(rows) if not rows.empty else rows
 
             if rows.empty:
+                if use_cache and not cached_rows.empty:
+                    results.append(
+                        {
+                            "name": item["name"],
+                            "symbol": symbol,
+                            "required": required,
+                            "enabled": enabled,
+                            "status": "CACHE_FALLBACK",
+                            "mode": "cache_fallback",
+                            "rows": len(cached_rows),
+                            "start": cached_start or "",
+                            "end": cached_end or "",
+                            "path": str(output_path),
+                            "error": "empty download",
+                        }
+                    )
+                    continue
+
                 results.append(
                     {
                         "name": item["name"],
@@ -142,7 +232,19 @@ def fetch_indices_prices(
                 )
                 continue
 
-            rows.to_csv(output_path, index=False)
+            merged_rows = (
+                _merge_frames(cached_rows, rows) if use_cache else rows
+            )
+            merged_start, merged_end = _frame_span(merged_rows)
+            merged_rows.to_csv(output_path, index=False)
+
+            mode = "fetched"
+            if not use_cache:
+                mode = "no_cache_fetch"
+            elif not cached_rows.empty and cached_start and start < cached_start:
+                mode = "backfilled"
+            elif not cached_rows.empty:
+                mode = "updated"
 
             results.append(
                 {
@@ -151,15 +253,34 @@ def fetch_indices_prices(
                     "required": required,
                     "enabled": enabled,
                     "status": "OK",
-                    "rows": len(rows),
-                    "start": str(rows["date"].iloc[0]),
-                    "end": str(rows["date"].iloc[-1]),
+                    "mode": mode,
+                    "rows": len(merged_rows),
+                    "start": merged_start or "",
+                    "end": merged_end or "",
                     "path": str(output_path),
                     "error": "",
                 }
             )
 
         except Exception as exc:
+            if use_cache and not cached_rows.empty:
+                results.append(
+                    {
+                        "name": item["name"],
+                        "symbol": symbol,
+                        "required": required,
+                        "enabled": enabled,
+                        "status": "CACHE_FALLBACK",
+                        "mode": "cache_fallback",
+                        "rows": len(cached_rows),
+                        "start": cached_start or "",
+                        "end": cached_end or "",
+                        "path": str(output_path),
+                        "error": str(exc),
+                    }
+                )
+                continue
+
             results.append(
                 {
                     "name": item["name"],
@@ -175,7 +296,20 @@ def fetch_indices_prices(
                 }
             )
 
-    fetched = sum(1 for item in results if item["status"] == "OK")
+    fetched = sum(
+        1
+        for item in results
+        if item.get("mode") in {"fetched", "no_cache_fetch"}
+    )
+    updated = sum(1 for item in results if item.get("mode") == "updated")
+    backfilled = sum(1 for item in results if item.get("mode") == "backfilled")
+    cache_hits = sum(1 for item in results if item.get("mode") == "cache_hit")
+    cache_fallbacks = sum(
+        1 for item in results if item.get("mode") == "cache_fallback"
+    )
+    no_cache_fetched = sum(
+        1 for item in results if item.get("mode") == "no_cache_fetch"
+    )
     skipped = sum(1 for item in results if item["status"] == "SKIPPED")
     required_failed = sum(
         1 for item in results if item["status"] == "FAILED_REQUIRED"
@@ -197,11 +331,17 @@ def fetch_indices_prices(
         "output": str(output_dir),
         "requested": len(results),
         "fetched": fetched,
+        "updated": updated,
+        "backfilled": backfilled,
+        "cache_hits": cache_hits,
+        "cache_fallbacks": cache_fallbacks,
+        "no_cache_fetched": no_cache_fetched,
         "failed": failed,
         "required_failed": required_failed,
         "optional_failed": optional_failed,
         "skipped": skipped,
         "status": status,
+        "use_cache": use_cache,
         "start": start,
         "end": end,
         "results": results,

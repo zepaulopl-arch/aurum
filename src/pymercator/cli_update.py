@@ -55,7 +55,7 @@ def _fail_payload(
 def run_update_flow(
     *,
     list_name: str = "IBOV",
-    start: str = "2025-01-01",
+    start: str = "1900-01-01",
     end: str | None = None,
     tickers_file: str | None = None,
     prices_dir: str = "data/prices",
@@ -65,6 +65,7 @@ def run_update_flow(
     universe_output: str = "data/universes/ibov_live.csv",
     features_catalog: str = "config/features_catalog.json",
     matrix_output: str = "storage/features/latest_feature_matrix.csv",
+    use_cache: bool = True,
 ) -> dict[str, Any]:
     list_text = list_name.upper()
     resolved_end = end or date.today().isoformat()
@@ -89,6 +90,7 @@ def run_update_flow(
             start=start,
             end=resolved_end,
             output_dir=prices_dir,
+            use_cache=use_cache,
         )
         status = "OK" if int(prices.get("failed", 0)) == 0 else "FAIL"
         steps.append(_step("prices", status, prices))
@@ -128,6 +130,7 @@ def run_update_flow(
             start=start,
             end=resolved_end,
             output=indices_dir,
+            use_cache=use_cache,
         )
         status = "OK" if int(indices.get("required_failed", 0)) == 0 else "FAIL"
         steps.append(_step("indices", status, indices))
@@ -234,24 +237,52 @@ def run_update_flow(
             )
 
         current_step = "features"
+        matrix_output_path = Path(matrix_output)
+        matrix_tmp_output = str(
+            matrix_output_path.with_name(f"{matrix_output_path.name}.tmp")
+        )
         matrix = write_feature_matrix(
             universe=universe_output,
             prices_dir=prices_dir,
             context=context_output,
             features=features_catalog,
-            output=matrix_output,
+            output=matrix_tmp_output,
         )
-        status = "OK" if int(matrix.get("rows", 0)) > 0 else "FAIL"
+        universe_assets = int(universe.get("asset_count", 0) or 0)
+        matrix_assets = int(matrix.get("assets", matrix.get("rows", 0)) or 0)
+        matrix_rows = int(matrix.get("rows", 0) or 0)
+        lost_assets = max(universe_assets - matrix_assets, 0)
+        status = (
+            "OK"
+            if matrix_rows > 0
+            and matrix_assets > 0
+            and matrix_assets >= universe_assets
+            else "FAIL"
+        )
+        matrix["universe_assets"] = universe_assets
+        matrix["matrix_assets"] = matrix_assets
+        matrix["lost_assets"] = lost_assets
         steps.append(_step("features", status, matrix))
         if status != "OK":
+            matrix["rejected_output"] = matrix.get("output", matrix_tmp_output)
+            reason = "feature matrix has no rows"
+            if matrix_rows > 0 and matrix_assets < universe_assets:
+                reason = "feature matrix lost assets from universe"
+
             return _fail_payload(
                 list_name=list_text,
                 step="features",
-                reason="feature matrix has no rows",
+                reason=reason,
                 detail=matrix,
                 steps=steps,
                 files=files,
             )
+
+        tmp_path = Path(matrix_tmp_output)
+        if tmp_path.exists():
+            matrix_output_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp_path.replace(matrix_output_path)
+        matrix["output"] = str(matrix_output_path)
 
     except Exception as exc:
         return _fail_payload(
@@ -269,6 +300,7 @@ def run_update_flow(
         "status": "OK",
         "start": start,
         "end": resolved_end,
+        "use_cache": use_cache,
         "steps": steps,
         "files": files,
     }
@@ -291,9 +323,27 @@ def render_update_summary(payload: dict[str, Any]) -> str:
     lines.extend(["", "DATA:"])
     for step in payload.get("steps", []):
         name = str(step.get("step", "-"))
+        step_payload = step.get("payload", {})
         if name.endswith("_check"):
             lines.append(f"- {name}: {step.get('status', '-')}")
-        elif name in {"prices", "indices", "context", "universe", "features"}:
+        elif name in {"prices", "indices"}:
+            lines.append(
+                f"- {name}: {step.get('status', '-')} "
+                f"(updated: {step_payload.get('updated', 0)}, "
+                f"cache: {step_payload.get('cache_hits', 0)}, "
+                f"fallback: {step_payload.get('cache_fallbacks', 0)})"
+            )
+        elif name == "universe":
+            lines.append(
+                f"- {name}: {step.get('status', '-')} "
+                f"(assets: {step_payload.get('asset_count', '-')})"
+            )
+        elif name == "features":
+            lines.append(
+                f"- {name}: {step.get('status', '-')} "
+                f"(assets: {step_payload.get('matrix_assets', step_payload.get('assets', '-'))})"
+            )
+        elif name == "context":
             lines.append(f"- {name}: {step.get('status', '-')}")
 
     files = payload.get("files", {})
@@ -324,6 +374,7 @@ def run_update_command(args: Any) -> int:
         universe_output=args.universe_output,
         features_catalog=args.features_catalog,
         matrix_output=args.matrix_output,
+        use_cache=not getattr(args, "no_cache", False),
     )
 
     if getattr(args, "json", False):

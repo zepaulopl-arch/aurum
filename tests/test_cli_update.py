@@ -60,7 +60,11 @@ def _patch_update_ok(monkeypatch):
     monkeypatch.setattr(
         update_mod,
         "write_feature_matrix",
-        lambda **kwargs: {"rows": 1, "output": kwargs["output"]},
+        lambda **kwargs: {
+            "rows": 1,
+            "assets": 1,
+            "output": kwargs["output"],
+        },
     )
 
 
@@ -115,3 +119,81 @@ def test_cli_update_fails_clearly_on_step_failure(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert "UPDATE | LIST IBOV | STATUS FAIL" in captured.out
     assert "STEP: prices" in captured.out
+
+
+def test_cli_update_passes_default_long_history_and_cache(monkeypatch):
+    import pymercator.cli_update as update_mod
+
+    captured: dict[str, object] = {}
+
+    def fake_prices(**kwargs):
+        captured["start"] = kwargs["start"]
+        captured["use_cache"] = kwargs["use_cache"]
+        return {"failed": 0, "fetched": 1, "requested": 1}
+
+    _patch_update_ok(monkeypatch)
+    monkeypatch.setattr(update_mod, "fetch_yahoo_prices_from_ticker_file", fake_prices)
+
+    exit_code = main(["update", "--list", "IBOV"])
+
+    assert exit_code == 0
+    assert captured["start"] == "1900-01-01"
+    assert captured["use_cache"] is True
+
+
+def test_cli_update_no_cache_disables_price_cache(monkeypatch):
+    import pymercator.cli_update as update_mod
+
+    captured: dict[str, object] = {}
+
+    def fake_prices(**kwargs):
+        captured["use_cache"] = kwargs["use_cache"]
+        return {"failed": 0, "fetched": 1, "requested": 1}
+
+    _patch_update_ok(monkeypatch)
+    monkeypatch.setattr(update_mod, "fetch_yahoo_prices_from_ticker_file", fake_prices)
+
+    exit_code = main(["update", "--list", "IBOV", "--no-cache"])
+
+    assert exit_code == 0
+    assert captured["use_cache"] is False
+
+
+def test_cli_update_fails_when_feature_matrix_loses_universe_assets(
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_update as update_mod
+
+    _patch_update_ok(monkeypatch)
+    monkeypatch.setattr(
+        update_mod,
+        "build_universe_csv_from_prices",
+        lambda **kwargs: {
+            "asset_count": 78,
+            "error_count": 0,
+            "output": kwargs["output"],
+        },
+    )
+    monkeypatch.setattr(
+        update_mod,
+        "validate_universe_csv",
+        lambda path: {"valid": True, "path": str(path), "rows": 78},
+    )
+    monkeypatch.setattr(
+        update_mod,
+        "write_feature_matrix",
+        lambda **kwargs: {
+            "rows": 1,
+            "assets": 1,
+            "output": kwargs["output"],
+        },
+    )
+
+    exit_code = main(["update", "--list", "IBOV"])
+
+    assert exit_code == 1
+    captured = capsys.readouterr()
+    assert "UPDATE | LIST IBOV | STATUS FAIL" in captured.out
+    assert "STEP: features" in captured.out
+    assert "feature matrix lost assets from universe" in captured.out

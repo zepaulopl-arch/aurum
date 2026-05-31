@@ -21,6 +21,7 @@ def run_indices_command(args: Any) -> int:
             start=args.start,
             end=args.end or None,
             output=args.output,
+            use_cache=not getattr(args, "no_cache", False),
         )
 
         if getattr(args, "json", False):
@@ -33,10 +34,15 @@ def run_indices_command(args: Any) -> int:
             print(f"{'STATUS':<20} {payload['status']}")
             print(f"{'REQUESTED':<20} {payload['requested']}")
             print(f"{'FETCHED':<20} {payload['fetched']}")
+            print(f"{'UPDATED':<20} {payload.get('updated', 0)}")
+            print(f"{'BACKFILLED':<20} {payload.get('backfilled', 0)}")
+            print(f"{'CACHE HITS':<20} {payload.get('cache_hits', 0)}")
+            print(f"{'CACHE FALLBACKS':<20} {payload.get('cache_fallbacks', 0)}")
             print(f"{'FAILED':<20} {payload['failed']}")
             print(f"{'REQUIRED FAILED':<20} {payload['required_failed']}")
             print(f"{'OPTIONAL FAILED':<20} {payload['optional_failed']}")
             print(f"{'SKIPPED':<20} {payload['skipped']}")
+            print(f"{'CACHE':<20} {'ON' if payload.get('use_cache', True) else 'OFF'}")
             print(f"{'START':<20} {payload['start']}")
             print(f"{'END':<20} {payload['end'] or '-'}")
             print("")

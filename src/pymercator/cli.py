@@ -277,7 +277,7 @@ def _run_short_diag_command(args: argparse.Namespace) -> int:
     print("PREDICTION ENGINES:")
     print(f"- xgb: {'available' if XGBOOST_AVAILABLE else 'unavailable'}")
     print(f"- catboost: {'available' if CATBOOST_AVAILABLE else 'unavailable'}")
-    extratrees_status = "available (uses sklearn)" if SKLEARN_AVAILABLE else "unavailable"
+    extratrees_status = "available" if SKLEARN_AVAILABLE else "unavailable"
     print(f"- extratrees: {extratrees_status}")
     print("- ridge_arbiter: available")
     print("")
@@ -404,9 +404,13 @@ def build_parser() -> argparse.ArgumentParser:
         )
         update_parser.add_argument("--json", action="store_true")
 
-        train_parser = subparsers.add_parser("train", help="Train/validate prediction layer")
+        train_parser = subparsers.add_parser(
+            "train",
+            help="Train/evaluate prediction model. Profile-independent.",
+            description="Train/evaluate prediction model. Profile-independent.",
+        )
         train_parser.set_defaults(command="train")
-        train_parser.add_argument("--profile", default="CON")
+        train_parser.add_argument("--profile", default="", help=argparse.SUPPRESS)
         train_parser.add_argument(
             "--horizon",
             type=int,
@@ -445,7 +449,11 @@ def build_parser() -> argparse.ArgumentParser:
         train_parser.add_argument("--autotune", action="store_true")
         train_parser.add_argument("--json", action="store_true")
 
-        run_parser = subparsers.add_parser("run", help="Run daily decision")
+        run_parser = subparsers.add_parser(
+            "run",
+            help="Run daily decision using an operational profile.",
+            description="Run daily decision using an operational profile.",
+        )
         run_parser.set_defaults(command="run")
         run_parser.add_argument("--profile", default="CON")
         run_parser.add_argument("--list", default="IBOV")

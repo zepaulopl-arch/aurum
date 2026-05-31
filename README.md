@@ -38,10 +38,11 @@ python -m pymercator daily `
 
 ```powershell
 python -m pymercator update --list IBOV
-python -m pymercator train --profile CON --engines extratrees
+python -m pymercator train --engines extratrees
 python -m pymercator run --profile CON --basket
 ```
 
 Os comandos internos continuam disponiveis para diagnostico e operacoes pontuais.
-O treino e baseado no dataset; `--profile` fica registrado como metadado de rastreio.
-`sklearn` e biblioteca; a engine operacional correspondente e `extratrees`.
+O treino e baseado no dataset e nao depende de perfil operacional.
+Perfis como `CON` e `AGR` sao aplicados no `run`, junto com politica, risco, filtros e execucao.
+Bibliotecas instaladas aparecem no `diag`; engines validas aparecem no help do `predict lab`.

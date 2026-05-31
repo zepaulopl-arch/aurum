@@ -16,7 +16,7 @@ def test_cli_diag_separates_libraries_from_prediction_engines(monkeypatch, capsy
     assert "LIBRARIES:" in output
     assert "- sklearn available: True" in output
     assert "PREDICTION ENGINES:" in output
-    assert "- extratrees: available (uses sklearn)" in output
+    assert "- extratrees: available" in output
     assert "BASELINES:" in output
     assert "- rolling_majority: available" in output
     assert "- sklearn:" not in output

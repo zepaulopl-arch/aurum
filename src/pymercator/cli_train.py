@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import csv
 import json
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +12,6 @@ from pymercator.legacy_prediction_engines import (
     SKLEARN_AVAILABLE,
     XGBOOST_AVAILABLE,
 )
-from pymercator.policy import normalize_profile
 from pymercator.prediction_lab import run_prediction_lab
 
 ENGINE_ALIASES = {
@@ -21,6 +22,7 @@ ENGINE_BLOCKING_STATUSES = {"NO_BASE_ENGINES", "NO_DATA", "UNAVAILABLE"}
 REAL_ENGINES = {"extratrees", "xgb", "catboost", "ridge_arbiter"}
 BASELINE_ENGINES = {"rolling_majority", "momentum_rule"}
 FALLBACK_REASON = "prediction engines unavailable or failed"
+PROFILE_IGNORED_WARNING = "WARNING: --profile is ignored by train. Profiles are applied in run."
 
 
 def engine_availability() -> dict[str, bool]:
@@ -82,6 +84,17 @@ def _short_error(text: str, limit: int = 120) -> str:
     return compact[: limit - 3].rstrip() + "..."
 
 
+def _trained_at() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _primary_metrics(payload: dict[str, Any], engine_used: str) -> dict[str, Any]:
+    models = payload.get("evaluation", {}).get("models", {})
+    if isinstance(models, dict) and isinstance(models.get(engine_used), dict):
+        return dict(models[engine_used])
+    return {}
+
+
 def _fallback_reason_for(engines: list[str], detail: str) -> str:
     failed = [engine for engine in engines if engine in {"extratrees", "xgb", "catboost"}]
     if len(failed) == 1:
@@ -124,7 +137,7 @@ def _write_evaluation_metadata(
 
 def run_train_flow(
     *,
-    profile: str = "CON",
+    profile: str = "",
     horizon: int = 5,
     matrix: str = "storage/features/latest_feature_matrix.csv",
     prices_dir: str = "data/prices",
@@ -137,7 +150,6 @@ def run_train_flow(
     n_jobs: int = 4,
     autotune: bool = False,
 ) -> dict[str, Any]:
-    normalized_profile = normalize_profile(profile)
     files = {
         "matrix": matrix,
         "prices_dir": prices_dir,
@@ -148,7 +160,6 @@ def run_train_flow(
     if not Path(matrix).exists():
         return {
             "command": "train",
-            "profile": normalized_profile,
             "horizon": horizon,
             "status": "BLOCKED",
             "reason": "feature matrix not found",
@@ -160,7 +171,6 @@ def run_train_flow(
     if not Path(prices_dir).exists():
         return {
             "command": "train",
-            "profile": normalized_profile,
             "horizon": horizon,
             "status": "BLOCKED",
             "reason": "prices directory not found",
@@ -195,7 +205,6 @@ def run_train_flow(
         if not selected_real_engines:
             return {
                 "command": "train",
-                "profile": normalized_profile,
                 "horizon": horizon,
                 "status": "FAIL",
                 "reason": str(exc),
@@ -227,7 +236,6 @@ def run_train_flow(
     if dataset_rows < min_train_rows or evaluated_rows == 0:
         return {
             "command": "train",
-            "profile": normalized_profile,
             "horizon": horizon,
             "status": "BLOCKED",
             "reason": "insufficient training rows",
@@ -254,7 +262,6 @@ def run_train_flow(
     if dataset_rows < min_train_rows or evaluated_rows == 0:
         return {
             "command": "train",
-            "profile": normalized_profile,
             "horizon": horizon,
             "status": "BLOCKED",
             "reason": "insufficient training rows",
@@ -269,6 +276,8 @@ def run_train_flow(
     baseline_engines = _baseline_engines(selected_engines)
     engine_used = real_ok[0] if real_ok else (baseline_engines[0] if baseline_engines else "-")
     is_baseline = engine_used in BASELINE_ENGINES
+    trained_at = _trained_at()
+    metrics = _primary_metrics(payload, engine_used)
 
     if real_ok:
         status = "OK"
@@ -286,8 +295,8 @@ def run_train_flow(
         "rows": dataset_rows,
         "assets": assets,
         "horizon": horizon,
-        "profile": normalized_profile,
-        "profile_scope": "metadata_only",
+        "trained_at": trained_at,
+        "metrics": metrics,
         **availability,
     }
     if real_failure_detail:
@@ -297,7 +306,6 @@ def run_train_flow(
 
     return {
         "command": "train",
-        "profile": normalized_profile,
         "horizon": horizon,
         "status": status,
         "engine_used": engine_used,
@@ -321,10 +329,11 @@ def run_train_flow(
             "trained_models": real_ok,
             "fallback_reason": fallback_reason,
             "real_engine_failure": real_failure_detail,
+            "trained_at": trained_at,
+            "metrics": metrics,
             **availability,
             "output": evaluation_output,
         },
-        "profile_scope": "metadata_only",
         "payload": payload,
         "files": files,
     }
@@ -333,10 +342,7 @@ def run_train_flow(
 def render_train_summary(payload: dict[str, Any]) -> str:
     status = payload.get("status", "-")
     lines = [
-        (
-            f"TRAIN | PROFILE {payload.get('profile', '-')} | "
-            f"HORIZON {payload.get('horizon', '-')} | STATUS {status}"
-        )
+        f"TRAIN | HORIZON {payload.get('horizon', '-')} | STATUS {status}"
     ]
 
     if status == "BLOCKED":
@@ -388,8 +394,11 @@ def render_train_summary(payload: dict[str, Any]) -> str:
 
 
 def run_train_command(args: Any) -> int:
+    if str(getattr(args, "profile", "") or "").strip():
+        print(PROFILE_IGNORED_WARNING, file=sys.stderr)
+
     payload = run_train_flow(
-        profile=args.profile,
+        profile=getattr(args, "profile", ""),
         horizon=args.horizon,
         matrix=args.matrix,
         prices_dir=args.prices_dir,

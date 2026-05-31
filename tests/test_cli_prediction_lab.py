@@ -204,6 +204,47 @@ def test_predict_lab_command_rejects_unknown_engine_with_valid_list(
     assert "extratrees" in captured.err
 
 
+def test_predict_lab_command_rejects_sklearn_as_engine(
+    tmp_path: Path,
+    capsys,
+):
+    matrix = tmp_path / "matrix.csv"
+    prices_dir = tmp_path / "prices"
+    dataset = tmp_path / "dataset.csv"
+    evaluation = tmp_path / "evaluation.json"
+
+    prices_dir.mkdir()
+    _write_matrix(matrix)
+    _write_price_file(prices_dir / "PRIO3.SA.csv")
+
+    exit_code = main(
+        [
+            "predict",
+            "lab",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--min-train-rows",
+            "10",
+            "--engines",
+            "sklearn",
+        ]
+    )
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "ERROR: Unknown prediction engines: sklearn" in captured.err
+    assert "Valid engines:" in captured.err
+    assert "extratrees" in captured.err
+    assert "Baselines:" in captured.err
+
+
 def test_predict_lab_help_lists_valid_engines(capsys):
     with pytest.raises(SystemExit) as exc_info:
         main(["predict", "lab", "--help"])

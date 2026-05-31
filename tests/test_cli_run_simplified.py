@@ -39,6 +39,8 @@ def _write_multi_horizon_evaluation(path: Path) -> None:
             {
                 "engine_used": "multi_horizon_ridge",
                 "is_baseline": False,
+                "status": "OK",
+                "experimental": False,
                 "horizons": [5, 20, 60],
                 "horizon_observer": {
                     "mode": "weighted",
@@ -139,7 +141,9 @@ def test_cli_run_executes_daily_with_defaults_for_outputs(tmp_path: Path, capsys
     json_report = tmp_path / "report.json"
     run_dir = tmp_path / "latest"
     basket_output = tmp_path / "basket.csv"
+    evaluation = tmp_path / "evaluation.json"
     _write_context(context)
+    _write_multi_horizon_evaluation(evaluation)
 
     exit_code = main(
         [
@@ -156,6 +160,8 @@ def test_cli_run_executes_daily_with_defaults_for_outputs(tmp_path: Path, capsys
             str(json_report),
             "--run-dir",
             str(run_dir),
+            "--evaluation",
+            str(evaluation),
             "--basket-output",
             str(basket_output),
             "--json",
@@ -183,7 +189,9 @@ def test_cli_run_with_basket_generates_basket(tmp_path: Path, monkeypatch, capsy
     json_report = tmp_path / "report.json"
     run_dir = tmp_path / "latest"
     basket_output = tmp_path / "basket.csv"
+    evaluation = tmp_path / "evaluation.json"
     _write_context(context)
+    _write_multi_horizon_evaluation(evaluation)
 
     def fake_basket(**kwargs):
         assert kwargs["eligible_tickers"]
@@ -213,6 +221,8 @@ def test_cli_run_with_basket_generates_basket(tmp_path: Path, monkeypatch, capsy
             str(json_report),
             "--run-dir",
             str(run_dir),
+            "--evaluation",
+            str(evaluation),
             "--basket",
             "--basket-output",
             str(basket_output),
@@ -283,6 +293,8 @@ def test_cli_run_with_basket_blocks_when_no_actionable_assets(
     json_report = tmp_path / "report.json"
     run_dir = tmp_path / "latest"
     basket_output = tmp_path / "basket.csv"
+    evaluation = tmp_path / "evaluation.json"
+    _write_multi_horizon_evaluation(evaluation)
     context.write_text(
         json.dumps(
             {
@@ -310,6 +322,8 @@ def test_cli_run_with_basket_blocks_when_no_actionable_assets(
             str(json_report),
             "--run-dir",
             str(run_dir),
+            "--evaluation",
+            str(evaluation),
             "--basket",
             "--basket-output",
             str(basket_output),
@@ -501,3 +515,120 @@ def test_cli_run_exposes_multi_horizon_prediction_observer(
     assert payload["prediction"]["behavior"] == "POSITIONAL_SETUP"
     assert payload["top"][0]["dominant_horizon"] == "D60"
     assert payload["top"][0]["behavior"] == "POSITIONAL_SETUP"
+
+
+def test_cli_run_blocks_non_ok_prediction_evaluation(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_run as run_mod
+
+    context = tmp_path / "context.json"
+    evaluation = tmp_path / "latest_evaluation.json"
+    _write_context(context)
+    evaluation.write_text(
+        json.dumps(
+            {
+                "engine_used": "multi_horizon_ridge",
+                "status": "FAIL",
+                "reason": "insufficient assets for operational training",
+                "experimental": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    pipeline_called = False
+
+    def fake_pipeline(**kwargs):
+        nonlocal pipeline_called
+        pipeline_called = True
+        return _fake_report(kwargs["profile"])
+
+    monkeypatch.setattr(run_mod, "run_daily_pipeline", fake_pipeline)
+
+    exit_code = main(
+        [
+            "run",
+            "--profile",
+            "CON",
+            "--universe",
+            "data/universes/ibov_sample.csv",
+            "--context",
+            str(context),
+            "--evaluation",
+            str(evaluation),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 1
+    assert pipeline_called is False
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "BLOCKED"
+    assert payload["reason"] == "invalid prediction evaluation"
+
+
+def test_cli_run_blocks_experimental_prediction_without_explicit_allow(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_run as run_mod
+
+    context = tmp_path / "context.json"
+    evaluation = tmp_path / "latest_evaluation.json"
+    _write_context(context)
+    _write_multi_horizon_evaluation(evaluation)
+    payload = json.loads(evaluation.read_text(encoding="utf-8"))
+    payload["experimental"] = True
+    evaluation.write_text(json.dumps(payload), encoding="utf-8")
+
+    monkeypatch.setattr(
+        run_mod,
+        "run_daily_pipeline",
+        lambda **kwargs: _fake_report(kwargs["profile"]),
+    )
+
+    blocked_exit = main(
+        [
+            "run",
+            "--profile",
+            "CON",
+            "--universe",
+            "data/universes/ibov_sample.csv",
+            "--context",
+            str(context),
+            "--evaluation",
+            str(evaluation),
+            "--json",
+        ]
+    )
+    blocked = json.loads(capsys.readouterr().out)
+
+    allowed_exit = main(
+        [
+            "run",
+            "--profile",
+            "CON",
+            "--universe",
+            "data/universes/ibov_sample.csv",
+            "--context",
+            str(context),
+            "--evaluation",
+            str(evaluation),
+            "--allow-experimental-model",
+            "--json",
+        ]
+    )
+    allowed = json.loads(capsys.readouterr().out)
+
+    assert blocked_exit == 1
+    assert blocked["status"] == "BLOCKED"
+    assert blocked["reason"] == (
+        "experimental prediction evaluation requires --allow-experimental-model"
+    )
+    assert allowed_exit == 0
+    assert allowed["status"] == "OK"
+    assert allowed["prediction"]["experimental"] is True

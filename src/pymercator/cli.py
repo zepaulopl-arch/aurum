@@ -264,12 +264,16 @@ def _run_short_diag_command(args: argparse.Namespace) -> int:
         SKLEARN_AVAILABLE,
         XGBOOST_AVAILABLE,
     )
-    from pymercator.prediction_config import effective_prediction_config, horizon_key
+    from pymercator.prediction_config import effective_prediction_config
 
     prediction_config = effective_prediction_config(path="config/prediction.json")
     observer = prediction_config.get("observer", {})
     training = prediction_config.get("training", {})
     weights = observer.get("weights", {})
+    horizon_labels = [
+        f"D{int(item)}"
+        for item in prediction_config.get("horizons", [])
+    ]
 
     print("PYMERCATOR DIAG")
     print(ui.line(profile.get("ui", {}).get("width", 120)))
@@ -278,19 +282,25 @@ def _run_short_diag_command(args: argparse.Namespace) -> int:
     print(ui.kv("PREDICTION EVAL", paths.get("prediction_evaluation")))
     print("")
     print("PREDICTION CONFIG:")
+    print("- mode: operational")
     print("- config: config/prediction.json")
     print(f"- default_engine: {prediction_config.get('default_engine', '-')}")
     print(
         "- horizons: "
-        f"{','.join(horizon_key(item) for item in prediction_config.get('horizons', []))}"
+        f"{','.join(str(int(item)) for item in prediction_config.get('horizons', []))}"
     )
     print(f"- base_engines: {','.join(prediction_config.get('base_engines', []))}")
     print(f"- meta_model: {prediction_config.get('meta_model', '-')}")
-    print(f"- observer_mode: {observer.get('mode', '-')}")
+    print(f"- observer: {observer.get('mode', '-')}")
     print(
         "- weights: "
-        + ", ".join(f"{key}={value}" for key, value in sorted(weights.items()))
+        + " ".join(
+            f"{key}={float(weights[key]):.2f}"
+            for key in horizon_labels
+            if key in weights
+        )
     )
+    print(f"- min_assets: {prediction_config.get('min_assets', '-')}")
     print(f"- autotune: {str(bool(training.get('autotune', False))).lower()}")
     print(f"- n_jobs: {training.get('n_jobs', '-')}")
     print("")
@@ -468,6 +478,7 @@ def build_parser() -> argparse.ArgumentParser:
             help=argparse.SUPPRESS,
         )
         train_parser.add_argument("--matrix", default="storage/features/latest_feature_matrix.csv")
+        train_parser.add_argument("--universe", default="data/universes/ibov_live.csv")
         train_parser.add_argument("--prices-dir", default="data/prices")
         train_parser.add_argument(
             "--dataset-output",
@@ -522,6 +533,16 @@ def build_parser() -> argparse.ArgumentParser:
             default=None,
             help=train_autotune_cv_help,
         )
+        train_parser.add_argument(
+            "--experimental",
+            action="store_true",
+            help="Allow non-operational train settings and mark the evaluation experimental.",
+        )
+        train_parser.add_argument(
+            "--allow-small-universe",
+            action="store_true",
+            help="Allow assets below operational min_assets; requires --experimental.",
+        )
         train_parser.add_argument("--json", action="store_true")
 
         run_parser = subparsers.add_parser(
@@ -560,6 +581,7 @@ def build_parser() -> argparse.ArgumentParser:
             "--basket-output",
             default="storage/baskets/latest_daily_basket.csv",
         )
+        run_parser.add_argument("--allow-experimental-model", action="store_true")
         run_parser.add_argument("--json", action="store_true")
 
         lab_short = subparsers.add_parser("lab", help="Run prediction lab (shortcut)")

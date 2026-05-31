@@ -4,36 +4,35 @@ import json
 from pathlib import Path
 from typing import Any
 
-DEFAULT_PREDICTION_CONFIG: dict[str, Any] = {
-    "default_engine": "multi_horizon_ridge",
+DEFAULT_OPERATIONAL_CONFIG: dict[str, Any] = {
     "horizons": [5, 20, 60],
     "base_engines": ["extratrees", "randomforest", "gradientboosting"],
     "meta_model": "ridge",
-    "observer": {
-        "mode": "weighted",
-        "weights": {
-            "D5": 0.25,
-            "D20": 0.35,
-            "D60": 0.40,
-        },
-        "independent_analysis": True,
-        "combined_analysis": True,
+    "observer_mode": "weighted",
+    "weights": {
+        "D5": 0.25,
+        "D20": 0.35,
+        "D60": 0.40,
     },
-    "training": {
-        "min_history": 120,
-        "min_train_rows": 100,
-        "n_jobs": 4,
-        "autotune": False,
-        "autotune_iter": 20,
-        "autotune_cv": 3,
-        "temporal_split": True,
-        "shuffle": False,
-    },
-    "fallback": {
-        "allow_baseline": True,
-        "baseline_engine": "rolling_majority",
-        "baseline_requires_explicit_request": True,
-    },
+    "min_assets": 30,
+    "min_rows_per_horizon": 100,
+    "min_history": 120,
+    "min_train_rows": 100,
+    "n_jobs": 4,
+    "autotune": False,
+    "autotune_iter": 20,
+    "autotune_cv": 3,
+}
+
+DEFAULT_EXPERIMENTAL_CONFIG: dict[str, Any] = {
+    "allow_custom_horizons": False,
+    "allow_custom_engines": False,
+    "allow_small_universe": False,
+}
+
+DEFAULT_PREDICTION_CONFIG: dict[str, Any] = {
+    "operational": DEFAULT_OPERATIONAL_CONFIG,
+    "experimental": DEFAULT_EXPERIMENTAL_CONFIG,
 }
 
 
@@ -61,10 +60,7 @@ def parse_weights(value: str | dict[str, float] | None) -> dict[str, float]:
     if value is None or value == "":
         return {}
     if isinstance(value, dict):
-        return {
-            _weight_key(str(key)): float(item)
-            for key, item in value.items()
-        }
+        return {_weight_key(str(key)): float(item) for key, item in value.items()}
 
     weights: dict[str, float] = {}
     for part in str(value).split(","):
@@ -90,6 +86,46 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
     return merged
 
 
+def _legacy_to_structured(payload: dict[str, Any]) -> dict[str, Any]:
+    if "operational" in payload:
+        return payload
+
+    operational = json.loads(json.dumps(DEFAULT_OPERATIONAL_CONFIG))
+    operational.update(
+        {
+            "horizons": payload.get("horizons", operational["horizons"]),
+            "base_engines": payload.get("base_engines", operational["base_engines"]),
+            "meta_model": payload.get("meta_model", operational["meta_model"]),
+            "observer_mode": payload.get("observer", {}).get(
+                "mode",
+                operational["observer_mode"],
+            ),
+            "weights": payload.get("observer", {}).get("weights", operational["weights"]),
+        }
+    )
+    training = payload.get("training", {})
+    for key in (
+        "min_history",
+        "min_train_rows",
+        "min_rows_per_horizon",
+        "n_jobs",
+        "autotune",
+        "autotune_iter",
+        "autotune_cv",
+    ):
+        if key in training:
+            operational[key] = training[key]
+    if "min_assets" in payload:
+        operational["min_assets"] = payload["min_assets"]
+    if "min_rows_per_horizon" in payload:
+        operational["min_rows_per_horizon"] = payload["min_rows_per_horizon"]
+
+    return {
+        "operational": operational,
+        "experimental": payload.get("experimental", DEFAULT_EXPERIMENTAL_CONFIG),
+    }
+
+
 def load_prediction_config(path: str | Path = "config/prediction.json") -> dict[str, Any]:
     file_path = Path(path)
     if not file_path.exists():
@@ -98,7 +134,8 @@ def load_prediction_config(path: str | Path = "config/prediction.json") -> dict[
     payload = json.loads(file_path.read_text(encoding="utf-8-sig"))
     if not isinstance(payload, dict):
         raise ValueError("prediction config must be a JSON object")
-    return _deep_merge(DEFAULT_PREDICTION_CONFIG, payload)
+
+    return _deep_merge(DEFAULT_PREDICTION_CONFIG, _legacy_to_structured(payload))
 
 
 def effective_prediction_config(
@@ -106,8 +143,38 @@ def effective_prediction_config(
     path: str | Path = "config/prediction.json",
     overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    config = load_prediction_config(path)
+    raw_config = load_prediction_config(path)
+    operational = raw_config["operational"]
+    experimental = raw_config["experimental"]
     overrides = overrides or {}
+
+    config: dict[str, Any] = {
+        "mode": "operational",
+        "default_engine": "multi_horizon_ridge",
+        "operational_defaults": json.loads(json.dumps(operational)),
+        "experimental_policy": json.loads(json.dumps(experimental)),
+        "horizons": list(operational["horizons"]),
+        "base_engines": list(operational["base_engines"]),
+        "meta_model": str(operational["meta_model"]).strip().lower(),
+        "min_assets": int(operational.get("min_assets", 30)),
+        "min_rows_per_horizon": int(operational.get("min_rows_per_horizon", 100)),
+        "observer": {
+            "mode": str(operational.get("observer_mode", "weighted")).strip().lower(),
+            "weights": parse_weights(operational.get("weights", {})),
+            "independent_analysis": True,
+            "combined_analysis": True,
+        },
+        "training": {
+            "min_history": int(operational.get("min_history", 120)),
+            "min_train_rows": int(operational.get("min_train_rows", 100)),
+            "n_jobs": int(operational.get("n_jobs", 4)),
+            "autotune": bool(operational.get("autotune", False)),
+            "autotune_iter": int(operational.get("autotune_iter", 20)),
+            "autotune_cv": int(operational.get("autotune_cv", 3)),
+            "temporal_split": True,
+            "shuffle": False,
+        },
+    }
 
     if overrides.get("horizons"):
         config["horizons"] = parse_horizons(overrides["horizons"])

@@ -21,6 +21,7 @@ def _write_train_inputs(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
 def _fake_lab_factory(
     calls: list[dict],
     *,
+    asset_count: int = 78,
     status_by_horizon: dict[int, str] | None = None,
     accuracy_by_horizon: dict[int, float] | None = None,
 ):
@@ -33,17 +34,23 @@ def _fake_lab_factory(
         evaluation_output = Path(kwargs["evaluation_output"])
         dataset_output.parent.mkdir(parents=True, exist_ok=True)
         evaluation_output.parent.mkdir(parents=True, exist_ok=True)
+        tickers = [f"TCK{index:03d}" for index in range(asset_count)]
         dataset_output.write_text(
-            "date,ticker\n2025-01-01,PRIO3\n2025-01-02,PRIO3\n",
+            "date,ticker\n"
+            + "\n".join(
+                f"2025-01-01,{ticker}\n2025-01-02,{ticker}"
+                for ticker in tickers
+            )
+            + "\n",
             encoding="utf-8",
         )
 
         if kwargs["engines"] == ["rolling_majority"]:
             payload = {
-                "dataset": {"rows": 2, "output": str(dataset_output)},
+                "dataset": {"rows": asset_count * 2, "output": str(dataset_output)},
                 "evaluation": {
-                    "rows": 2,
-                    "evaluated_rows": 1,
+                    "rows": asset_count * 2,
+                    "evaluated_rows": asset_count,
                     "engines": ["rolling_majority"],
                     "engine_status": {"rolling_majority": "BASELINE"},
                     "engine_used": "rolling_majority",
@@ -85,8 +92,8 @@ def _fake_lab_factory(
             else {}
         )
         evaluation = {
-            "rows": 2,
-            "evaluated_rows": 1,
+            "rows": asset_count * 2,
+            "evaluated_rows": asset_count,
             "engines": kwargs["engines"],
             "status": status,
             "reason": reason,
@@ -108,7 +115,7 @@ def _fake_lab_factory(
         }
         evaluation_output.write_text(json.dumps(evaluation), encoding="utf-8")
         return {
-            "dataset": {"rows": 2, "output": str(dataset_output)},
+            "dataset": {"rows": asset_count * 2, "output": str(dataset_output)},
             "evaluation": evaluation,
         }
 
@@ -154,6 +161,9 @@ def test_cli_train_generates_multi_horizon_evaluation_by_default(
     assert payload["status"] == "OK"
     assert payload["engine_used"] == "multi_horizon_ridge"
     assert payload["is_baseline"] is False
+    assert payload["operational"] is True
+    assert payload["experimental"] is False
+    assert payload["dataset"]["assets"] == 78
     assert payload["base_engines"] == BASE_ENGINES
     assert payload["meta_model"] == "ridge"
     assert set(payload["horizon_models"]) == {"D5", "D20", "D60"}
@@ -178,10 +188,14 @@ def test_cli_train_generates_multi_horizon_evaluation_by_default(
     )
     assert evaluation_payload == multi_payload
     assert evaluation_payload["engine_used"] == "multi_horizon_ridge"
+    assert evaluation_payload["operational"] is True
+    assert evaluation_payload["experimental"] is False
     assert evaluation_payload["trained_models"] == ["multi_horizon_ridge"]
     assert evaluation_payload["horizons"] == [5, 20, 60]
     assert evaluation_payload["base_engines"] == BASE_ENGINES
     assert evaluation_payload["meta_model"] == "ridge"
+    assert evaluation_payload["row_count_by_horizon"] == {"D5": 156, "D20": 156, "D60": 156}
+    assert evaluation_payload["asset_count_by_horizon"] == {"D5": 78, "D20": 78, "D60": 78}
     assert set(evaluation_payload["horizon_models"]) == {"D5", "D20", "D60"}
     assert evaluation_payload["horizon_models"]["D5"]["engine_used"] == "ridge_ensemble"
     assert evaluation_payload["horizon_models"]["D5"]["meta_model"] == "ridge"
@@ -265,6 +279,8 @@ def test_cli_train_parser_uses_config_driven_defaults():
     assert args.n_jobs is None
     assert args.min_history is None
     assert args.min_train_rows is None
+    assert args.experimental is False
+    assert args.allow_small_universe is False
 
     override_args = build_parser().parse_args(
         [
@@ -308,7 +324,7 @@ def test_cli_train_help_lists_multi_horizon_defaults(capsys):
     assert "Autotune CV folds. Default: 3" in help_text
 
 
-def test_cli_train_overrides_horizons_base_engines_weights_and_autotune(
+def test_cli_train_experimental_overrides_horizons_base_engines_weights_and_autotune(
     tmp_path: Path,
     monkeypatch,
     capsys,
@@ -332,6 +348,7 @@ def test_cli_train_overrides_horizons_base_engines_weights_and_autotune(
             str(evaluation),
             "--min-train-rows",
             "2",
+            "--experimental",
             "--horizons",
             "5,20",
             "--engines",
@@ -362,6 +379,8 @@ def test_cli_train_overrides_horizons_base_engines_weights_and_autotune(
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "OK"
+    assert payload["experimental"] is True
+    assert payload["operational"] is False
     assert payload["horizons"] == [5, 20]
     assert payload["base_engines"] == ["extratrees", "randomforest"]
     assert payload["observer"]["weights"] == {"D5": 0.2, "D20": 0.8}
@@ -369,6 +388,13 @@ def test_cli_train_overrides_horizons_base_engines_weights_and_autotune(
     assert payload["training"]["autotune"] is True
     assert payload["training"]["autotune_iter"] == 30
     assert payload["training"]["autotune_cv"] == 2
+
+    evaluation_payload = json.loads(evaluation.read_text(encoding="utf-8"))
+    assert evaluation_payload["experimental"] is True
+    assert evaluation_payload["operational"] is False
+    assert evaluation_payload["autotune"]["enabled"] is True
+    assert evaluation_payload["autotune"]["autotune_iter"] == 30
+    assert evaluation_payload["autotune"]["autotune_cv"] == 2
 
 
 def test_cli_train_explicit_rolling_majority_is_baseline(
@@ -415,6 +441,52 @@ def test_cli_train_explicit_rolling_majority_is_baseline(
     assert evaluation_payload["status"] == "BASELINE"
 
 
+def test_cli_train_autotune_records_summary_in_operational_json(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+
+    matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
+    calls: list[dict] = []
+    monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--min-train-rows",
+            "2",
+            "--autotune",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "OK"
+    assert [call["autotune"] for call in calls] == [True, True, True]
+
+    evaluation_payload = json.loads(evaluation.read_text(encoding="utf-8"))
+    assert evaluation_payload["autotune"]["enabled"] is True
+    assert evaluation_payload["autotune"]["autotune_iter"] == 20
+    assert evaluation_payload["autotune"]["autotune_cv"] == 3
+    assert evaluation_payload["autotune"]["asset_count"] == 78
+    assert evaluation_payload["autotune"]["row_count_by_horizon"] == {
+        "D5": 156,
+        "D20": 156,
+        "D60": 156,
+    }
+
+
 def test_cli_train_rejects_sklearn_as_engine(tmp_path: Path, capsys):
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
 
@@ -443,7 +515,167 @@ def test_cli_train_rejects_sklearn_as_engine(tmp_path: Path, capsys):
     assert not evaluation.exists()
 
 
-def test_cli_train_degrades_when_one_horizon_fails(
+def test_cli_train_rejects_non_standard_horizons_without_experimental(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+
+    matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
+    calls: list[dict] = []
+    monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--horizons",
+            "5,10,20",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 1
+    assert calls == []
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "FAIL"
+    assert payload["reason"] == (
+        "Non-standard horizons require --experimental. "
+        "Default operational horizons are D5,D20,D60."
+    )
+    assert not evaluation.exists()
+
+
+def test_cli_train_rejects_two_operational_base_engines_without_experimental(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+
+    matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
+    calls: list[dict] = []
+    monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--engines",
+            "extratrees,randomforest",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 1
+    assert calls == []
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "FAIL"
+    assert payload["reason"] == (
+        "Operational training requires 3 base engines: "
+        "extratrees,randomforest,gradientboosting"
+    )
+    assert not evaluation.exists()
+
+
+def test_cli_train_fails_with_insufficient_operational_assets(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+
+    matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
+    calls: list[dict] = []
+    monkeypatch.setattr(
+        train_mod,
+        "run_prediction_lab",
+        _fake_lab_factory(calls, asset_count=1),
+    )
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--min-train-rows",
+            "2",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "FAIL"
+    assert payload["reason"] == "insufficient assets for operational training"
+    assert payload["dataset"]["assets"] == 1
+    assert payload["dataset"]["min_assets"] == 30
+    assert payload["diagnostic"]["inputs"]["feature_matrix_assets"] == 1
+    assert payload["diagnostic"]["dataset_by_horizon"]["D5"]["assets"] == 1
+    assert payload["diagnostic"]["bottleneck_step"]
+
+    evaluation_payload = json.loads(evaluation.read_text(encoding="utf-8"))
+    assert evaluation_payload["status"] == "FAIL"
+    assert evaluation_payload["engine_used"] == "multi_horizon_ridge"
+    assert evaluation_payload["status"] != "OK"
+    diagnostic_path = evaluation.with_name("latest_failed_training_diagnostic.json")
+    assert diagnostic_path.exists()
+
+
+def test_train_diagnostic_normalizes_b3_ticker_suffixes(tmp_path: Path):
+    from pymercator.cli_train import _build_training_diagnostic
+
+    universe = tmp_path / "universe.csv"
+    matrix = tmp_path / "matrix.csv"
+    prices_dir = tmp_path / "prices"
+    prices_dir.mkdir()
+
+    universe.write_text("ticker,sector\nPETR4,energy\n", encoding="utf-8")
+    matrix.write_text("ticker,sector\nPETR4,energy\n", encoding="utf-8")
+    (prices_dir / "PETR4.SA.csv").write_text(
+        "date,close\n2025-01-01,10\n2025-01-02,11\n",
+        encoding="utf-8",
+    )
+
+    diagnostic = _build_training_diagnostic(
+        universe=str(universe),
+        matrix=str(matrix),
+        prices_dir=str(prices_dir),
+        min_history=2,
+        min_assets=1,
+        row_count_by_horizon={"D5": 1},
+        asset_count_by_horizon={"D5": 1},
+        dataset_assets_by_horizon={"D5": {"PETR4"}},
+    )
+
+    assert diagnostic["inputs"]["universe_assets"] == 1
+    assert diagnostic["inputs"]["feature_matrix_assets"] == 1
+    assert diagnostic["inputs"]["valid_price_files"] == 1
+    assert diagnostic["filter_losses"]["assets_after_join"] == 1
+
+
+def test_cli_train_fails_when_one_operational_horizon_fails(
     tmp_path: Path,
     monkeypatch,
     capsys,
@@ -475,12 +707,12 @@ def test_cli_train_degrades_when_one_horizon_fails(
         ]
     )
 
-    assert exit_code == 0
+    assert exit_code == 1
     payload = json.loads(capsys.readouterr().out)
-    assert payload["status"] == "DEGRADED"
+    assert payload["status"] == "FAIL"
     assert payload["engine_used"] == "multi_horizon_ridge"
     assert payload["horizon_models"]["D60"]["status"] == "FAIL"
-    assert payload["reason"] == "one or more horizons failed or degraded"
+    assert payload["reason"] == "insufficient valid base engines for D60"
 
 
 def test_cli_train_fails_with_fewer_than_two_valid_horizons(
@@ -519,4 +751,4 @@ def test_cli_train_fails_with_fewer_than_two_valid_horizons(
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "FAIL"
     assert payload["engine_used"] == "multi_horizon_ridge"
-    assert payload["reason"] == "multi_horizon_ridge requires at least 2 valid horizons"
+    assert payload["reason"] == "insufficient valid base engines for D20"

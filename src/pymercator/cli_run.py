@@ -56,6 +56,9 @@ def _load_prediction_observer(path: str) -> dict[str, Any]:
         return {
             "engine_used": payload.get("engine_used", "-"),
             "is_baseline": bool(payload.get("is_baseline", False)),
+            "status": payload.get("status"),
+            "experimental": bool(payload.get("experimental", False)),
+            "reason": payload.get("reason", ""),
         }
 
     observer = payload.get("horizon_observer", {})
@@ -69,6 +72,9 @@ def _load_prediction_observer(path: str) -> dict[str, Any]:
     return {
         "engine_used": "multi_horizon_ridge",
         "is_baseline": False,
+        "status": payload.get("status"),
+        "experimental": bool(payload.get("experimental", False)),
+        "reason": payload.get("reason", ""),
         "horizons": payload.get("horizons", []),
         "observer_mode": observer.get("mode", payload.get("observer", {}).get("mode", "-")),
         "d5_score": scores.get("D5"),
@@ -167,6 +173,7 @@ def run_decision_flow(
     targets: int = 2,
     stop: str = "progressive",
     basket_output: str = "storage/baskets/latest_daily_basket.csv",
+    allow_experimental_model: bool = False,
 ) -> dict[str, Any]:
     normalized_profile = normalize_profile(profile)
     files = {
@@ -192,6 +199,22 @@ def run_decision_flow(
         )
 
     prediction_payload = _load_prediction_observer(evaluation)
+    if prediction_payload.get("status") and prediction_payload.get("status") != "OK":
+        return _blocked_payload(
+            profile=normalized_profile,
+            list_name=list_name,
+            reason="invalid prediction evaluation",
+            files=files,
+            detail={"evaluation": evaluation, "prediction": prediction_payload},
+        )
+    if prediction_payload.get("experimental") and not allow_experimental_model:
+        return _blocked_payload(
+            profile=normalized_profile,
+            list_name=list_name,
+            reason="experimental prediction evaluation requires --allow-experimental-model",
+            files=files,
+            detail={"evaluation": evaluation, "prediction": prediction_payload},
+        )
 
     try:
         report = run_daily_pipeline(
@@ -402,6 +425,7 @@ def run_run_command(args: Any) -> int:
         targets=args.targets,
         stop=args.stop,
         basket_output=args.basket_output,
+        allow_experimental_model=getattr(args, "allow_experimental_model", False),
     )
 
     if getattr(args, "json", False):

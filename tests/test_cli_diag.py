@@ -14,11 +14,14 @@ def test_cli_diag_separates_libraries_from_prediction_engines(monkeypatch, capsy
     output = capsys.readouterr().out
     assert "PYMERCATOR DIAG" in output
     assert "PREDICTION CONFIG:" in output
+    assert "- mode: operational" in output
     assert "- default_engine: multi_horizon_ridge" in output
-    assert "- horizons: D5,D20,D60" in output
+    assert "- horizons: 5,20,60" in output
     assert "- base_engines: extratrees,randomforest,gradientboosting" in output
     assert "- meta_model: ridge" in output
-    assert "- observer_mode: weighted" in output
+    assert "- observer: weighted" in output
+    assert "- weights: D5=0.25 D20=0.35 D60=0.40" in output
+    assert "- min_assets: 30" in output
     assert "LIBRARIES:" in output
     assert "- sklearn available: True" in output
     assert "PREDICTION ENGINES:" in output

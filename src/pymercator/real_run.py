@@ -399,6 +399,10 @@ def run_real_pack(
             context_file=context_file,
             context_preset=context_preset,
             context_notes=context_notes,
+            context_snapshot=context_snapshot,
+            execution_mode=execution_mode,
+            allow_order_routing=allow_order_routing,
+            require_human_confirmation=require_human_confirmation,
         )
 
     universe_build = build_universe_csv_from_prices(
@@ -427,6 +431,10 @@ def run_real_pack(
             context_file=context_file,
             context_preset=context_preset,
             context_notes=context_notes,
+            context_snapshot=context_snapshot,
+            execution_mode=execution_mode,
+            allow_order_routing=allow_order_routing,
+            require_human_confirmation=require_human_confirmation,
         )
         payload["universe_build"] = universe_build
         payload["universe_validation"] = universe_validation

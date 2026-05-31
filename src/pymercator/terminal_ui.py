@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from typing import Any
 
 
@@ -24,7 +23,11 @@ def short_path(path: str | None, max_len: int = 70) -> str:
     return f"{text[:half]}...{text[-half:]}"
 
 
-def render_table(rows: list[dict[str, Any]], columns: list[str], widths: dict[str, int] | None = None) -> str:
+def render_table(
+    rows: list[dict[str, Any]],
+    columns: list[str],
+    widths: dict[str, int] | None = None,
+) -> str:
     if not rows:
         return ""
 
@@ -52,7 +55,7 @@ def section(title: str, width: int = 100) -> str:
     pad = max(0, width - len(title_text))
     left = pad // 2
     right = pad - left
-    return f"{"-"*left}{title_text}{"-"*right}"
+    return f"{'-' * left}{title_text}{'-' * right}"
 
 
 def render_warning_list(warnings: list[str] | None, prefix: str = "- ") -> str:

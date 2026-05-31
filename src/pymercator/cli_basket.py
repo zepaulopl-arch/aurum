@@ -26,6 +26,13 @@ def run_basket_cli(args: object) -> int:
         print(f"TEXT: {basket_mod.resolve_basket_paths(args.output)[2]}")
         return 0
 
+    daily_report = getattr(args, "daily_report", "")
+    eligible_tickers = (
+        basket_mod.ready_tickers_from_daily_report(daily_report)
+        if daily_report
+        else None
+    )
+
     payload = basket_mod.run_daily_basket(
         slots=args.slots,
         min_sectors=args.min_sectors,
@@ -39,6 +46,7 @@ def run_basket_cli(args: object) -> int:
         matrix=args.matrix,
         evaluation=args.evaluation,
         output_csv=args.output,
+        eligible_tickers=eligible_tickers,
     )
 
     output = [section("DAILY BASKET SUMMARY"), basket_mod.render_basket_summary(payload), ""]

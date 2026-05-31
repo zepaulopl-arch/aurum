@@ -34,15 +34,17 @@ except Exception:
     CATBOOST_AVAILABLE = False
 
 
+BASELINE_ENGINES = ["rolling_majority", "momentum_rule"]
 LEGACY_BASE_ENGINES = ["xgb", "catboost", "extratrees"]
+ARBITER_ENGINES = ["ridge_arbiter"]
 DEFAULT_ENGINES = [
-    "rolling_majority",
-    "momentum_rule",
-    "xgb",
-    "catboost",
-    "extratrees",
-    "ridge_arbiter",
+    *BASELINE_ENGINES,
+    *LEGACY_BASE_ENGINES,
+    *ARBITER_ENGINES,
 ]
+LEGACY_ENGINE_ALIASES = {
+    "xgboost": "xgb",
+}
 
 LEGACY_RETURN_CLIP_LOWER: float = -20.0
 LEGACY_RETURN_CLIP_UPPER: float = 20.0
@@ -93,11 +95,22 @@ def parse_legacy_engines(engines: list[str] | None = None) -> list[str]:
         return DEFAULT_ENGINES.copy()
 
     allowed = set(DEFAULT_ENGINES)
-    parsed = [engine.strip() for engine in engines if engine.strip()]
+    parsed: list[str] = []
+    for engine in engines:
+        raw = engine.strip().lower()
+        name = LEGACY_ENGINE_ALIASES.get(raw, raw)
+        if name and name not in parsed:
+            parsed.append(name)
     unknown = [engine for engine in parsed if engine not in allowed]
 
     if unknown:
-        raise ValueError(f"Unknown prediction engines: {', '.join(unknown)}")
+        valid = ", ".join([*LEGACY_BASE_ENGINES, *ARBITER_ENGINES])
+        baselines = ", ".join(BASELINE_ENGINES)
+        raise ValueError(
+            f"Unknown prediction engines: {', '.join(unknown)}\n"
+            f"Valid engines: {valid}\n"
+            f"Baselines: {baselines}"
+        )
 
     return parsed
 
@@ -576,6 +589,10 @@ def evaluate_legacy_walk_forward(
     engine_status: dict[str, str] = {}
     tuned_params: dict[str, dict[str, Any]] = {}
 
+    for engine in selected:
+        if engine in {"rolling_majority", "momentum_rule"}:
+            engine_status[engine] = "BASELINE"
+
     dates = sorted({str(row.get("date", "")) for row in rows if row.get("date")})
 
     for current_date in dates:
@@ -670,6 +687,29 @@ def evaluate_legacy_walk_forward(
                 pred_ret["ridge_arbiter"].append(value)
                 pred_up["ridge_arbiter"].append(1 if value > 0 else 0)
 
+    models = {
+        engine: metric_report(
+            rows=evaluation_rows,
+            predictions_up=pred_up[engine],
+            predictions_return=pred_ret[engine],
+            target_up_column=target_up_column,
+            target_return_column=target_return_column,
+        )
+        for engine in selected
+    }
+    trained_models = [
+        engine
+        for engine in selected
+        if engine in {*LEGACY_BASE_ENGINES, *ARBITER_ENGINES}
+        and engine_status.get(engine) == "OK"
+    ]
+    baseline_models = [engine for engine in selected if engine in BASELINE_ENGINES]
+    engine_used = (
+        trained_models[0]
+        if trained_models
+        else (baseline_models[0] if baseline_models else "-")
+    )
+
     return {
         "dataset": dataset,
         "horizon": horizon,
@@ -684,16 +724,10 @@ def evaluate_legacy_walk_forward(
         },
         "engines": selected,
         "engine_status": engine_status,
+        "engine_used": engine_used,
+        "is_baseline": engine_used in BASELINE_ENGINES,
+        "trained_models": trained_models,
         "rows": len(rows),
         "evaluated_rows": len(evaluation_rows),
-        "models": {
-            engine: metric_report(
-                rows=evaluation_rows,
-                predictions_up=pred_up[engine],
-                predictions_return=pred_ret[engine],
-                target_up_column=target_up_column,
-                target_return_column=target_return_column,
-            )
-            for engine in selected
-        },
+        "models": models,
     }

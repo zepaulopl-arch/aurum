@@ -6,6 +6,7 @@ from typing import Any
 from pymercator.pipeline import run_daily_pipeline
 from pymercator.reports.json_report import write_daily_report_json
 from pymercator.reports.terminal import render_daily_report
+from pymercator.scenario_pack import make_timestamped_run_dir
 
 
 def run_daily_command(
@@ -37,10 +38,16 @@ def run_daily_command(
     if json_output:
         write_daily_report_json(report, json_output)
 
+    run_path: Path | None = None
+    if resolved_run_dir:
+        run_path = make_timestamped_run_dir(resolved_run_dir)
+        (run_path / "report.txt").write_text(rendered, encoding="utf-8")
+        write_daily_report_json(report, run_path / "report.json")
+
     print(rendered)
 
-    if resolved_run_dir:
+    if run_path:
         print("")
-        print(f"RUN DIR              {resolved_run_dir}")
+        print(f"RUN DIR              {run_path}")
 
     return 0

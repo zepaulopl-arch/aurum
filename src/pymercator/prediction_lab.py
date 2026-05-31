@@ -10,6 +10,7 @@ from typing import Any
 from pymercator.legacy_prediction_engines import (
     available_legacy_engines,
     evaluate_legacy_walk_forward,
+    parse_legacy_engines,
 )
 
 DATASET_COLUMNS = [
@@ -239,17 +240,7 @@ def available_engines() -> list[str]:
 
 
 def _parse_engines(engines: list[str] | None = None) -> list[str]:
-    if not engines:
-        return available_engines()
-
-    allowed = set(available_engines())
-    parsed = [engine.strip() for engine in engines if engine.strip()]
-    unknown = [engine for engine in parsed if engine not in allowed]
-
-    if unknown:
-        raise ValueError(f"Unknown prediction engines: {', '.join(unknown)}")
-
-    return parsed
+    return parse_legacy_engines(engines)
 
 
 def _feature_value(row: dict[str, Any], feature: str) -> float:
@@ -784,6 +775,9 @@ def run_prediction_lab(
             "n_jobs": evaluation_payload.get("n_jobs", n_jobs),
             "engines": evaluation_payload.get("engines", []),
             "engine_status": evaluation_payload.get("engine_status", {}),
+            "engine_used": evaluation_payload.get("engine_used", "-"),
+            "is_baseline": evaluation_payload.get("is_baseline", False),
+            "trained_models": evaluation_payload.get("trained_models", []),
             "autotune": evaluation_payload.get("autotune", {}),
             "models": evaluation_payload["models"],
         },
@@ -858,6 +852,8 @@ def render_prediction_lab_summary(payload: dict[str, Any]) -> str:
         f"{'EVALUATION FILE':<22} {evaluation['file']}",
         f"{'EVALUATED ROWS':<22} {evaluation['evaluated_rows']}",
         f"{'N JOBS':<22} {evaluation.get('n_jobs', 4)}",
+        f"{'ENGINE USED':<22} {evaluation.get('engine_used', '-')}",
+        f"{'BASELINE':<22} {str(evaluation.get('is_baseline', False)).lower()}",
         "",
         "ENGINE STATUS",
         line,

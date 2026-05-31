@@ -4,8 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from pymercator import basket as basket_mod
 
 
@@ -122,6 +120,152 @@ def test_run_daily_basket_creates_outputs(tmp_path: Path) -> None:
     assert len(payload["rows"]) == 2
     assert len({row["sector"] for row in payload["rows"]}) >= 2
     assert all(row["quantity"] > 0 for row in payload["rows"])
+
+
+def test_run_daily_basket_blocks_empty_actionable_set(tmp_path: Path) -> None:
+    output_csv = tmp_path / "basket.csv"
+
+    payload = basket_mod.run_daily_basket(
+        slots=5,
+        min_sectors=3,
+        min_weight=0.10,
+        capital=100000.0,
+        risk_per_trade=0.005,
+        targets=2,
+        stop_mode="progressive",
+        prices_dir=str(tmp_path / "prices"),
+        universe=str(tmp_path / "universe.csv"),
+        matrix=str(tmp_path / "feature_matrix.csv"),
+        evaluation=str(tmp_path / "evaluation.json"),
+        output_csv=str(output_csv),
+        eligible_tickers=[],
+    )
+
+    assert payload["status"] == "BLOCKED"
+    assert payload["reason"] == "no actionable assets"
+    assert payload["rows"] == []
+    assert output_csv.exists()
+    assert json.loads(output_csv.with_suffix(".json").read_text(encoding="utf-8"))["rows"] == []
+
+
+def test_run_daily_basket_filters_out_non_actionable_tickers(tmp_path: Path) -> None:
+    prices_dir = tmp_path / "prices"
+    universe_path = tmp_path / "universe.csv"
+    matrix_path = tmp_path / "feature_matrix.csv"
+    evaluation_path = tmp_path / "evaluation.json"
+    output_csv = tmp_path / "basket.csv"
+
+    _write_csv_rows(
+        universe_path,
+        [
+            {"ticker": "READY3", "sector": "Energy"},
+            {"ticker": "BLOCK3", "sector": "Energy"},
+        ],
+    )
+    _write_csv_rows(
+        matrix_path,
+        [
+            {
+                "ticker": "READY3",
+                "sector": "Energy",
+                "momentum_score": "0.4",
+                "trend_score": "0.4",
+                "news_score": "0.4",
+                "return_5d": "0.01",
+                "volatility_20d": "0.12",
+                "atr_pct": "1.5",
+            },
+            {
+                "ticker": "BLOCK3",
+                "sector": "Energy",
+                "momentum_score": "0.99",
+                "trend_score": "0.99",
+                "news_score": "0.99",
+                "return_5d": "0.05",
+                "volatility_20d": "0.08",
+                "atr_pct": "1.5",
+            },
+        ],
+    )
+    evaluation_path.write_text(json.dumps({}), encoding="utf-8")
+    _write_daily_prices(prices_dir / "READY3.SA.csv")
+    _write_daily_prices(prices_dir / "BLOCK3.SA.csv")
+
+    payload = basket_mod.run_daily_basket(
+        slots=1,
+        min_sectors=1,
+        min_weight=0.10,
+        capital=100000.0,
+        risk_per_trade=0.005,
+        targets=2,
+        stop_mode="progressive",
+        prices_dir=str(prices_dir),
+        universe=str(universe_path),
+        matrix=str(matrix_path),
+        evaluation=str(evaluation_path),
+        output_csv=str(output_csv),
+        eligible_tickers=["READY3"],
+    )
+
+    assert payload["status"] == "OK"
+    assert [row["ticker"] for row in payload["rows"]] == ["READY3"]
+
+
+def test_ready_tickers_from_daily_report_ignores_blocked_assets(tmp_path: Path) -> None:
+    report = tmp_path / "report.json"
+    report.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "asset": {"ticker": "READY3"},
+                        "permission": {"status": "READY"},
+                    },
+                    {
+                        "asset": {"ticker": "BLOCK3"},
+                        "permission": {"status": "BLOCKED"},
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert basket_mod.ready_tickers_from_daily_report(report) == ["READY3"]
+
+
+def test_basket_summary_uses_short_sector_labels() -> None:
+    payload = {
+        "status": "OK",
+        "slots": 1,
+        "min_sectors": 1,
+        "min_weight": 0.10,
+        "capital": 100000.0,
+        "risk_per_trade": 0.005,
+        "stop_mode": "progressive",
+        "targets": 2,
+        "rows": [
+            {
+                "ticker": "LREN3",
+                "sector": "consumer_discretionary",
+                "rank": 1,
+                "score": 0.5,
+                "entry": 10.0,
+                "initial_stop": 9.5,
+                "target_1": 10.5,
+                "target_2": 11.0,
+                "quantity": 100,
+                "status": "OK",
+            }
+        ],
+        "warnings": [],
+    }
+
+    summary = basket_mod.render_basket_summary(payload)
+
+    assert "cons_disc" in summary
+    assert "consumer_discretionary" not in summary
+    assert payload["rows"][0]["sector"] == "consumer_discretionary"
 
 
 def test_cli_basket_daily_runs(tmp_path: Path) -> None:

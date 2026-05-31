@@ -6,8 +6,7 @@ import math
 from pathlib import Path
 from typing import Any
 
-from pymercator import presets as presets_mod
-from pymercator.terminal_ui import kv, line, render_table, render_warning_list, short_path
+from pymercator.terminal_ui import kv, line, render_table, render_warning_list
 
 BASKET_CSV_COLUMNS = [
     "ticker",
@@ -28,6 +27,73 @@ BASKET_CSV_COLUMNS = [
     "status",
     "warnings",
 ]
+
+BASKET_TABLE_COLUMNS = [
+    "ticker",
+    "sector",
+    "rank",
+    "score",
+    "entry",
+    "initial_stop",
+    "target_1",
+    "target_2",
+    "quantity",
+    "status",
+]
+
+BASKET_TABLE_WIDTHS = {
+    "ticker": 10,
+    "sector": 12,
+    "rank": 4,
+    "score": 7,
+    "entry": 8,
+    "initial_stop": 10,
+    "target_1": 8,
+    "target_2": 8,
+    "quantity": 8,
+    "status": 10,
+}
+
+SECTOR_LABELS = {
+    "consumer_discretionary": "cons_disc",
+    "consumer_staples": "cons_stap",
+    "financial_services": "fin_srv",
+    "communication_services": "comm_srv",
+    "health_care": "health",
+    "healthcare": "health",
+    "industrials": "industr",
+    "industrial": "industr",
+    "information_technology": "tech",
+    "materials": "mat",
+    "real_estate": "real_est",
+    "utilities": "utility",
+}
+
+
+def _normalize_ticker(value: object) -> str:
+    return str(value or "").strip().upper()
+
+
+def _short_sector(value: object) -> str:
+    text = str(value or "").strip()
+    key = text.lower().replace(" ", "_").replace("-", "_")
+
+    if key in SECTOR_LABELS:
+        return SECTOR_LABELS[key]
+
+    compact = "_".join(part[:4] for part in key.split("_") if part)
+    return (compact or "-")[:12]
+
+
+def _basket_table_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    table_rows: list[dict[str, Any]] = []
+
+    for row in rows:
+        item = dict(row)
+        item["sector"] = _short_sector(row.get("sector", ""))
+        table_rows.append(item)
+
+    return table_rows
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -126,8 +192,7 @@ def _compute_atr_pct(row: dict[str, Any], prices_dir: str | Path) -> float:
 
     recent = true_ranges[-14:]
     avg_tr = sum(recent) / len(recent)
-    entry = _safe_float(row.get("return_5d"), 0.0)
-    entry = _safe_float(row.get("close"), 0.0) or avg_tr
+    entry = price_rows[-1]["close"]
     return round((avg_tr / max(entry, 1.0)) * 100.0, 4)
 
 
@@ -180,6 +245,19 @@ def _load_prediction_evaluation(evaluation_path: str | Path) -> dict[str, Any]:
         return json.loads(path_obj.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
+
+def ready_tickers_from_daily_report(report_path: str | Path) -> list[str]:
+    payload = json.loads(Path(report_path).read_text(encoding="utf-8-sig"))
+    tickers: list[str] = []
+
+    for item in payload.get("decisions", []):
+        status = str(item.get("permission", {}).get("status", "")).upper()
+        ticker = _normalize_ticker(item.get("asset", {}).get("ticker", ""))
+        if status == "READY" and ticker:
+            tickers.append(ticker)
+
+    return tickers
 
 
 def _build_scores(rows: list[dict[str, Any]], evaluation: dict[str, Any]) -> list[dict[str, Any]]:
@@ -294,7 +372,11 @@ def _build_row(
 
     position_value = capital * weight
     max_loss_per_trade = capital * risk_per_trade
-    quantity_by_risk = math.floor(max_loss_per_trade / max(risk_per_share, 1e-9)) if risk_per_share > 0 else 0.0
+    quantity_by_risk = (
+        math.floor(max_loss_per_trade / max(risk_per_share, 1e-9))
+        if risk_per_share > 0
+        else 0.0
+    )
     quantity_by_weight = math.floor(position_value / max(entry, 1e-9)) if entry > 0 else 0.0
     quantity = int(min(quantity_by_risk, quantity_by_weight))
     if lot_size > 1:
@@ -346,6 +428,9 @@ def _write_txt(output_txt: str | Path, payload: dict[str, Any]) -> None:
     output_path = Path(output_txt)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = ["PYMERCATOR DAILY BASKET", line(100)]
+    lines.append(kv("STATUS", payload["status"]))
+    if payload.get("reason"):
+        lines.append(kv("REASON", payload["reason"]))
     lines.append(kv("CAPITAL", f"{payload['capital']:.2f}"))
     lines.append(kv("SLOTS", payload["slots"]))
     lines.append(kv("MIN SECTORS", payload["min_sectors"]))
@@ -354,7 +439,13 @@ def _write_txt(output_txt: str | Path, payload: dict[str, Any]) -> None:
     lines.append(kv("STOP MODE", payload["stop_mode"]))
     lines.append(kv("TARGETS", payload["targets"]))
     lines.append("")
-    lines.append(render_table(payload["rows"], ["ticker", "sector", "rank", "score", "entry", "initial_stop", "target_1", "target_2", "quantity", "status"], widths={"ticker": 10, "sector": 12, "rank": 4, "score": 7, "entry": 8, "initial_stop": 10, "target_1": 8, "target_2": 8, "quantity": 8, "status": 10}))
+    lines.append(
+        render_table(
+            _basket_table_rows(payload["rows"]),
+            BASKET_TABLE_COLUMNS,
+            widths=BASKET_TABLE_WIDTHS,
+        )
+    )
     if payload.get("warnings"):
         lines.append("")
         lines.append(render_warning_list(payload["warnings"]))
@@ -363,6 +454,9 @@ def _write_txt(output_txt: str | Path, payload: dict[str, Any]) -> None:
 
 def render_basket_summary(payload: dict[str, Any]) -> str:
     lines: list[str] = ["PYMERCATOR DAILY BASKET", line(100)]
+    lines.append(kv("STATUS", payload["status"]))
+    if payload.get("reason"):
+        lines.append(kv("REASON", payload["reason"]))
     lines.append(kv("CAPITAL", f"{payload['capital']:.2f}"))
     lines.append(kv("SLOTS", payload["slots"]))
     lines.append(kv("MIN SECTORS", payload["min_sectors"]))
@@ -371,7 +465,13 @@ def render_basket_summary(payload: dict[str, Any]) -> str:
     lines.append(kv("STOP MODE", payload["stop_mode"]))
     lines.append(kv("TARGETS", payload["targets"]))
     lines.append("")
-    lines.append(render_table(payload["rows"], ["ticker", "sector", "rank", "score", "entry", "initial_stop", "target_1", "target_2", "quantity", "status"], widths={"ticker": 10, "sector": 12, "rank": 4, "score": 7, "entry": 8, "initial_stop": 10, "target_1": 8, "target_2": 8, "quantity": 8, "status": 10}))
+    lines.append(
+        render_table(
+            _basket_table_rows(payload["rows"]),
+            BASKET_TABLE_COLUMNS,
+            widths=BASKET_TABLE_WIDTHS,
+        )
+    )
     if payload.get("warnings"):
         lines.append("")
         lines.append(render_warning_list(payload["warnings"]))
@@ -393,7 +493,45 @@ def run_daily_basket(
     evaluation: str = "storage/prediction/latest_evaluation.json",
     output_csv: str = "storage/baskets/latest_daily_basket.csv",
     lot_size: int = 100,
+    eligible_tickers: list[str] | tuple[str, ...] | set[str] | None = None,
+    blocked_reason: str = "no actionable assets",
 ) -> dict[str, Any]:
+    output_json = str(Path(output_csv).with_suffix(".json"))
+    output_txt = str(Path(output_csv).with_suffix(".txt"))
+    eligible_set = (
+        {_normalize_ticker(ticker) for ticker in eligible_tickers if _normalize_ticker(ticker)}
+        if eligible_tickers is not None
+        else None
+    )
+
+    def finish(status: str, rows: list[dict[str, Any]], warnings: list[str]) -> dict[str, Any]:
+        reason = blocked_reason if status == "BLOCKED" else ""
+        payload = {
+            "status": status,
+            "reason": reason,
+            "slots": slots,
+            "min_sectors": min_sectors,
+            "min_weight": min_weight,
+            "capital": capital,
+            "risk_per_trade": risk_per_trade,
+            "targets": targets,
+            "stop_mode": stop_mode,
+            "execution_mode": "ANALYSIS_ONLY",
+            "output_csv": str(Path(output_csv)),
+            "output_json": output_json,
+            "output_txt": output_txt,
+            "rows": rows,
+            "warnings": warnings,
+            "evaluation": False,
+        }
+        _write_csv(output_csv, rows)
+        _write_json(output_json, payload)
+        _write_txt(output_txt, payload)
+        return payload
+
+    if eligible_set is not None and not eligible_set:
+        return finish("BLOCKED", [], [])
+
     universe_map = _load_universe(universe)
     rows = _load_feature_matrix(matrix)
     evaluation_payload = _load_prediction_evaluation(evaluation)
@@ -402,6 +540,8 @@ def run_daily_basket(
     for row in rows:
         ticker = row["ticker"].upper()
         if ticker not in universe_map:
+            continue
+        if eligible_set is not None and ticker not in eligible_set:
             continue
         row["sector"] = universe_map.get(ticker, row["sector"])
 
@@ -420,6 +560,9 @@ def run_daily_basket(
 
         row["entry"] = entry
         filtered.append(row)
+
+    if eligible_set is not None and not filtered:
+        return finish("FAILED", [], ["no basketable actionable assets"])
 
     scored_rows = _build_scores(filtered, evaluation_payload)
     basket_rows = _select_basket_candidates(scored_rows, slots, min_sectors)
@@ -442,10 +585,9 @@ def run_daily_basket(
         if built["warnings"]:
             warnings.append(f"{built['ticker']}: {built['warnings']}")
 
-    output_json = str(Path(output_csv).with_suffix(".json"))
-    output_txt = str(Path(output_csv).with_suffix(".txt"))
     payload = {
         "status": "OK" if len(rows_payload) == slots else "FAILED",
+        "reason": "",
         "slots": slots,
         "min_sectors": min_sectors,
         "min_weight": min_weight,
@@ -469,7 +611,9 @@ def run_daily_basket(
     return payload
 
 
-def load_basket_json(path: str | Path = "storage/baskets/latest_daily_basket.json") -> dict[str, Any]:
+def load_basket_json(
+    path: str | Path = "storage/baskets/latest_daily_basket.json",
+) -> dict[str, Any]:
     path_obj = Path(path)
     if not path_obj.exists():
         return {"status": "MISSING", "warnings": [f"Basket artifact not found: {path_obj}"]}
@@ -480,7 +624,9 @@ def load_basket_json(path: str | Path = "storage/baskets/latest_daily_basket.jso
         return {"status": "INVALID", "warnings": [f"Unable to parse basket artifact: {path_obj}"]}
 
 
-def resolve_basket_paths(output_csv: str | Path = "storage/baskets/latest_daily_basket.csv") -> tuple[str, str, str]:
+def resolve_basket_paths(
+    output_csv: str | Path = "storage/baskets/latest_daily_basket.csv",
+) -> tuple[str, str, str]:
     base = Path(output_csv)
     return (
         str(base),

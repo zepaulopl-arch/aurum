@@ -7,6 +7,7 @@ import pytest
 
 from pymercator.legacy_prediction_engines import (
     apply_consensus_guard,
+    parse_legacy_engines,
     predict_legacy_engine,
 )
 from pymercator.prediction_lab import (
@@ -116,6 +117,11 @@ def test_walk_forward_evaluate_returns_baseline_metrics(tmp_path: Path):
     assert payload["evaluated_rows"] > 0
     assert "rolling_majority" in payload["models"]
     assert "momentum_rule" in payload["models"]
+    assert payload["engine_status"]["rolling_majority"] == "BASELINE"
+    assert payload["engine_status"]["momentum_rule"] == "BASELINE"
+    assert payload["engine_used"] == "rolling_majority"
+    assert payload["is_baseline"] is True
+    assert payload["trained_models"] == []
 
 
 def test_run_prediction_lab_creates_dataset_and_evaluation(tmp_path: Path):
@@ -143,6 +149,8 @@ def test_run_prediction_lab_creates_dataset_and_evaluation(tmp_path: Path):
     assert dataset.exists()
     assert evaluation.exists()
     assert payload["evaluation"]["evaluated_rows"] > 0
+    assert payload["evaluation"]["engine_used"] == "rolling_majority"
+    assert payload["evaluation"]["is_baseline"] is True
     assert payload["summary"]["status"] == "OK"
     assert payload["summary"]["engine_count"] == 2
 
@@ -207,3 +215,14 @@ def test_available_engines_exposes_legacy_engines():
     assert "catboost" in engines
     assert "extratrees" in engines
     assert "ridge_arbiter" in engines
+    assert "sklearn" not in engines
+
+
+def test_sklearn_library_name_is_not_a_prediction_engine():
+    with pytest.raises(ValueError) as exc_info:
+        parse_legacy_engines(["sklearn"])
+
+    message = str(exc_info.value)
+    assert "Unknown prediction engines: sklearn" in message
+    assert "Valid engines:" in message
+    assert "extratrees" in message

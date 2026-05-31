@@ -1,0 +1,334 @@
+from __future__ import annotations
+
+import json
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+from pymercator.data.prices_csv import check_prices_dir
+from pymercator.data.prices_yahoo import fetch_yahoo_prices_from_ticker_file
+from pymercator.data.universe_builder import build_universe_csv_from_prices
+from pymercator.data.universe_csv import validate_universe_csv
+from pymercator.features_catalog import validate_features_catalog
+from pymercator.features_matrix import write_feature_matrix
+from pymercator.indices_prices import check_indices_prices_dir, fetch_indices_prices
+from pymercator.market_context import validate_market_context
+from pymercator.market_context_auto import write_auto_market_context
+
+
+def default_tickers_file(list_name: str) -> str:
+    preferred = Path("data") / "tickers" / f"{list_name.lower()}.csv"
+    if preferred.exists():
+        return str(preferred)
+    return f"data/universes/{list_name.lower()}_tickers.csv"
+
+
+def _step(name: str, status: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "step": name,
+        "status": status,
+        "payload": payload,
+    }
+
+
+def _fail_payload(
+    *,
+    list_name: str,
+    step: str,
+    reason: str,
+    detail: Any,
+    steps: list[dict[str, Any]],
+    files: dict[str, str],
+) -> dict[str, Any]:
+    return {
+        "command": "update",
+        "list": list_name,
+        "status": "FAIL",
+        "failed_step": step,
+        "reason": reason,
+        "detail": detail,
+        "steps": steps,
+        "files": files,
+    }
+
+
+def run_update_flow(
+    *,
+    list_name: str = "IBOV",
+    start: str = "2025-01-01",
+    end: str | None = None,
+    tickers_file: str | None = None,
+    prices_dir: str = "data/prices",
+    indices_catalog: str = "config/indices_catalog.json",
+    indices_dir: str = "data/indices",
+    context_output: str = "storage/context/latest_market_context.json",
+    universe_output: str = "data/universes/ibov_live.csv",
+    features_catalog: str = "config/features_catalog.json",
+    matrix_output: str = "storage/features/latest_feature_matrix.csv",
+) -> dict[str, Any]:
+    list_text = list_name.upper()
+    resolved_end = end or date.today().isoformat()
+    resolved_tickers = tickers_file or default_tickers_file(list_text)
+    files = {
+        "tickers_file": resolved_tickers,
+        "prices_dir": prices_dir,
+        "indices_catalog": indices_catalog,
+        "indices_dir": indices_dir,
+        "context": context_output,
+        "universe": universe_output,
+        "features_catalog": features_catalog,
+        "matrix": matrix_output,
+    }
+    steps: list[dict[str, Any]] = []
+    current_step = "startup"
+
+    try:
+        current_step = "prices"
+        prices = fetch_yahoo_prices_from_ticker_file(
+            tickers_file=resolved_tickers,
+            start=start,
+            end=resolved_end,
+            output_dir=prices_dir,
+        )
+        status = "OK" if int(prices.get("failed", 0)) == 0 else "FAIL"
+        steps.append(_step("prices", status, prices))
+        if status != "OK":
+            return _fail_payload(
+                list_name=list_text,
+                step="prices",
+                reason=f"price fetch failed for {prices.get('failed', 0)} tickers",
+                detail=prices,
+                steps=steps,
+                files=files,
+            )
+
+        current_step = "prices_check"
+        prices_check = check_prices_dir(prices_dir)
+        status = (
+            "OK"
+            if prices_check.get("exists")
+            and prices_check.get("files", 0) > 0
+            and prices_check.get("invalid_files", 0) == 0
+            else "FAIL"
+        )
+        steps.append(_step("prices_check", status, prices_check))
+        if status != "OK":
+            return _fail_payload(
+                list_name=list_text,
+                step="prices_check",
+                reason="prices directory is missing, empty, or invalid",
+                detail=prices_check,
+                steps=steps,
+                files=files,
+            )
+
+        current_step = "indices"
+        indices = fetch_indices_prices(
+            catalog=indices_catalog,
+            start=start,
+            end=resolved_end,
+            output=indices_dir,
+        )
+        status = "OK" if int(indices.get("required_failed", 0)) == 0 else "FAIL"
+        steps.append(_step("indices", status, indices))
+        if status != "OK":
+            return _fail_payload(
+                list_name=list_text,
+                step="indices",
+                reason="required indices failed to update",
+                detail=indices,
+                steps=steps,
+                files=files,
+            )
+
+        current_step = "indices_check"
+        indices_check = check_indices_prices_dir(indices_dir)
+        status = (
+            "OK"
+            if indices_check.get("exists")
+            and indices_check.get("files", 0) > 0
+            and indices_check.get("invalid_files", 0) == 0
+            else "FAIL"
+        )
+        steps.append(_step("indices_check", status, indices_check))
+        if status != "OK":
+            return _fail_payload(
+                list_name=list_text,
+                step="indices_check",
+                reason="indices directory is missing, empty, or invalid",
+                detail=indices_check,
+                steps=steps,
+                files=files,
+            )
+
+        current_step = "context"
+        context = write_auto_market_context(
+            indices_dir=indices_dir,
+            output=context_output,
+        )
+        steps.append(_step("context", "OK", context))
+
+        current_step = "context_check"
+        context_check = validate_market_context(context_output)
+        status = "OK" if context_check.get("valid") else "FAIL"
+        steps.append(_step("context_check", status, context_check))
+        if status != "OK":
+            return _fail_payload(
+                list_name=list_text,
+                step="context_check",
+                reason="market context is invalid",
+                detail=context_check,
+                steps=steps,
+                files=files,
+            )
+
+        current_step = "universe"
+        universe = build_universe_csv_from_prices(
+            prices_dir=prices_dir,
+            output=universe_output,
+            tickers_file=resolved_tickers,
+        )
+        status = (
+            "OK"
+            if universe.get("asset_count", 0) > 0
+            and universe.get("error_count", 0) == 0
+            else "FAIL"
+        )
+        steps.append(_step("universe", status, universe))
+        if status != "OK":
+            return _fail_payload(
+                list_name=list_text,
+                step="universe",
+                reason="universe build failed or produced no assets",
+                detail=universe,
+                steps=steps,
+                files=files,
+            )
+
+        current_step = "universe_check"
+        universe_check = validate_universe_csv(universe_output)
+        status = "OK" if universe_check.get("valid") else "FAIL"
+        steps.append(_step("universe_check", status, universe_check))
+        if status != "OK":
+            return _fail_payload(
+                list_name=list_text,
+                step="universe_check",
+                reason="universe output is invalid",
+                detail=universe_check,
+                steps=steps,
+                files=files,
+            )
+
+        current_step = "features_check"
+        features_check = validate_features_catalog(features_catalog)
+        status = "OK" if features_check.get("valid") else "FAIL"
+        steps.append(_step("features_check", status, features_check))
+        if status != "OK":
+            return _fail_payload(
+                list_name=list_text,
+                step="features_check",
+                reason="features catalog is invalid",
+                detail=features_check,
+                steps=steps,
+                files=files,
+            )
+
+        current_step = "features"
+        matrix = write_feature_matrix(
+            universe=universe_output,
+            prices_dir=prices_dir,
+            context=context_output,
+            features=features_catalog,
+            output=matrix_output,
+        )
+        status = "OK" if int(matrix.get("rows", 0)) > 0 else "FAIL"
+        steps.append(_step("features", status, matrix))
+        if status != "OK":
+            return _fail_payload(
+                list_name=list_text,
+                step="features",
+                reason="feature matrix has no rows",
+                detail=matrix,
+                steps=steps,
+                files=files,
+            )
+
+    except Exception as exc:
+        return _fail_payload(
+            list_name=list_text,
+            step=current_step,
+            reason=str(exc),
+            detail={"error": str(exc)},
+            steps=steps,
+            files=files,
+        )
+
+    return {
+        "command": "update",
+        "list": list_text,
+        "status": "OK",
+        "start": start,
+        "end": resolved_end,
+        "steps": steps,
+        "files": files,
+    }
+
+
+def render_update_summary(payload: dict[str, Any]) -> str:
+    list_name = payload.get("list", "-")
+    status = payload.get("status", "-")
+    lines = [f"UPDATE | LIST {list_name} | STATUS {status}"]
+
+    if status != "OK":
+        lines.extend(
+            [
+                f"STEP: {payload.get('failed_step', '-')}",
+                f"REASON: {payload.get('reason', '-')}",
+            ]
+        )
+        return "\n".join(lines)
+
+    lines.extend(["", "DATA:"])
+    for step in payload.get("steps", []):
+        name = str(step.get("step", "-"))
+        if name.endswith("_check"):
+            lines.append(f"- {name}: {step.get('status', '-')}")
+        elif name in {"prices", "indices", "context", "universe", "features"}:
+            lines.append(f"- {name}: {step.get('status', '-')}")
+
+    files = payload.get("files", {})
+    lines.extend(
+        [
+            "",
+            "FILES:",
+            f"- prices_dir: {files.get('prices_dir', '-')}",
+            f"- indices_dir: {files.get('indices_dir', '-')}",
+            f"- context: {files.get('context', '-')}",
+            f"- universe: {files.get('universe', '-')}",
+            f"- matrix: {files.get('matrix', '-')}",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def run_update_command(args: Any) -> int:
+    payload = run_update_flow(
+        list_name=args.list,
+        start=args.start,
+        end=args.end or None,
+        tickers_file=args.tickers_file or None,
+        prices_dir=args.prices_dir,
+        indices_catalog=args.indices_catalog,
+        indices_dir=args.indices_dir,
+        context_output=args.context_output,
+        universe_output=args.universe_output,
+        features_catalog=args.features_catalog,
+        matrix_output=args.matrix_output,
+    )
+
+    if getattr(args, "json", False):
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(render_update_summary(payload))
+
+    return 0 if payload["status"] == "OK" else 1

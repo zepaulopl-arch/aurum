@@ -14,6 +14,18 @@ def normalize_headline_risk(value: str) -> HeadlineRisk:
         raise ValueError(f"Invalid headline risk: {value}. Allowed: {allowed}") from exc
 
 
+def _permission_from_policy(
+    policy: dict[str, Any],
+    key: str,
+    default: Permission,
+) -> Permission:
+    value = policy.get("market_regime", {}).get(key, default.value)
+    try:
+        return Permission(str(value).strip().upper())
+    except ValueError:
+        return default
+
+
 def classify_market_regime(
     *,
     headline_risk: str,
@@ -32,27 +44,62 @@ def classify_market_regime(
 
     if risk == HeadlineRisk.EXTREME:
         regime = MarketRegime.CRISIS
-        permission = Permission.DENY
+        permission = _permission_from_policy(
+            policy,
+            "crisis_permission",
+            Permission.DENY,
+        )
         reasons.append("headline risk is EXTREME")
     elif risk == HeadlineRisk.ACTIVE:
         regime = MarketRegime.EVENT_RISK
-        permission = Permission.CAUTION
+        permission = _permission_from_policy(
+            policy,
+            "event_risk_permission",
+            Permission.CAUTION,
+        )
         reasons.append("headline risk is ACTIVE")
-    elif trend == "DOWN" and volatility == "HIGH":
+    elif trend == "DOWN":
         regime = MarketRegime.RISK_OFF
-        permission = Permission.CAUTION
-        reasons.append("market trend DOWN with HIGH volatility")
+        permission = _permission_from_policy(
+            policy,
+            "risk_off_permission",
+            Permission.CAUTION,
+        )
+        if volatility == "HIGH":
+            reasons.append("market trend DOWN with HIGH volatility")
+        else:
+            reasons.append(f"market trend DOWN with {volatility} volatility")
     elif trend == "UP" and volatility in {"LOW", "NORMAL"}:
         regime = MarketRegime.RISK_ON
-        permission = Permission.ALLOW
+        permission = _permission_from_policy(
+            policy,
+            "risk_on_permission",
+            Permission.ALLOW,
+        )
         reasons.append("market trend UP with acceptable volatility")
+    elif trend == "UP" and volatility == "HIGH":
+        regime = MarketRegime.CHOPPY
+        permission = _permission_from_policy(
+            policy,
+            "choppy_permission",
+            Permission.CAUTION,
+        )
+        reasons.append("market trend UP with HIGH volatility")
     elif trend == "CHOPPY":
         regime = MarketRegime.CHOPPY
-        permission = Permission.CAUTION
+        permission = _permission_from_policy(
+            policy,
+            "choppy_permission",
+            Permission.CAUTION,
+        )
         reasons.append("market trend is CHOPPY")
     else:
         regime = MarketRegime.UNKNOWN
-        permission = Permission.UNKNOWN
+        permission = _permission_from_policy(
+            policy,
+            "unknown_permission",
+            Permission.UNKNOWN,
+        )
         reasons.append("market regime could not be classified")
 
     headline_policy = policy["headline_risk"][risk.value]

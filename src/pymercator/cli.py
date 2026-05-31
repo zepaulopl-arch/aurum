@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from pymercator.cli_context import resolve_market_context_args
 from pymercator import presets as presets_mod
 from pymercator import terminal_ui as ui
+from pymercator.cli_context import resolve_market_context_args
 
 
 def _run_sentiment_command(args: argparse.Namespace) -> int:
@@ -59,6 +59,24 @@ def _run_legacy_command(args: argparse.Namespace) -> int:
     return run_legacy_command(args)
 
 
+def _run_update_command(args: argparse.Namespace) -> int:
+    from pymercator.cli_update import run_update_command
+
+    return run_update_command(args)
+
+
+def _run_train_command(args: argparse.Namespace) -> int:
+    from pymercator.cli_train import run_train_command
+
+    return run_train_command(args)
+
+
+def _run_run_command(args: argparse.Namespace) -> int:
+    from pymercator.cli_run import run_run_command
+
+    return run_run_command(args)
+
+
 def _parse_csv_arg(value: str) -> list[str]:
     return [
         item.strip()
@@ -67,88 +85,56 @@ def _parse_csv_arg(value: str) -> list[str]:
     ]
 
 
-def _run_short_run_command(args: argparse.Namespace) -> int:
-    # Load presets and resolve profile
-    profile = presets_mod.resolve_profile(args.profile if getattr(args, "profile", None) else None)
+def _prediction_engines_help() -> str:
+    try:
+        from pymercator.legacy_prediction_engines import (
+            ARBITER_ENGINES,
+            BASELINE_ENGINES,
+            LEGACY_BASE_ENGINES,
+        )
 
-    paths = profile.get("paths", {})
-    pred = profile.get("prediction", {})
-    daily = profile.get("daily", {})
+        valid = ", ".join([*LEGACY_BASE_ENGINES, *ARBITER_ENGINES])
+        baselines = ", ".join(BASELINE_ENGINES)
+    except Exception:
+        valid = "xgb, catboost, extratrees, ridge_arbiter"
+        baselines = "rolling_majority, momentum_rule"
 
-    # modify behavior based on flags
-    if getattr(args, "fast", False):
-        daily.update(profile.get("fast", {}))
-
-    if getattr(args, "no_fetch", False):
-        daily["skip_indices_fetch"] = True
-        daily["skip_asset_fetch"] = True
-
-    # build args for run_daily_auto
-    from pymercator.daily_auto import run_daily_auto, render_daily_auto_summary
-
-    engines = pred.get("engines", [])
-    if args.fast and profile.get("fast"):
-        engines = profile.get("fast", {}).get("prediction_engines", engines)
-
-    payload = run_daily_auto(
-        indices_catalog=paths.get("indices_catalog"),
-        indices_start=paths.get("indices_start", "2025-01-01"),
-        indices_dir=paths.get("indices_dir"),
-        context_output=paths.get("context_output"),
-        features_file=paths.get("features_catalog"),
-        feature_matrix_output=paths.get("feature_matrix"),
-        prediction_dataset_output=paths.get("prediction_dataset"),
-        prediction_evaluation_output=paths.get("prediction_evaluation"),
-        prediction_horizon=pred.get("horizon", 5),
-        prediction_min_history=pred.get("min_history", 20),
-        prediction_min_train_rows=pred.get("min_train_rows", 100),
-        prediction_engines=engines,
-        prediction_n_jobs=pred.get("n_jobs", 1),
-        prediction_autotune=bool(getattr(args, "autotune", False)),
-        prediction_autotune_iter=pred.get("autotune_iter", 15),
-        prediction_autotune_cv=pred.get("autotune_cv", 3),
-        tickers_file=paths.get("tickers_file"),
-        sentiment_dir=paths.get("sentiment_dir"),
-        prices_start=paths.get("prices_start", "2025-01-01"),
-        prices_dir=paths.get("prices_dir"),
-        universe_output=paths.get("universe_output"),
-        run_dir=paths.get("scenario_runs"),
-        skip_asset_fetch=bool(daily.get("skip_asset_fetch", False)),
-        fetch_indices=not bool(daily.get("skip_indices_fetch", False)),
-    )
-
-    if getattr(args, "json", False):
-        import json as _json
-
-        print(_json.dumps(payload, ensure_ascii=False, indent=2))
-    else:
-        print(render_daily_auto_summary(payload))
-
-    return 0 if payload.get("status") == "OK" else 1
+    return f"Prediction engines to run. Valid engines: {valid}. Baselines: {baselines}"
 
 
 def _run_short_lab_command(args: argparse.Namespace) -> int:
     profile = presets_mod.resolve_profile(args.profile if getattr(args, "profile", None) else None)
     paths = profile.get("paths", {})
     pred = profile.get("prediction", {})
+    fast_profile = presets_mod.resolve_profile("fast")
 
     engines = pred.get("engines", [])
     if getattr(args, "fast", False):
-        engines = profile.get("fast", {}).get("prediction_engines", engines)
+        engines = fast_profile.get("prediction", {}).get("engines", engines)
 
     from pymercator.prediction_lab import run_prediction_lab, render_prediction_lab_summary
+
+    horizon = int(getattr(args, "horizon", 0) or 0)
+    if horizon <= 0:
+        horizon = int(pred.get("horizon", 5))
+
+    n_jobs = int(getattr(args, "jobs", 0) or 0)
+    if n_jobs <= 0:
+        n_jobs = int(pred.get("n_jobs", 1))
 
     payload = run_prediction_lab(
         matrix=paths.get("feature_matrix"),
         prices_dir=paths.get("prices_dir"),
         dataset_output=paths.get("prediction_dataset"),
         evaluation_output=paths.get("prediction_evaluation"),
-        horizon=getattr(args, "horizon", pred.get("horizon", 5)),
+        horizon=horizon,
         min_history=pred.get("min_history", 20),
         min_train_rows=pred.get("min_train_rows", 100),
         engines=(args.engines.split(",") if getattr(args, "engines", None) else engines),
-        n_jobs=(getattr(args, "jobs", pred.get("n_jobs", 1))),
-        autotune=bool(getattr(args, "autotune", False)),
+        n_jobs=max(1, n_jobs),
+        autotune=bool(getattr(args, "autotune", False) or pred.get("autotune", False)),
+        autotune_iter=pred.get("autotune_iter", 15),
+        autotune_cv=pred.get("autotune_cv", 3),
     )
 
     if getattr(args, "json", False):
@@ -266,38 +252,33 @@ def _run_short_open_command(args: argparse.Namespace) -> int:
 def _run_short_diag_command(args: argparse.Namespace) -> int:
     profile = presets_mod.resolve_profile(args.profile if getattr(args, "profile", None) else None)
     paths = profile.get("paths", {})
+    from pymercator.legacy_prediction_engines import (
+        CATBOOST_AVAILABLE,
+        SKLEARN_AVAILABLE,
+        XGBOOST_AVAILABLE,
+    )
 
     print("PYMERCATOR DIAG")
     print(ui.line(profile.get("ui", {}).get("width", 120)))
     print(ui.kv("PRICES DIR", paths.get("prices_dir")))
     print(ui.kv("FEATURE MATRIX", paths.get("feature_matrix")))
     print(ui.kv("PREDICTION EVAL", paths.get("prediction_evaluation")))
-
-    # libs
-    try:
-        import xgboost as _x
-
-        xgb_ok = True
-    except Exception:
-        xgb_ok = False
-
-    try:
-        import catboost as _c
-
-        cat_ok = True
-    except Exception:
-        cat_ok = False
-
-    try:
-        import sklearn as _s
-
-        sk_ok = True
-    except Exception:
-        sk_ok = False
-
-    print(ui.kv("xgboost available", xgb_ok))
-    print(ui.kv("catboost available", cat_ok))
-    print(ui.kv("sklearn available", sk_ok))
+    print("")
+    print("LIBRARIES:")
+    print(f"- sklearn available: {bool(SKLEARN_AVAILABLE)}")
+    print(f"- xgboost available: {bool(XGBOOST_AVAILABLE)}")
+    print(f"- catboost available: {bool(CATBOOST_AVAILABLE)}")
+    print("")
+    print("PREDICTION ENGINES:")
+    print(f"- xgb: {'available' if XGBOOST_AVAILABLE else 'unavailable'}")
+    print(f"- catboost: {'available' if CATBOOST_AVAILABLE else 'unavailable'}")
+    extratrees_status = "available (uses sklearn)" if SKLEARN_AVAILABLE else "unavailable"
+    print(f"- extratrees: {extratrees_status}")
+    print("- ridge_arbiter: available")
+    print("")
+    print("BASELINES:")
+    print("- rolling_majority: available")
+    print("- momentum_rule: available")
 
     return 0
 
@@ -379,28 +360,101 @@ def _pack_top_from_summary(summary: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+        engines_help = _prediction_engines_help()
         parser = argparse.ArgumentParser(
             prog="pymercator",
             description="pyMercator command line interface",
         )
         subparsers = parser.add_subparsers(dest="command")
 
-        # Short, user-friendly commands
-        run_parser = subparsers.add_parser("run", help="Run daily routine (shortcut)")
+        # Official routine commands
+        update_parser = subparsers.add_parser("update", help="Update operational data")
+        update_parser.set_defaults(command="update")
+        update_parser.add_argument("--list", default="IBOV")
+        update_parser.add_argument("--start", default="2025-01-01")
+        update_parser.add_argument("--end", default="")
+        update_parser.add_argument("--tickers-file", default="")
+        update_parser.add_argument("--prices-dir", default="data/prices")
+        update_parser.add_argument("--indices-catalog", default="config/indices_catalog.json")
+        update_parser.add_argument("--indices-dir", default="data/indices")
+        update_parser.add_argument(
+            "--context-output",
+            default="storage/context/latest_market_context.json",
+        )
+        update_parser.add_argument("--universe-output", default="data/universes/ibov_live.csv")
+        update_parser.add_argument("--features-catalog", default="config/features_catalog.json")
+        update_parser.add_argument(
+            "--matrix-output",
+            default="storage/features/latest_feature_matrix.csv",
+        )
+        update_parser.add_argument("--json", action="store_true")
+
+        train_parser = subparsers.add_parser("train", help="Train/validate prediction layer")
+        train_parser.set_defaults(command="train")
+        train_parser.add_argument("--profile", default="CON")
+        train_parser.add_argument("--horizon", type=int, default=5)
+        train_parser.add_argument("--matrix", default="storage/features/latest_feature_matrix.csv")
+        train_parser.add_argument("--prices-dir", default="data/prices")
+        train_parser.add_argument(
+            "--dataset-output",
+            default="storage/prediction/latest_dataset.csv",
+        )
+        train_parser.add_argument(
+            "--evaluation-output",
+            default="storage/prediction/latest_evaluation.json",
+        )
+        train_parser.add_argument("--min-history", type=int, default=20)
+        train_parser.add_argument("--min-train-rows", type=int, default=100)
+        train_parser.add_argument("--engines", default="", help=engines_help)
+        train_parser.add_argument("--n-jobs", type=int, default=4)
+        train_parser.add_argument("--autotune", action="store_true")
+        train_parser.add_argument("--json", action="store_true")
+
+        run_parser = subparsers.add_parser("run", help="Run daily decision")
         run_parser.set_defaults(command="run")
-        run_parser.add_argument("--fast", action="store_true", help="Use fast preset (skip fetch, light engines)")
-        run_parser.add_argument("--full", action="store_true", help="Force full execution (fetch assets and indices)")
-        run_parser.add_argument("--no-fetch", action="store_true", help="Do not fetch indices or assets")
-        run_parser.add_argument("--autotune", action="store_true", help="Enable prediction autotune")
-        run_parser.add_argument("--profile", default="", help="Preset profile to use")
+        run_parser.add_argument("--profile", default="CON")
+        run_parser.add_argument("--list", default="IBOV")
+        run_parser.add_argument("--policy", default="config/policy.json")
+        run_parser.add_argument("--universe", default="data/universes/ibov_live.csv")
+        run_parser.add_argument("--context", default="storage/context/latest_market_context.json")
+        run_parser.add_argument("--matrix", default="storage/features/latest_feature_matrix.csv")
+        run_parser.add_argument("--evaluation", default="storage/prediction/latest_evaluation.json")
+        run_parser.add_argument("--prices-dir", default="data/prices")
+        run_parser.add_argument("--limit", type=int, default=20)
+        run_parser.add_argument("--run-dir", default="storage/runs/latest")
+        run_parser.add_argument(
+            "--report-output",
+            default="storage/reports/latest_daily_report.txt",
+        )
+        run_parser.add_argument(
+            "--json-output",
+            default="storage/reports/latest_daily_report.json",
+        )
+        run_parser.add_argument("--basket", action="store_true")
+        run_parser.add_argument("--slots", type=int, default=5)
+        run_parser.add_argument("--min-sectors", type=int, default=3)
+        run_parser.add_argument("--min-weight", type=float, default=0.10)
+        run_parser.add_argument("--capital", type=float, default=100000.0)
+        run_parser.add_argument("--risk-per-trade", type=float, default=0.005)
+        run_parser.add_argument("--targets", type=int, default=2)
+        run_parser.add_argument("--stop", default="progressive", choices=["progressive"])
+        run_parser.add_argument(
+            "--basket-output",
+            default="storage/baskets/latest_daily_basket.csv",
+        )
         run_parser.add_argument("--json", action="store_true")
 
         lab_short = subparsers.add_parser("lab", help="Run prediction lab (shortcut)")
         lab_short.set_defaults(command="lab")
         lab_short.add_argument("--fast", action="store_true")
-        lab_short.add_argument("--engines", default="", help="Comma-separated engine list")
+        lab_short.add_argument("--engines", default="", help=engines_help)
         lab_short.add_argument("--autotune", action="store_true")
-        lab_short.add_argument("--jobs", type=int, default=0, help="Number of jobs (alias for n-jobs)")
+        lab_short.add_argument(
+            "--jobs",
+            type=int,
+            default=0,
+            help="Number of jobs (alias for n-jobs)",
+        )
         lab_short.add_argument("--horizon", type=int, default=0)
         lab_short.add_argument("--profile", default="")
         lab_short.add_argument("--json", action="store_true")
@@ -415,7 +469,10 @@ def build_parser() -> argparse.ArgumentParser:
         board_short.add_argument("--profile", default="")
         board_short.add_argument("--json", action="store_true")
 
-        open_short = subparsers.add_parser("open", help="Open recent artifact (manifest|eval|matrix|dataset)")
+        open_short = subparsers.add_parser(
+            "open",
+            help="Open recent artifact (manifest|eval|matrix|dataset)",
+        )
         open_short.set_defaults(command="open")
         open_short.add_argument("artifact", nargs="?", default="eval")
         open_short.add_argument("--raw", action="store_true")
@@ -439,24 +496,57 @@ def build_parser() -> argparse.ArgumentParser:
         basket_daily_parser.add_argument("--capital", type=float, default=100000.0)
         basket_daily_parser.add_argument("--risk-per-trade", type=float, default=0.005)
         basket_daily_parser.add_argument("--targets", type=int, default=2)
-        basket_daily_parser.add_argument("--stop", default="progressive", choices=["progressive"])
-        basket_daily_parser.add_argument("--prices-dir", default=presets_mod.resolve_profile(None).get("paths", {}).get("prices_dir", "data/prices"))
-        basket_daily_parser.add_argument("--universe", default=presets_mod.resolve_profile(None).get("paths", {}).get("universe_output", "data/universes/ibov_live.csv"))
-        basket_daily_parser.add_argument("--matrix", default=presets_mod.resolve_profile(None).get("paths", {}).get("feature_matrix", "storage/features/latest_feature_matrix.csv"))
-        basket_daily_parser.add_argument("--evaluation", default=presets_mod.resolve_profile(None).get("paths", {}).get("prediction_evaluation", "storage/prediction/latest_evaluation.json"))
-        basket_daily_parser.add_argument("--output", default="storage/baskets/latest_daily_basket.csv")
+        basket_daily_parser.add_argument(
+            "--stop",
+            default="progressive",
+            choices=["progressive"],
+        )
+        default_paths = presets_mod.resolve_profile(None).get("paths", {})
+        basket_daily_parser.add_argument(
+            "--prices-dir",
+            default=default_paths.get("prices_dir", "data/prices"),
+        )
+        basket_daily_parser.add_argument(
+            "--universe",
+            default=default_paths.get(
+                "universe_output",
+                "data/universes/ibov_live.csv",
+            ),
+        )
+        basket_daily_parser.add_argument(
+            "--matrix",
+            default=default_paths.get(
+                "feature_matrix",
+                "storage/features/latest_feature_matrix.csv",
+            ),
+        )
+        basket_daily_parser.add_argument(
+            "--evaluation",
+            default=default_paths.get(
+                "prediction_evaluation",
+                "storage/prediction/latest_evaluation.json",
+            ),
+        )
+        basket_daily_parser.add_argument(
+            "--output",
+            default="storage/baskets/latest_daily_basket.csv",
+        )
+        basket_daily_parser.add_argument("--daily-report", default="")
 
         basket_show_parser = basket_subparsers.add_parser("show", help="Show latest basket")
         basket_show_parser.set_defaults(basket_command="show")
-        basket_show_parser.add_argument("--output", default="storage/baskets/latest_daily_basket.csv")
+        basket_show_parser.add_argument(
+            "--output",
+            default="storage/baskets/latest_daily_basket.csv",
+        )
 
         daily_parser = subparsers.add_parser("daily", help="Run daily report")
         daily_parser.set_defaults(command="daily")
         daily_parser.add_argument("--universe", required=True)
         daily_parser.add_argument("--universe-name", default="")
         daily_parser.add_argument("--profile", default="")
-        daily_parser.add_argument("--headline-risk", default="")
-        daily_parser.add_argument("--policy", required=True)
+        daily_parser.add_argument("--headline-risk", default="OFF")
+        daily_parser.add_argument("--policy", default="config/policy.json")
         daily_parser.add_argument("--limit", type=int, default=0)
         daily_parser.add_argument("--output", default="")
         daily_parser.add_argument("--json-output", default="")
@@ -469,16 +559,16 @@ def build_parser() -> argparse.ArgumentParser:
 
         real_pack_parser = subparsers.add_parser("daily-real", help="Run real pack")
         real_pack_parser.set_defaults(command="daily-real")
-        real_pack_parser.add_argument("--execution-policy", required=True)
+        real_pack_parser.add_argument("--execution-policy", default="config/execution_policy.json")
         real_pack_parser.add_argument("--tickers-file", required=True)
         real_pack_parser.add_argument("--features-file", default="config/features_catalog.json")
         real_pack_parser.add_argument("--start", default="")
         real_pack_parser.add_argument("--end", default="")
         real_pack_parser.add_argument("--prices-dir", required=True)
         real_pack_parser.add_argument("--universe-output", required=True)
-        real_pack_parser.add_argument("--run-dir", default="")
-        real_pack_parser.add_argument("--universe-name", default="")
-        real_pack_parser.add_argument("--policy", required=True)
+        real_pack_parser.add_argument("--run-dir", default="storage/scenario_runs")
+        real_pack_parser.add_argument("--universe-name", default="IBOV")
+        real_pack_parser.add_argument("--policy", default="config/policy.json")
         real_pack_parser.add_argument("--limit", type=int, default=0)
         real_pack_parser.add_argument("--skip-fetch", action="store_true")
         real_pack_parser.add_argument("--json", action="store_true")
@@ -490,7 +580,10 @@ def build_parser() -> argparse.ArgumentParser:
 
         real_pack_alias_parser = subparsers.add_parser("real-pack", help="Run real pack")
         real_pack_alias_parser.set_defaults(command="real-pack")
-        real_pack_alias_parser.add_argument("--execution-policy", required=True)
+        real_pack_alias_parser.add_argument(
+            "--execution-policy",
+            default="config/execution_policy.json",
+        )
         real_pack_alias_parser.add_argument("--tickers-file", required=True)
         real_pack_alias_parser.add_argument(
             "--features-file",
@@ -500,9 +593,9 @@ def build_parser() -> argparse.ArgumentParser:
         real_pack_alias_parser.add_argument("--end", default="")
         real_pack_alias_parser.add_argument("--prices-dir", required=True)
         real_pack_alias_parser.add_argument("--universe-output", required=True)
-        real_pack_alias_parser.add_argument("--run-dir", default="")
-        real_pack_alias_parser.add_argument("--universe-name", default="")
-        real_pack_alias_parser.add_argument("--policy", required=True)
+        real_pack_alias_parser.add_argument("--run-dir", default="storage/scenario_runs")
+        real_pack_alias_parser.add_argument("--universe-name", default="IBOV")
+        real_pack_alias_parser.add_argument("--policy", default="config/policy.json")
         real_pack_alias_parser.add_argument("--limit", type=int, default=0)
         real_pack_alias_parser.add_argument("--skip-fetch", action="store_true")
         real_pack_alias_parser.add_argument("--json", action="store_true")
@@ -515,9 +608,9 @@ def build_parser() -> argparse.ArgumentParser:
         scenario_pack_parser = subparsers.add_parser("scenario-pack", help="Create a scenario pack")
         scenario_pack_parser.set_defaults(command="scenario-pack")
         scenario_pack_parser.add_argument("--universe", required=True)
-        scenario_pack_parser.add_argument("--universe-name", default="")
-        scenario_pack_parser.add_argument("--policy", required=True)
-        scenario_pack_parser.add_argument("--run-dir", default="")
+        scenario_pack_parser.add_argument("--universe-name", default="IBOV")
+        scenario_pack_parser.add_argument("--policy", default="config/policy.json")
+        scenario_pack_parser.add_argument("--run-dir", default="storage/scenario_runs")
         scenario_pack_parser.add_argument("--limit", type=int, default=0)
         scenario_pack_parser.add_argument("--context", default="")
         scenario_pack_parser.add_argument("--context-preset", default="")
@@ -527,31 +620,43 @@ def build_parser() -> argparse.ArgumentParser:
 
         daily_auto_parser = subparsers.add_parser("daily-auto", help="Run daily auto workflow")
         daily_auto_parser.set_defaults(command="daily-auto")
-        daily_auto_parser.add_argument("--execution-policy", required=True)
-        daily_auto_parser.add_argument("--indices-catalog", required=True)
-        daily_auto_parser.add_argument("--indices-start", required=True)
-        daily_auto_parser.add_argument("--indices-dir", required=True)
-        daily_auto_parser.add_argument("--context-output", required=True)
-        daily_auto_parser.add_argument("--features-file", required=True)
-        daily_auto_parser.add_argument("--feature-matrix-output", required=True)
-        daily_auto_parser.add_argument("--prediction-dataset-output", required=True)
-        daily_auto_parser.add_argument("--prediction-evaluation-output", required=True)
+        daily_auto_parser.add_argument("--execution-policy", default="config/execution_policy.json")
+        daily_auto_parser.add_argument("--indices-catalog", default="config/indices_catalog.json")
+        daily_auto_parser.add_argument("--indices-start", default="2025-01-01")
+        daily_auto_parser.add_argument("--indices-dir", default="data/indices")
+        daily_auto_parser.add_argument(
+            "--context-output",
+            default="config/market_context_auto.json",
+        )
+        daily_auto_parser.add_argument("--features-file", default="config/features_catalog.json")
+        daily_auto_parser.add_argument(
+            "--feature-matrix-output",
+            default="storage/features/latest_feature_matrix.csv",
+        )
+        daily_auto_parser.add_argument(
+            "--prediction-dataset-output",
+            default="storage/prediction/latest_prediction_dataset.csv",
+        )
+        daily_auto_parser.add_argument(
+            "--prediction-evaluation-output",
+            default="storage/prediction/latest_evaluation.json",
+        )
         daily_auto_parser.add_argument("--prediction-horizon", type=int, default=5)
         daily_auto_parser.add_argument("--prediction-min-history", type=int, default=20)
         daily_auto_parser.add_argument("--prediction-min-train-rows", type=int, default=100)
-        daily_auto_parser.add_argument("--prediction-engines", default="")
+        daily_auto_parser.add_argument("--prediction-engines", default="", help=engines_help)
         daily_auto_parser.add_argument("--prediction-n-jobs", type=int, default=4)
         daily_auto_parser.add_argument("--prediction-autotune", action="store_true")
         daily_auto_parser.add_argument("--prediction-autotune-iter", type=int, default=15)
         daily_auto_parser.add_argument("--prediction-autotune-cv", type=int, default=3)
-        daily_auto_parser.add_argument("--tickers-file", required=True)
-        daily_auto_parser.add_argument("--sentiment-dir", required=True)
-        daily_auto_parser.add_argument("--prices-start", required=True)
-        daily_auto_parser.add_argument("--prices-dir", required=True)
-        daily_auto_parser.add_argument("--universe-output", required=True)
-        daily_auto_parser.add_argument("--run-dir", default="")
-        daily_auto_parser.add_argument("--universe-name", default="")
-        daily_auto_parser.add_argument("--policy", required=True)
+        daily_auto_parser.add_argument("--tickers-file", default="data/universes/ibov_tickers.csv")
+        daily_auto_parser.add_argument("--sentiment-dir", default="data/sentiment")
+        daily_auto_parser.add_argument("--prices-start", default="2025-01-01")
+        daily_auto_parser.add_argument("--prices-dir", default="data/prices")
+        daily_auto_parser.add_argument("--universe-output", default="data/universes/ibov_live.csv")
+        daily_auto_parser.add_argument("--run-dir", default="storage/scenario_runs")
+        daily_auto_parser.add_argument("--universe-name", default="IBOV")
+        daily_auto_parser.add_argument("--policy", default="config/policy.json")
         daily_auto_parser.add_argument("--skip-asset-fetch", action="store_true")
         daily_auto_parser.add_argument("--skip-indices-fetch", action="store_true")
         daily_auto_parser.add_argument("--json", action="store_true")
@@ -671,7 +776,7 @@ def build_parser() -> argparse.ArgumentParser:
         predict_evaluate_parser.add_argument("--output", required=True)
         predict_evaluate_parser.add_argument("--horizon", type=int, default=5)
         predict_evaluate_parser.add_argument("--min-train-rows", type=int, default=100)
-        predict_evaluate_parser.add_argument("--engines", default="")
+        predict_evaluate_parser.add_argument("--engines", default="", help=engines_help)
         predict_evaluate_parser.add_argument("--n-jobs", type=int, default=1)
         predict_evaluate_parser.add_argument("--autotune", action="store_true")
         predict_evaluate_parser.add_argument("--autotune-iter", type=int, default=0)
@@ -685,7 +790,7 @@ def build_parser() -> argparse.ArgumentParser:
         predict_lab_parser.add_argument("--horizon", type=int, default=5)
         predict_lab_parser.add_argument("--min-history", type=int, default=20)
         predict_lab_parser.add_argument("--min-train-rows", type=int, default=100)
-        predict_lab_parser.add_argument("--engines", default="")
+        predict_lab_parser.add_argument("--engines", default="", help=engines_help)
         predict_lab_parser.add_argument("--n-jobs", type=int, default=1)
         predict_lab_parser.add_argument("--autotune", action="store_true")
         predict_lab_parser.add_argument("--autotune-iter", type=int, default=0)
@@ -725,7 +830,7 @@ def build_parser() -> argparse.ArgumentParser:
         confirm_parser.add_argument("--decision", required=True)
         confirm_parser.add_argument("--notes", default="")
         confirm_parser.add_argument("--operator", default="")
-        confirm_parser.add_argument("--execution-policy", required=True)
+        confirm_parser.add_argument("--execution-policy", default="config/execution_policy.json")
         confirm_parser.add_argument("--json", action="store_true")
 
         legacy_parser = subparsers.add_parser("legacy", help="Legacy data migration tools")
@@ -876,8 +981,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "daily-auto":
             return _run_daily_auto_command(args)
 
+        if args.command == "update":
+            return _run_update_command(args)
+
+        if args.command == "train":
+            return _run_train_command(args)
+
         if args.command == "run":
-            return _run_short_run_command(args)
+            return _run_run_command(args)
 
         if args.command == "lab":
             return _run_short_lab_command(args)

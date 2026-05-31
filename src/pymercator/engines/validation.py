@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from pymercator.domain import AssetSnapshot, ExecutionStatus, TradeValidationResult
+from pymercator.policy import get_profile_policy
 
 
 def validate_trade(
@@ -11,7 +12,7 @@ def validate_trade(
     profile: str,
     policy: dict[str, Any],
 ) -> TradeValidationResult:
-    profile_policy = policy["profiles"][profile]
+    profile_policy = get_profile_policy(policy, profile)
     validation_policy = policy["trade_validation"]
 
     reasons: list[str] = []
@@ -40,9 +41,22 @@ def validate_trade(
         else:
             rr = reward / risk
 
+    max_volatility_pct = float(
+        profile_policy.get(
+            "max_volatility_pct",
+            validation_policy["max_volatility_pct"],
+        )
+    )
+    max_atr_pct = float(
+        profile_policy.get(
+            "max_atr_pct",
+            validation_policy["max_atr_pct"],
+        )
+    )
+
     liquidity_ok = asset.avg_volume_brl >= float(validation_policy["min_liquidity_brl"])
-    volatility_ok = asset.volatility_pct <= float(validation_policy["max_volatility_pct"])
-    atr_ok = asset.atr_pct <= float(validation_policy["max_atr_pct"])
+    volatility_ok = asset.volatility_pct <= max_volatility_pct
+    atr_ok = asset.atr_pct <= max_atr_pct
 
     if not liquidity_ok:
         reasons.append("liquidity below minimum")

@@ -11,6 +11,7 @@ from pymercator.domain import (
     TradeValidationResult,
     UniverseHealthResult,
 )
+from pymercator.policy import get_profile_policy
 
 
 def decide_execution_permission(
@@ -24,12 +25,12 @@ def decide_execution_permission(
     policy: dict[str, Any],
 ) -> ExecutionPermissionResult:
     reasons: list[str] = []
-    profile_policy = policy["profiles"][profile]
+    profile_policy = get_profile_policy(policy, profile)
 
     max_position_factor = float(profile_policy["max_position_factor"])
     max_position_factor *= regime.exposure_factor
 
-    if regime.permission == Permission.DENY:
+    if regime.permission in {Permission.DENY, Permission.UNKNOWN}:
         return ExecutionPermissionResult(
             ticker=ticker,
             status=ExecutionStatus.BLOCKED,
@@ -38,7 +39,7 @@ def decide_execution_permission(
             reasons=("market regime denied operation", *regime.reasons),
         )
 
-    if universe.permission == Permission.DENY:
+    if universe.permission in {Permission.DENY, Permission.UNKNOWN}:
         return ExecutionPermissionResult(
             ticker=ticker,
             status=ExecutionStatus.BLOCKED,

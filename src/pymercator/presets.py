@@ -96,7 +96,10 @@ def load_presets(path: str | Path = "config/pymercator_presets.json") -> dict[st
         return DEFAULT_PRESETS.copy()
 
 
-def resolve_profile(name: str | None = None, path: str | Path = "config/pymercator_presets.json") -> dict[str, Any]:
+def resolve_profile(
+    name: str | None = None,
+    path: str | Path = "config/pymercator_presets.json",
+) -> dict[str, Any]:
     presets = load_presets(path)
     profile_name = name or presets.get("default_profile")
 
@@ -114,9 +117,16 @@ def resolve_profile(name: str | None = None, path: str | Path = "config/pymercat
             profile_section = presets.get(profile_name, {})
 
     # shallow merge known sections
-    for key in ("paths", "prediction", "daily", "ui"): 
+    for key in ("paths", "prediction", "daily", "ui"):
         if isinstance(profile_section.get(key), dict):
             result[key].update(profile_section.get(key, {}))
+
+    for key in ("skip_indices_fetch", "skip_asset_fetch"):
+        if key in profile_section:
+            result["daily"][key] = profile_section[key]
+
+    if "prediction_engines" in profile_section:
+        result["prediction"]["engines"] = list(profile_section["prediction_engines"])
 
     result["profile"] = profile_name
     return result
@@ -126,11 +136,18 @@ def get_default_paths(path: str | Path = "config/pymercator_presets.json") -> di
     return resolve_profile(None, path).get("paths", {})
 
 
-def get_prediction_defaults(profile: str | None = None, path: str | Path = "config/pymercator_presets.json") -> dict[str, Any]:
+def get_prediction_defaults(
+    profile: str | None = None,
+    path: str | Path = "config/pymercator_presets.json",
+) -> dict[str, Any]:
     return resolve_profile(profile, path).get("prediction", {})
 
 
-def resolve_effective_config(profile: str | None = None, overrides: dict | None = None, path: str | Path = "config/pymercator_presets.json") -> dict[str, Any]:
+def resolve_effective_config(
+    profile: str | None = None,
+    overrides: dict | None = None,
+    path: str | Path = "config/pymercator_presets.json",
+) -> dict[str, Any]:
     """Return the effective configuration resolving profile and applying overrides.
 
     The result is a dict with keys: `paths`, `prediction`, `daily`, `ui`, `profile`.

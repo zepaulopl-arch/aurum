@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pymercator.cli import main
+from pymercator.cli import build_parser, main
 
 
 def _write_price_file(path: Path, start: float = 10.0) -> None:
@@ -214,3 +214,57 @@ def test_predict_lab_help_lists_valid_engines(capsys):
     assert "rolling_majority" in help_text
     assert "extratrees" in help_text
     assert "ridge_arbiter" in help_text
+    assert "Prediction horizon in trading days. Default: 5" in help_text
+    assert "Parallel workers. Default: 4" in help_text
+    assert "Minimum price history. Default: 20" in help_text
+    assert "Minimum training rows. Default: 100" in help_text
+
+
+def test_predict_lab_parser_uses_operational_defaults():
+    args = build_parser().parse_args(
+        [
+            "predict",
+            "lab",
+            "--matrix",
+            "matrix.csv",
+            "--prices-dir",
+            "prices",
+            "--dataset-output",
+            "dataset.csv",
+            "--evaluation-output",
+            "evaluation.json",
+        ]
+    )
+
+    assert args.horizon == 5
+    assert args.n_jobs == 4
+    assert args.min_history == 20
+    assert args.min_train_rows == 100
+
+    override_args = build_parser().parse_args(
+        [
+            "predict",
+            "lab",
+            "--matrix",
+            "matrix.csv",
+            "--prices-dir",
+            "prices",
+            "--dataset-output",
+            "dataset.csv",
+            "--evaluation-output",
+            "evaluation.json",
+            "--horizon",
+            "7",
+            "--n-jobs",
+            "2",
+            "--min-history",
+            "30",
+            "--min-train-rows",
+            "120",
+        ]
+    )
+
+    assert override_args.horizon == 7
+    assert override_args.n_jobs == 2
+    assert override_args.min_history == 30
+    assert override_args.min_train_rows == 120

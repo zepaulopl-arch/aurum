@@ -10,6 +10,11 @@ from pymercator import presets as presets_mod
 from pymercator import terminal_ui as ui
 from pymercator.cli_context import resolve_market_context_args
 
+DEFAULT_PREDICTION_HORIZON = 5
+DEFAULT_PREDICTION_MIN_HISTORY = 20
+DEFAULT_PREDICTION_MIN_TRAIN_ROWS = 100
+DEFAULT_PREDICTION_N_JOBS = 4
+
 
 def _run_sentiment_command(args: argparse.Namespace) -> int:
     from pymercator.cli_sentiment import run_sentiment_command
@@ -361,6 +366,16 @@ def _pack_top_from_summary(summary: dict[str, Any]) -> dict[str, Any]:
 
 def build_parser() -> argparse.ArgumentParser:
         engines_help = _prediction_engines_help()
+        horizon_help = (
+            f"Prediction horizon in trading days. Default: {DEFAULT_PREDICTION_HORIZON}"
+        )
+        n_jobs_help = f"Parallel workers. Default: {DEFAULT_PREDICTION_N_JOBS}"
+        min_history_help = (
+            f"Minimum price history. Default: {DEFAULT_PREDICTION_MIN_HISTORY}"
+        )
+        min_train_rows_help = (
+            f"Minimum training rows. Default: {DEFAULT_PREDICTION_MIN_TRAIN_ROWS}"
+        )
         parser = argparse.ArgumentParser(
             prog="pymercator",
             description="pyMercator command line interface",
@@ -392,7 +407,12 @@ def build_parser() -> argparse.ArgumentParser:
         train_parser = subparsers.add_parser("train", help="Train/validate prediction layer")
         train_parser.set_defaults(command="train")
         train_parser.add_argument("--profile", default="CON")
-        train_parser.add_argument("--horizon", type=int, default=5)
+        train_parser.add_argument(
+            "--horizon",
+            type=int,
+            default=DEFAULT_PREDICTION_HORIZON,
+            help=horizon_help,
+        )
         train_parser.add_argument("--matrix", default="storage/features/latest_feature_matrix.csv")
         train_parser.add_argument("--prices-dir", default="data/prices")
         train_parser.add_argument(
@@ -403,10 +423,25 @@ def build_parser() -> argparse.ArgumentParser:
             "--evaluation-output",
             default="storage/prediction/latest_evaluation.json",
         )
-        train_parser.add_argument("--min-history", type=int, default=20)
-        train_parser.add_argument("--min-train-rows", type=int, default=100)
+        train_parser.add_argument(
+            "--min-history",
+            type=int,
+            default=DEFAULT_PREDICTION_MIN_HISTORY,
+            help=min_history_help,
+        )
+        train_parser.add_argument(
+            "--min-train-rows",
+            type=int,
+            default=DEFAULT_PREDICTION_MIN_TRAIN_ROWS,
+            help=min_train_rows_help,
+        )
         train_parser.add_argument("--engines", default="", help=engines_help)
-        train_parser.add_argument("--n-jobs", type=int, default=4)
+        train_parser.add_argument(
+            "--n-jobs",
+            type=int,
+            default=DEFAULT_PREDICTION_N_JOBS,
+            help=n_jobs_help,
+        )
         train_parser.add_argument("--autotune", action="store_true")
         train_parser.add_argument("--json", action="store_true")
 
@@ -787,11 +822,31 @@ def build_parser() -> argparse.ArgumentParser:
         predict_lab_parser.add_argument("--prices-dir", required=True)
         predict_lab_parser.add_argument("--dataset-output", required=True)
         predict_lab_parser.add_argument("--evaluation-output", required=True)
-        predict_lab_parser.add_argument("--horizon", type=int, default=5)
-        predict_lab_parser.add_argument("--min-history", type=int, default=20)
-        predict_lab_parser.add_argument("--min-train-rows", type=int, default=100)
+        predict_lab_parser.add_argument(
+            "--horizon",
+            type=int,
+            default=DEFAULT_PREDICTION_HORIZON,
+            help=horizon_help,
+        )
+        predict_lab_parser.add_argument(
+            "--min-history",
+            type=int,
+            default=DEFAULT_PREDICTION_MIN_HISTORY,
+            help=min_history_help,
+        )
+        predict_lab_parser.add_argument(
+            "--min-train-rows",
+            type=int,
+            default=DEFAULT_PREDICTION_MIN_TRAIN_ROWS,
+            help=min_train_rows_help,
+        )
         predict_lab_parser.add_argument("--engines", default="", help=engines_help)
-        predict_lab_parser.add_argument("--n-jobs", type=int, default=1)
+        predict_lab_parser.add_argument(
+            "--n-jobs",
+            type=int,
+            default=DEFAULT_PREDICTION_N_JOBS,
+            help=n_jobs_help,
+        )
         predict_lab_parser.add_argument("--autotune", action="store_true")
         predict_lab_parser.add_argument("--autotune-iter", type=int, default=0)
         predict_lab_parser.add_argument("--autotune-cv", type=int, default=0)

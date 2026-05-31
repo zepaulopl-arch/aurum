@@ -1,7 +1,9 @@
 import json
 from pathlib import Path
 
-from pymercator.cli import main
+import pytest
+
+from pymercator.cli import build_parser, main
 
 
 def test_cli_train_generates_dataset_and_evaluation(tmp_path: Path, monkeypatch, capsys):
@@ -151,8 +153,6 @@ def test_cli_train_defaults_to_extratrees_when_sklearn_library_is_available(
             str(evaluation),
             "--min-train-rows",
             "2",
-            "--n-jobs",
-            "4",
             "--json",
         ]
     )
@@ -173,6 +173,49 @@ def test_cli_train_defaults_to_extratrees_when_sklearn_library_is_available(
     assert evaluation_payload["assets"] == 1
     assert evaluation_payload["horizon"] == 5
     assert evaluation_payload["profile"] == "CON"
+
+
+def test_cli_train_parser_uses_operational_defaults():
+    args = build_parser().parse_args(["train", "--profile", "CON"])
+
+    assert args.profile == "CON"
+    assert args.horizon == 5
+    assert args.n_jobs == 4
+    assert args.min_history == 20
+    assert args.min_train_rows == 100
+
+    override_args = build_parser().parse_args(
+        [
+            "train",
+            "--profile",
+            "CON",
+            "--horizon",
+            "7",
+            "--n-jobs",
+            "2",
+            "--min-history",
+            "30",
+            "--min-train-rows",
+            "120",
+        ]
+    )
+
+    assert override_args.horizon == 7
+    assert override_args.n_jobs == 2
+    assert override_args.min_history == 30
+    assert override_args.min_train_rows == 120
+
+
+def test_cli_train_help_lists_prediction_defaults(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        main(["train", "--help"])
+
+    assert exc_info.value.code == 0
+    help_text = capsys.readouterr().out
+    assert "Prediction horizon in trading days. Default: 5" in help_text
+    assert "Parallel workers. Default: 4" in help_text
+    assert "Minimum price history. Default: 20" in help_text
+    assert "Minimum training rows. Default: 100" in help_text
 
 
 def test_cli_train_falls_back_when_requested_real_engine_is_unavailable(

@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_OPERATIONAL_CONFIG: dict[str, Any] = {
+    "default_engine": "multi_horizon_ridge",
+    "per_horizon_engine": "ridge_ensemble",
     "horizons": [5, 20, 60],
     "base_engines": ["extratrees", "randomforest", "gradientboosting"],
     "meta_model": "ridge",
@@ -94,6 +96,14 @@ def _legacy_to_structured(payload: dict[str, Any]) -> dict[str, Any]:
     operational.update(
         {
             "horizons": payload.get("horizons", operational["horizons"]),
+            "default_engine": payload.get(
+                "default_engine",
+                operational["default_engine"],
+            ),
+            "per_horizon_engine": payload.get(
+                "per_horizon_engine",
+                operational["per_horizon_engine"],
+            ),
             "base_engines": payload.get("base_engines", operational["base_engines"]),
             "meta_model": payload.get("meta_model", operational["meta_model"]),
             "observer_mode": payload.get("observer", {}).get(
@@ -150,7 +160,12 @@ def effective_prediction_config(
 
     config: dict[str, Any] = {
         "mode": "operational",
-        "default_engine": "multi_horizon_ridge",
+        "default_engine": str(
+            operational.get("default_engine", "multi_horizon_ridge")
+        ).strip(),
+        "per_horizon_engine": str(
+            operational.get("per_horizon_engine", "ridge_ensemble")
+        ).strip(),
         "operational_defaults": json.loads(json.dumps(operational)),
         "experimental_policy": json.loads(json.dumps(experimental)),
         "horizons": list(operational["horizons"]),

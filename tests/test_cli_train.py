@@ -201,6 +201,7 @@ def test_cli_train_generates_multi_horizon_evaluation_by_default(
     assert evaluation_payload["experimental"] is False
     assert evaluation_payload["trained_models"] == ["multi_horizon_ridge"]
     assert evaluation_payload["horizons"] == [5, 20, 60]
+    assert "horizon" not in evaluation_payload
     assert evaluation_payload["base_engines"] == BASE_ENGINES
     assert evaluation_payload["meta_model"] == "ridge"
     assert evaluation_payload["row_count_by_horizon"] == {"D5": 156, "D20": 156, "D60": 156}
@@ -494,6 +495,74 @@ def test_cli_train_experimental_overrides_horizons_base_engines_weights_and_auto
     assert evaluation_payload["autotune"]["autotune_cv"] == 2
 
 
+def test_cli_train_experimental_preserves_default_latest_operational_evaluation(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+
+    matrix, prices_dir, _dataset, _evaluation = _write_train_inputs(tmp_path)
+    prediction_dir = tmp_path / "storage" / "prediction"
+    dataset = prediction_dir / "latest_dataset.csv"
+    evaluation = prediction_dir / "latest_evaluation.json"
+    evaluation.parent.mkdir(parents=True)
+    operational_payload = {
+        "engine_used": "multi_horizon_ridge",
+        "operational": True,
+        "experimental": False,
+        "horizons": [5, 20, 60],
+        "status": "OK",
+    }
+    evaluation.write_text(json.dumps(operational_payload), encoding="utf-8")
+
+    calls: list[dict] = []
+    monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--min-train-rows",
+            "2",
+            "--experimental",
+            "--horizons",
+            "5,20",
+            "--engines",
+            "extratrees,randomforest",
+            "--weights",
+            "D5=0.2,D20=0.8",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["evaluation"]["output"] == str(
+        prediction_dir / "experimental" / "latest_evaluation.json"
+    )
+    assert json.loads(evaluation.read_text(encoding="utf-8")) == operational_payload
+
+    experimental_payload = json.loads(
+        (prediction_dir / "experimental" / "latest_evaluation.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert experimental_payload["engine_used"] == "multi_horizon_ridge"
+    assert experimental_payload["operational"] is False
+    assert experimental_payload["experimental"] is True
+    assert experimental_payload["horizons"] == [5, 20]
+    assert (prediction_dir / "experimental" / "d5" / "latest_evaluation.json").exists()
+    assert (prediction_dir / "experimental" / "d20" / "latest_evaluation.json").exists()
+
+
 def test_cli_train_explicit_rolling_majority_is_baseline(
     tmp_path: Path,
     monkeypatch,
@@ -536,6 +605,67 @@ def test_cli_train_explicit_rolling_majority_is_baseline(
     assert evaluation_payload["engine_used"] == "rolling_majority"
     assert evaluation_payload["is_baseline"] is True
     assert evaluation_payload["status"] == "BASELINE"
+
+
+def test_cli_train_baseline_preserves_default_latest_operational_evaluation(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+
+    matrix, prices_dir, _dataset, _evaluation = _write_train_inputs(tmp_path)
+    prediction_dir = tmp_path / "storage" / "prediction"
+    dataset = prediction_dir / "latest_dataset.csv"
+    evaluation = prediction_dir / "latest_evaluation.json"
+    evaluation.parent.mkdir(parents=True)
+    operational_payload = {
+        "engine_used": "multi_horizon_ridge",
+        "operational": True,
+        "experimental": False,
+        "horizons": [5, 20, 60],
+        "status": "OK",
+    }
+    evaluation.write_text(json.dumps(operational_payload), encoding="utf-8")
+
+    calls: list[dict] = []
+    monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--min-train-rows",
+            "2",
+            "--engines",
+            "rolling_majority",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "BASELINE"
+    assert payload["evaluation"]["output"] == str(
+        prediction_dir / "baseline" / "latest_evaluation.json"
+    )
+    assert json.loads(evaluation.read_text(encoding="utf-8")) == operational_payload
+
+    baseline_payload = json.loads(
+        (prediction_dir / "baseline" / "latest_evaluation.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert baseline_payload["engine_used"] == "rolling_majority"
+    assert baseline_payload["is_baseline"] is True
+    assert baseline_payload["status"] == "BASELINE"
 
 
 def test_cli_train_autotune_records_summary_in_operational_json(
@@ -636,6 +766,10 @@ def test_cli_train_rejects_non_standard_horizons_without_experimental(
             str(evaluation),
             "--horizons",
             "5,10,20",
+            "--engines",
+            "extratrees,randomforest",
+            "--weights",
+            "D5=0.2,D10=0.3,D20=0.5",
             "--json",
         ]
     )

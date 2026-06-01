@@ -285,6 +285,7 @@ def _run_short_diag_command(args: argparse.Namespace) -> int:
     print("- mode: operational")
     print("- config: config/prediction.json")
     print(f"- default_engine: {prediction_config.get('default_engine', '-')}")
+    print(f"- per_horizon_engine: {prediction_config.get('per_horizon_engine', '-')}")
     print(
         "- horizons: "
         f"{','.join(str(int(item)) for item in prediction_config.get('horizons', []))}"

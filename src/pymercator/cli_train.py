@@ -487,8 +487,26 @@ def _multi_horizon_status(horizon_models: dict[str, Any]) -> tuple[str, str]:
     return "FAIL", "multi_horizon_ridge requires at least 2 valid horizons"
 
 
-def _prediction_output_root(evaluation_output: str | Path) -> Path:
-    return Path(evaluation_output).parent
+def _resolved_train_outputs(
+    *,
+    dataset_output: str | Path,
+    evaluation_output: str | Path,
+    is_experimental: bool,
+    is_baseline: bool,
+) -> tuple[str, str, Path]:
+    output = Path(evaluation_output)
+    dataset = Path(dataset_output)
+    kind = "baseline" if is_baseline else "experimental" if is_experimental else ""
+
+    if not kind or output.name != "latest_evaluation.json":
+        return str(dataset), str(output), output.parent
+
+    root = output.parent / kind
+    if dataset.name == "latest_dataset.csv":
+        resolved_dataset = root / "latest_dataset.csv"
+    else:
+        resolved_dataset = dataset
+    return str(resolved_dataset), str(root / "latest_evaluation.json"), root
 
 
 def _same_list(left: list[Any], right: list[Any]) -> bool:
@@ -640,11 +658,17 @@ def run_train_flow(
     selected_autotune_iter = int(training.get("autotune_iter", 20))
     selected_autotune_cv = int(training.get("autotune_cv", 3))
     is_experimental = bool(experimental)
+    baseline_requested = explicit_engines and selected_engines == ["rolling_majority"]
+    dataset_output, evaluation_output, output_root = _resolved_train_outputs(
+        dataset_output=dataset_output,
+        evaluation_output=evaluation_output,
+        is_experimental=is_experimental,
+        is_baseline=baseline_requested,
+    )
     small_universe_allowed = bool(
         allow_small_universe
         or (is_experimental and experimental_policy.get("allow_small_universe") is True)
     )
-    output_root = _prediction_output_root(evaluation_output)
     files = {
         "matrix": matrix,
         "universe": universe,
@@ -696,7 +720,6 @@ def run_train_flow(
             "files": files,
         }
 
-    baseline_requested = explicit_engines and selected_engines == ["rolling_majority"]
     valid_train_engines = REAL_ENGINES | BASELINE_ENGINES
     unknown_engines = [engine for engine in selected_engines if engine not in valid_train_engines]
     if explicit_engines and unknown_engines:

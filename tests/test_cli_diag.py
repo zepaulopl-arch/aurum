@@ -16,6 +16,7 @@ def test_cli_diag_separates_libraries_from_prediction_engines(monkeypatch, capsy
     assert "PREDICTION CONFIG:" in output
     assert "- mode: operational" in output
     assert "- default_engine: multi_horizon_ridge" in output
+    assert "- per_horizon_engine: ridge_ensemble" in output
     assert "- horizons: 5,20,60" in output
     assert "- base_engines: extratrees,randomforest,gradientboosting" in output
     assert "- meta_model: ridge" in output

@@ -378,6 +378,7 @@ def render_run_summary(payload: dict[str, Any]) -> str:
 
     market = payload["market"]
     prediction = payload.get("prediction", {})
+    model_quality = prediction.get("model_quality", {})
     decision = payload["decision"]
     files = payload["files"]
     lines.extend(
@@ -393,6 +394,10 @@ def render_run_summary(payload: dict[str, Any]) -> str:
             f"- combined_score: {prediction.get('combined_score', '-')}",
             f"- dominant_horizon: {prediction.get('dominant_horizon', '-')}",
             f"- behavior: {prediction.get('behavior', '-')}",
+            "",
+            "MODEL QUALITY:",
+            f"- status: {model_quality.get('status', '-')}",
+            f"- edge: {model_quality.get('edge', '-')}",
             "",
             "DECISION:",
             f"- actionable: {decision['actionable']}",

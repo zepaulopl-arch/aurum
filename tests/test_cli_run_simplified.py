@@ -595,6 +595,11 @@ def test_cli_run_downgrades_actionable_when_model_quality_is_weak(
     assert result["report"]["decisions"][0]["permission"]["status"] == "WATCH"
     assert "model quality is weak" in result["report"]["decisions"][0]["permission"]["reasons"]
 
+    summary = run_mod.render_run_summary(result)
+    assert "MODEL QUALITY:" in summary
+    assert "- status: WEAK" in summary
+    assert "- edge: -0.02" in summary
+
 
 def test_cli_run_blocks_non_ok_prediction_evaluation(
     tmp_path: Path,

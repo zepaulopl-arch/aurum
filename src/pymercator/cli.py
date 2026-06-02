@@ -1198,6 +1198,7 @@ def build_parser() -> argparse.ArgumentParser:
         universe_diagnose_parser.set_defaults(universe_command="diagnose")
         universe_diagnose_parser.add_argument("--file", required=True)
         universe_diagnose_parser.add_argument("--policy", default="config/policy.json")
+        universe_diagnose_parser.add_argument("--details", action="store_true")
 
         return parser
 

@@ -71,7 +71,90 @@ def _render_universe_summary(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_universe_diagnose(payload: dict[str, Any]) -> str:
+def _fmt_sector(value: object, width: int = 24) -> str:
+    text = str(value or "-").strip() or "-"
+    if len(text) > width:
+        return text[: max(width - 1, 1)] + "."
+    return text
+
+
+def _render_sector_warning_summary(payload: dict[str, Any]) -> list[str]:
+    line = "-" * 100
+    rows = payload.get("sector_warning_summary", [])
+    lines = [
+        "SECTOR WARNING SUMMARY",
+        line,
+        (
+            f"{'SECTOR':<24} "
+            f"{'ASSETS':>6} "
+            f"{'VOL_HIGH':>9} "
+            f"{'ATR_HIGH':>8} "
+            f"{'WEAK_TREND':>11} "
+            f"{'WEAK_MOM':>8} "
+            f"{'READ':<8}"
+        ),
+        line,
+    ]
+
+    if not rows:
+        lines.append("No sector warnings.")
+        return lines
+
+    for item in rows:
+        lines.append(
+            f"{_fmt_sector(item['sector']):<24} "
+            f"{int(item['assets']):>6} "
+            f"{int(item['vol_high']):>9} "
+            f"{int(item['atr_high']):>8} "
+            f"{int(item['weak_trend']):>11} "
+            f"{int(item['weak_momentum']):>8} "
+            f"{item['read']:<8}"
+        )
+
+    return lines
+
+
+def _render_operational_summary(payload: dict[str, Any]) -> list[str]:
+    summary = payload.get("summary", {})
+    return [
+        "SUMMARY:",
+        f"- warnings_assets: {summary.get('warnings_assets', payload.get('warning_count', 0))}",
+        f"- dominant_problem: {summary.get('dominant_problem', '-')}",
+        "- worst_sectors: "
+        f"{', '.join(summary.get('worst_sectors', [])) or '-'}",
+        "- volatile_sectors: "
+        f"{', '.join(summary.get('volatile_sectors', [])) or '-'}",
+        f"- best_relative_sector: {summary.get('best_relative_sector', '-')}",
+    ]
+
+
+def _render_warnings_by_asset(payload: dict[str, Any]) -> list[str]:
+    line = "-" * 100
+    lines = [
+        "WARNINGS BY ASSET",
+        line,
+    ]
+
+    warned = [item for item in payload['diagnostics'] if item['codes']]
+
+    if not warned:
+        lines.append("No asset warnings.")
+    else:
+        for item in warned:
+            lines.append(
+                f"{item['ticker']:<8} "
+                f"{_fmt_sector(item['sector'], 18):<18} "
+                f"vol={item['volatility_pct']:<6} "
+                f"atr={item['atr_pct']:<6} "
+                f"trend={item['trend_score']:<6} "
+                f"mom={item['momentum_score']:<6} "
+                f"{item['label']}"
+            )
+
+    return lines
+
+
+def _render_universe_diagnose(payload: dict[str, Any], *, details: bool = False) -> str:
     line = "-" * 100
     lines = [
         "PYMERCATOR UNIVERSE DIAGNOSE",
@@ -93,32 +176,25 @@ def _render_universe_diagnose(payload: dict[str, Any]) -> str:
         f"{'WEAK MOMENTUM':<22} {payload['weak_momentum']}",
         f"{'MISSING TRADE PLAN':<22} {payload['missing_trade_plan']}",
         "",
-        "SECTOR CONCENTRATION",
-        line,
-        f"{'STATUS':<22} {payload['sector_concentration']['status']}",
-        f"{'TOP SECTOR':<22} {payload['sector_concentration']['top_sector']}",
-        f"{'TOP COUNT':<22} {payload['sector_concentration']['top_sector_count']}",
-        f"{'TOP PCT':<22} {payload['sector_concentration']['top_sector_pct']:.2f}%",
-        "",
-        "WARNINGS BY ASSET",
-        line,
     ]
 
-    warned = [item for item in payload['diagnostics'] if item['codes']]
+    lines.extend(_render_sector_warning_summary(payload))
+    lines.extend(["", *_render_operational_summary(payload)])
 
-    if not warned:
-        lines.append("No asset warnings.")
-    else:
-        for item in warned:
-            lines.append(
-                f"{item['ticker']:<8} "
-                f"{item['sector']:<12} "
-                f"vol={item['volatility_pct']:<6} "
-                f"atr={item['atr_pct']:<6} "
-                f"trend={item['trend_score']:<6} "
-                f"mom={item['momentum_score']:<6} "
-                f"{item['label']}"
-            )
+    if details:
+        lines.extend(
+            [
+                "",
+                "SECTOR CONCENTRATION",
+                line,
+                f"{'STATUS':<22} {payload['sector_concentration']['status']}",
+                f"{'TOP SECTOR':<22} {payload['sector_concentration']['top_sector']}",
+                f"{'TOP COUNT':<22} {payload['sector_concentration']['top_sector_count']}",
+                f"{'TOP PCT':<22} {payload['sector_concentration']['top_sector_pct']:.2f}%",
+                "",
+            ]
+        )
+        lines.extend(_render_warnings_by_asset(payload))
 
     return "\n".join(lines)
 
@@ -223,7 +299,12 @@ def run_universe_command(args: Any) -> int:
         if getattr(args, 'json', False):
             print(json.dumps(payload, ensure_ascii=False, indent=2))
         else:
-            print(_render_universe_diagnose(payload))
+            print(
+                _render_universe_diagnose(
+                    payload,
+                    details=getattr(args, 'details', False),
+                )
+            )
 
         return 0 if payload['data_status'] in {'PASS', 'PASS_WITH_WARNINGS'} else 1
 

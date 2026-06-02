@@ -88,6 +88,12 @@ def _run_run_command(args: argparse.Namespace) -> int:
     return run_run_command(args)
 
 
+def _run_scenario_command(args: argparse.Namespace) -> int:
+    from pymercator.cli_scenario import run_scenario_command
+
+    return run_scenario_command(args)
+
+
 def _parse_csv_arg(value: str) -> list[str]:
     return [
         item.strip()
@@ -770,6 +776,40 @@ def build_parser() -> argparse.ArgumentParser:
         scenario_pack_parser.add_argument("--market-trend", default="CHOPPY")
         scenario_pack_parser.add_argument("--market-volatility", default="NORMAL")
 
+        scenario_parser = subparsers.add_parser("scenario", help="Scenario utilities")
+        scenario_parser.set_defaults(command="scenario")
+        scenario_subparsers = scenario_parser.add_subparsers(dest="scenario_command")
+        scenario_run_parser = scenario_subparsers.add_parser(
+            "run",
+            help="Run a synthetic operational scenario",
+        )
+        scenario_run_parser.set_defaults(scenario_command="run")
+        scenario_run_parser.add_argument("--preset", default="positive_risk_on")
+        scenario_run_parser.add_argument("--profile", default="AGR")
+        scenario_run_parser.add_argument("--policy", default="config/policy.json")
+        scenario_run_parser.add_argument("--output-root", default="storage/scenarios")
+        scenario_run_parser.add_argument(
+            "--report-output",
+            default="storage/reports/latest_daily_report.txt",
+        )
+        scenario_run_parser.add_argument(
+            "--json-output",
+            default="storage/reports/latest_daily_report.json",
+        )
+        scenario_run_parser.add_argument("--run-dir", default="storage/runs/latest")
+        scenario_run_parser.add_argument("--limit", type=int, default=5)
+        scenario_run_parser.add_argument("--basket", action="store_true")
+        scenario_run_parser.add_argument(
+            "--basket-output",
+            default="storage/baskets/latest_daily_basket.csv",
+        )
+        scenario_run_parser.add_argument("--slots", type=int, default=5)
+        scenario_run_parser.add_argument("--min-sectors", type=int, default=3)
+        scenario_run_parser.add_argument("--min-weight", type=float, default=0.10)
+        scenario_run_parser.add_argument("--capital", type=float, default=100000.0)
+        scenario_run_parser.add_argument("--risk-per-trade", type=float, default=0.005)
+        scenario_run_parser.add_argument("--json", action="store_true")
+
         daily_auto_parser = subparsers.add_parser("daily-auto", help="Run daily auto workflow")
         daily_auto_parser.set_defaults(command="daily-auto")
         daily_auto_parser.add_argument("--execution-policy", default="config/execution_policy.json")
@@ -1155,6 +1195,9 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "scenario-pack":
             return _run_scenario_pack_command(args)
+
+        if args.command == "scenario":
+            return _run_scenario_command(args)
 
         if args.command == "packs":
             return _run_packs_command(args)

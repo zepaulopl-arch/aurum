@@ -448,23 +448,7 @@ def run_decision_flow(
         run_path.mkdir(parents=True, exist_ok=True)
 
         report_path.write_text(rendered, encoding="utf-8")
-        write_daily_report_json(
-            report,
-            json_path,
-            prediction=prediction_payload,
-            blockers_count=blockers_count,
-            asset_blockers=asset_blockers,
-            update_status=update_status_payload,
-        )
         (run_path / "report.txt").write_text(rendered, encoding="utf-8")
-        write_daily_report_json(
-            report,
-            run_path / "report.json",
-            prediction=prediction_payload,
-            blockers_count=blockers_count,
-            asset_blockers=asset_blockers,
-            update_status=update_status_payload,
-        )
 
         ready_tickers = _tickers_by_status(report, ExecutionStatus.READY)
         basket_payload: dict[str, Any] | None = None
@@ -486,6 +470,35 @@ def run_decision_flow(
                 blocked_reason="no actionable assets",
             )
 
+        basket_summary = None
+        if basket_payload is not None:
+            basket_summary = {
+                "status": basket_payload.get("status", "-"),
+                "slots": basket_payload.get("slots", slots),
+                "assets": len(basket_payload.get("rows", [])),
+                "reason": basket_payload.get("reason", ""),
+                "output": basket_payload.get("output_csv", basket_output),
+            }
+
+        write_daily_report_json(
+            report,
+            json_path,
+            prediction=prediction_payload,
+            blockers_count=blockers_count,
+            asset_blockers=asset_blockers,
+            update_status=update_status_payload,
+            basket=basket_summary,
+        )
+        write_daily_report_json(
+            report,
+            run_path / "report.json",
+            prediction=prediction_payload,
+            blockers_count=blockers_count,
+            asset_blockers=asset_blockers,
+            update_status=update_status_payload,
+            basket=basket_summary,
+        )
+
     except Exception as exc:
         return {
             "command": "run",
@@ -499,15 +512,6 @@ def run_decision_flow(
     ready = _count_status(report, ExecutionStatus.READY)
     watch = _count_status(report, ExecutionStatus.WATCH)
     blocked = _count_status(report, ExecutionStatus.BLOCKED)
-    basket_summary = None
-    if basket_payload is not None:
-        basket_summary = {
-            "status": basket_payload.get("status", "-"),
-            "slots": basket_payload.get("slots", slots),
-            "assets": len(basket_payload.get("rows", [])),
-            "reason": basket_payload.get("reason", ""),
-            "output": basket_payload.get("output_csv", basket_output),
-        }
 
     return {
         "command": "run",
@@ -540,6 +544,7 @@ def run_decision_flow(
             blockers_count=blockers_count,
             asset_blockers=asset_blockers,
             update_status=update_status_payload,
+            basket=basket_summary,
         ),
     }
 

@@ -71,6 +71,7 @@ def daily_report_to_dict(
     blockers_count: dict[str, int] | None = None,
     asset_blockers: dict[str, list[str]] | None = None,
     update_status: dict[str, Any] | None = None,
+    basket: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     raw = _convert(asdict(report))
     global_prediction = _prediction_global(prediction)
@@ -85,9 +86,13 @@ def daily_report_to_dict(
 
     if blockers_count is not None:
         raw["blockers_count"] = dict(blockers_count)
+        raw["blockers"] = dict(blockers_count)
 
     if update_status:
         raw["update_status"] = dict(update_status)
+
+    if basket is not None:
+        raw["basket"] = dict(basket)
 
     for index, decision in enumerate(report.decisions):
         ticker = decision.asset.ticker
@@ -109,6 +114,7 @@ def render_daily_report_json(
     blockers_count: dict[str, int] | None = None,
     asset_blockers: dict[str, list[str]] | None = None,
     update_status: dict[str, Any] | None = None,
+    basket: dict[str, Any] | None = None,
 ) -> str:
     payload = daily_report_to_dict(
         report,
@@ -116,6 +122,7 @@ def render_daily_report_json(
         blockers_count=blockers_count,
         asset_blockers=asset_blockers,
         update_status=update_status,
+        basket=basket,
     )
     return json.dumps(payload, ensure_ascii=False, indent=indent)
 
@@ -127,6 +134,7 @@ def write_daily_report_json(
     blockers_count: dict[str, int] | None = None,
     asset_blockers: dict[str, list[str]] | None = None,
     update_status: dict[str, Any] | None = None,
+    basket: dict[str, Any] | None = None,
 ) -> None:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -137,6 +145,7 @@ def write_daily_report_json(
             blockers_count=blockers_count,
             asset_blockers=asset_blockers,
             update_status=update_status,
+            basket=basket,
         ),
         encoding="utf-8",
     )

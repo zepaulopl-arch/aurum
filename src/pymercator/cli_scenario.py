@@ -7,6 +7,7 @@ from typing import Any
 
 from pymercator.cli_run import run_decision_flow
 from pymercator.data.universe_csv import REQUIRED_COLUMNS
+from pymercator.ui import colorize, format_kv_section, muted_line, truncate
 
 POSITIVE_PRESET = "positive_risk_on"
 
@@ -281,49 +282,85 @@ def _render_summary(payload: dict[str, Any]) -> str:
     lines = [
         (
             f"SCENARIO RUN | PRESET {payload['preset']} | "
-            f"PROFILE {payload['profile']} | STATUS {payload['status']}"
+            f"PROFILE {payload['profile']} | "
+            f"STATUS {colorize(payload['status'], payload['status'])}"
         ),
         "",
-        "MARKET:",
-        f"- regime: {run.get('market', {}).get('regime', '-')}",
+        format_kv_section(
+            "MARKET",
+            [
+                (
+                    "regime",
+                    run.get("market", {}).get("regime", "-"),
+                    run.get("market", {}).get("regime", "-"),
+                ),
+            ],
+        ),
         "",
-        "PREDICTION:",
-        f"- engine: {prediction.get('engine_used', '-')}",
-        f"- behavior: {prediction.get('behavior', '-')}",
-        f"- dominant_horizon: {prediction.get('dominant_horizon', '-')}",
-        f"- combined_score: {prediction.get('combined_score', '-')}",
+        format_kv_section(
+            "PREDICTION",
+            [
+                ("engine", prediction.get("engine_used", "-")),
+                ("behavior", prediction.get("behavior", "-"), prediction.get("behavior", "-")),
+                ("dominant_horizon", prediction.get("dominant_horizon", "-")),
+                ("combined_score", prediction.get("combined_score", "-")),
+            ],
+        ),
         "",
-        "MODEL QUALITY:",
-        f"- status: {quality.get('status', '-')}",
-        f"- edge: {quality.get('edge', '-')}",
+        format_kv_section(
+            "MODEL QUALITY",
+            [
+                ("status", quality.get("status", "-"), quality.get("status", "-")),
+                ("edge", quality.get("edge", "-")),
+            ],
+        ),
         "",
-        "DECISION:",
-        f"- actionable: {decision.get('actionable', 0)}",
-        f"- watch: {decision.get('watch', 0)}",
-        f"- blocked: {decision.get('blocked', 0)}",
+        format_kv_section(
+            "DECISION",
+            [
+                ("actionable", decision.get("actionable", 0), "ACTIONABLE"),
+                ("watch", decision.get("watch", 0), "WATCH"),
+                ("blocked", decision.get("blocked", 0), "BLOCKED"),
+            ],
+        ),
         "",
-        "BASKET:",
-        f"- status: {basket.get('status', '-')}",
-        f"- assets: {basket.get('assets', 0)}",
+        format_kv_section(
+            "BASKET",
+            [
+                ("status", basket.get("status", "-"), basket.get("status", "-")),
+                ("assets", basket.get("assets", 0)),
+            ],
+        ),
         "",
-        "TOP:",
+        "TOP",
+        muted_line(),
+        f"{'#':>2} {'TICKER':<8} {'STATUS':<10} {'SCORE':>8} {'REASONS':<36} {'BEHAVIOR':<14}",
     ]
     for index, item in enumerate(run.get("top", []), start=1):
+        behavior = f"{item.get('dominant_horizon', '-')} {item.get('behavior', '-')}"
+        decision_text = f"{item['decision']:<10}"
         lines.append(
-            f"{index}. {item['ticker']} | {item['decision']} | "
-            f"{item['score']} | {item['guard']} | "
-            f"{item.get('dominant_horizon', '-')} {item.get('behavior', '-')}"
+            f"{index:>2} {item['ticker']:<8} "
+            f"{colorize(decision_text, item['decision'])} "
+            f"{float(item['score']):>8.2f} "
+            f"{truncate(item['guard'], 36):<36} "
+            f"{truncate(behavior, 14):<14}"
         )
     lines.extend(["", "CHECKS:"])
     for name, passed in payload["checks"].items():
-        lines.append(f"- {name}: {'PASS' if passed else 'FAIL'}")
+        status = "PASS" if passed else "FAIL"
+        lines.append(f"- {name}: {colorize(status, status)}")
     lines.extend(
         [
             "",
-            "FILES:",
-            f"- report_json: {payload['files']['json']}",
-            f"- basket: {payload['files']['basket']}",
-            f"- scenario_root: {payload['artifacts']['root']}",
+            format_kv_section(
+                "FILES",
+                [
+                    ("report_json", payload["files"]["json"]),
+                    ("basket", payload["files"]["basket"]),
+                    ("scenario_root", payload["artifacts"]["root"]),
+                ],
+            ),
         ]
     )
     return "\n".join(lines)

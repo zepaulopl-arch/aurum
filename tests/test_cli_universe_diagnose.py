@@ -21,11 +21,13 @@ def test_universe_diagnose_command_prints_report(tmp_path: Path, capsys):
 
     captured = capsys.readouterr()
     assert "PYMERCATOR UNIVERSE DIAGNOSE" in captured.out
-    assert "DATA STATUS" in captured.out
+    assert "status" in captured.out
     assert "SECTOR WARNING SUMMARY" in captured.out
-    assert "SUMMARY:" in captured.out
+    assert "TOTAL" in captured.out
+    assert "WEAK_TR" in captured.out
+    assert "SUMMARY" in captured.out
     assert "WARNINGS BY ASSET" not in captured.out
-    assert "SECTOR CONCENTRATION" not in captured.out
+    assert "SECTOR CONCENTRATION" in captured.out
 
 
 def test_universe_diagnose_details_prints_asset_warnings(tmp_path: Path, capsys):

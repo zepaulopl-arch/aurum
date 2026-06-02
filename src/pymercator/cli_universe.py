@@ -10,6 +10,7 @@ from pymercator.data.universe_csv import (
     write_universe_template,
 )
 from pymercator.data.universe_diagnostics import diagnose_universe_csv
+from pymercator.ui import colorize, format_kv_section, muted_line, short_sector
 
 
 def _render_universe_check(payload: dict[str, Any]) -> str:
@@ -39,23 +40,27 @@ def _render_universe_check(payload: dict[str, Any]) -> str:
 
 
 def _render_universe_summary(payload: dict[str, Any]) -> str:
-    line = "-" * 100
+    line = muted_line()
     lines = [
-        "PYMERCATOR UNIVERSE SUMMARY",
-        line,
-        f"{'FILE':<20} {payload['path']}",
-        f"{'ASSETS':<20} {payload['assets']}",
-        f"{'AVG VOLUME BRL':<20} {payload['avg_volume_brl']:.2f}",
-        f"{'AVG TREND':<20} {payload['avg_trend_score']:.2f}",
-        f"{'AVG MOMENTUM':<20} {payload['avg_momentum_score']:.2f}",
-        f"{'AVG VOLATILITY':<20} {payload['avg_volatility_pct']:.2f}",
+        format_kv_section(
+            "PYMERCATOR UNIVERSE SUMMARY",
+            [
+                ("file", payload["path"]),
+                ("assets", payload["assets"]),
+                ("avg_volume_brl", f"{payload['avg_volume_brl']:.2f}"),
+                ("avg_trend", f"{payload['avg_trend_score']:.2f}"),
+                ("avg_momentum", f"{payload['avg_momentum_score']:.2f}"),
+                ("avg_volatility", f"{payload['avg_volatility_pct']:.2f}"),
+            ],
+            label_width=18,
+        ),
         "",
         "SECTORS",
         line,
     ]
 
     for sector, count in payload['sectors'].items():
-        lines.append(f"{sector:<20} {count}")
+        lines.append(f"{_fmt_sector(sector, 20):<20} {count}")
 
     lines.append("")
     lines.append("TOP VOLUME")
@@ -64,7 +69,7 @@ def _render_universe_summary(payload: dict[str, Any]) -> str:
     for item in payload['top_volume']:
         lines.append(
             f"{item['ticker']:<8} "
-            f"{item['sector']:<12} "
+            f"{_fmt_sector(item['sector'], 14):<14} "
             f"{item['avg_volume_brl']:>14.2f}"
         )
 
@@ -72,28 +77,24 @@ def _render_universe_summary(payload: dict[str, Any]) -> str:
 
 
 def _fmt_sector(value: object, width: int = 24) -> str:
-    text = str(value or "-").strip() or "-"
-    if len(text) > width:
-        return text[: max(width - 1, 1)] + "."
-    return text
+    return short_sector(value, width)
 
 
 def _render_sector_warning_summary(payload: dict[str, Any]) -> list[str]:
-    line = "-" * 100
+    line = muted_line()
     rows = payload.get("sector_warning_summary", [])
     lines = [
         "SECTOR WARNING SUMMARY",
         line,
         (
-            f"{'SECTOR':<24} "
-            f"{'ASSETS':>6} "
-            f"{'VOL_HIGH':>9} "
-            f"{'ATR_HIGH':>8} "
-            f"{'WEAK_TREND':>11} "
+            f"{'SECTOR':<20} "
+            f"{'TOTAL':>5} "
+            f"{'VOL':>4} "
+            f"{'ATR':>4} "
+            f"{'WEAK_TR':>7} "
             f"{'WEAK_MOM':>8} "
             f"{'READ':<8}"
         ),
-        line,
     ]
 
     if not rows:
@@ -101,14 +102,15 @@ def _render_sector_warning_summary(payload: dict[str, Any]) -> list[str]:
         return lines
 
     for item in rows:
+        read = str(item["read"])
         lines.append(
-            f"{_fmt_sector(item['sector']):<24} "
-            f"{int(item['assets']):>6} "
-            f"{int(item['vol_high']):>9} "
-            f"{int(item['atr_high']):>8} "
-            f"{int(item['weak_trend']):>11} "
+            f"{_fmt_sector(item['sector'], 20):<20} "
+            f"{int(item['assets']):>5} "
+            f"{int(item['vol_high']):>4} "
+            f"{int(item['atr_high']):>4} "
+            f"{int(item['weak_trend']):>7} "
             f"{int(item['weak_momentum']):>8} "
-            f"{item['read']:<8}"
+            f"{colorize(f'{read:<8}', read)}"
         )
 
     return lines
@@ -116,23 +118,35 @@ def _render_sector_warning_summary(payload: dict[str, Any]) -> list[str]:
 
 def _render_operational_summary(payload: dict[str, Any]) -> list[str]:
     summary = payload.get("summary", {})
-    return [
-        "SUMMARY:",
-        f"- warnings_assets: {summary.get('warnings_assets', payload.get('warning_count', 0))}",
-        f"- dominant_problem: {summary.get('dominant_problem', '-')}",
-        "- worst_sectors: "
-        f"{', '.join(summary.get('worst_sectors', [])) or '-'}",
-        "- volatile_sectors: "
-        f"{', '.join(summary.get('volatile_sectors', [])) or '-'}",
-        f"- best_relative_sector: {summary.get('best_relative_sector', '-')}",
-    ]
+    worst = [_fmt_sector(item, 18) for item in summary.get("worst_sectors", [])]
+    volatile = [_fmt_sector(item, 18) for item in summary.get("volatile_sectors", [])]
+    return format_kv_section(
+        "SUMMARY",
+        [
+            ("warnings_assets", summary.get("warnings_assets", payload.get("warning_count", 0))),
+            ("dominant_problem", summary.get("dominant_problem", "-")),
+            ("worst_sectors", ", ".join(worst) or "-"),
+            ("volatile_sectors", ", ".join(volatile) or "-"),
+            ("best_relative", summary.get("best_relative_sector", "-")),
+        ],
+        label_width=18,
+    ).splitlines()
 
 
 def _render_warnings_by_asset(payload: dict[str, Any]) -> list[str]:
-    line = "-" * 100
+    line = muted_line()
     lines = [
         "WARNINGS BY ASSET",
         line,
+        (
+            f"{'TICKER':<8} "
+            f"{'SECTOR':<16} "
+            f"{'VOL':>7} "
+            f"{'ATR':>7} "
+            f"{'TREND':>7} "
+            f"{'MOM':>7} "
+            f"{'WARNINGS'}"
+        ),
     ]
 
     warned = [item for item in payload['diagnostics'] if item['codes']]
@@ -143,11 +157,11 @@ def _render_warnings_by_asset(payload: dict[str, Any]) -> list[str]:
         for item in warned:
             lines.append(
                 f"{item['ticker']:<8} "
-                f"{_fmt_sector(item['sector'], 18):<18} "
-                f"vol={item['volatility_pct']:<6} "
-                f"atr={item['atr_pct']:<6} "
-                f"trend={item['trend_score']:<6} "
-                f"mom={item['momentum_score']:<6} "
+                f"{_fmt_sector(item['sector'], 16):<16} "
+                f"{item['volatility_pct']:>7} "
+                f"{item['atr_pct']:>7} "
+                f"{item['trend_score']:>7} "
+                f"{item['momentum_score']:>7} "
                 f"{item['label']}"
             )
 
@@ -155,45 +169,55 @@ def _render_warnings_by_asset(payload: dict[str, Any]) -> list[str]:
 
 
 def _render_universe_diagnose(payload: dict[str, Any], *, details: bool = False) -> str:
-    line = "-" * 100
+    concentration = payload["sector_concentration"]
     lines = [
-        "PYMERCATOR UNIVERSE DIAGNOSE",
-        line,
-        f"{'FILE':<22} {payload['path']}",
-        f"{'POLICY':<22} {payload['policy']}",
-        f"{'ASSETS':<22} {payload['assets']}",
-        f"{'MIN ASSETS':<22} {payload['min_assets']}",
-        f"{'DATA STATUS':<22} {payload['data_status']}",
-        f"{'ASSET COUNT':<22} {payload['asset_count_status']}",
-        f"{'WARNINGS':<22} {payload['warning_count']}",
+        format_kv_section(
+            "PYMERCATOR UNIVERSE DIAGNOSE",
+            [
+                ("file", payload["path"]),
+                ("policy", payload["policy"]),
+                ("assets", payload["assets"]),
+                ("status", payload["data_status"], payload["data_status"]),
+                ("warnings", payload["warning_count"]),
+            ],
+            label_width=20,
+        ),
         "",
-        "COUNTS",
-        line,
-        f"{'LIQUIDITY LOW':<22} {payload['liquidity_low']}",
-        f"{'VOLATILITY HIGH':<22} {payload['volatility_high']}",
-        f"{'ATR HIGH':<22} {payload['atr_high']}",
-        f"{'WEAK TREND':<22} {payload['weak_trend']}",
-        f"{'WEAK MOMENTUM':<22} {payload['weak_momentum']}",
-        f"{'MISSING TRADE PLAN':<22} {payload['missing_trade_plan']}",
+        format_kv_section(
+            "COUNTS",
+            [
+                ("liquidity_low", payload["liquidity_low"]),
+                ("vol_high", payload["volatility_high"]),
+                ("atr_high", payload["atr_high"]),
+                ("weak_trend", payload["weak_trend"]),
+                ("weak_momentum", payload["weak_momentum"]),
+                ("missing_plan", payload["missing_trade_plan"]),
+            ],
+            label_width=20,
+        ),
         "",
     ]
 
     lines.extend(_render_sector_warning_summary(payload))
     lines.extend(["", *_render_operational_summary(payload)])
+    lines.extend(
+        [
+            "",
+            format_kv_section(
+                "SECTOR CONCENTRATION",
+                [
+                    ("status", concentration["status"], concentration["status"]),
+                    ("top_sector", _fmt_sector(concentration["top_sector"], 20)),
+                    ("top_count", concentration["top_sector_count"]),
+                    ("top_pct", f"{concentration['top_sector_pct']:.2f}%"),
+                ],
+                label_width=20,
+            ),
+        ]
+    )
 
     if details:
-        lines.extend(
-            [
-                "",
-                "SECTOR CONCENTRATION",
-                line,
-                f"{'STATUS':<22} {payload['sector_concentration']['status']}",
-                f"{'TOP SECTOR':<22} {payload['sector_concentration']['top_sector']}",
-                f"{'TOP COUNT':<22} {payload['sector_concentration']['top_sector_count']}",
-                f"{'TOP PCT':<22} {payload['sector_concentration']['top_sector_pct']:.2f}%",
-                "",
-            ]
-        )
+        lines.append("")
         lines.extend(_render_warnings_by_asset(payload))
 
     return "\n".join(lines)

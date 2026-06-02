@@ -714,11 +714,12 @@ def test_cli_run_blocks_actionable_when_model_quality_is_weak(
     assert result["report"]["model_edge"] == -0.02
 
     summary = run_mod.render_run_summary(result)
-    assert "MODEL QUALITY:" in summary
-    assert "- status: WEAK" in summary
-    assert "- edge: -0.02" in summary
-    assert "BLOCKERS:" in summary
-    assert "- MODEL_WEAK: 1" in summary
+    assert "MODEL QUALITY" in summary
+    assert "status             WEAK" in summary
+    assert "edge               -0.02" in summary
+    assert "BLOCKERS" in summary
+    assert "MODEL_WEAK           1" in summary
+    assert summary.count("TICKER") == 1
 
 
 def test_cli_run_blocks_non_ok_prediction_evaluation(

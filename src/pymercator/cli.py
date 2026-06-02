@@ -9,6 +9,7 @@ from typing import Any
 from pymercator import presets as presets_mod
 from pymercator import terminal_ui as ui
 from pymercator.cli_context import resolve_market_context_args
+from pymercator.ui import format_kv, format_kv_section, muted_line, set_color_mode
 
 DEFAULT_PREDICTION_HORIZON = 5
 DEFAULT_PREDICTION_MIN_HISTORY = 20
@@ -100,6 +101,41 @@ def _parse_csv_arg(value: str) -> list[str]:
         for item in str(value or "").split(",")
         if item.strip()
     ]
+
+
+def _extract_color_args(argv: list[str] | None) -> tuple[list[str] | None, str]:
+    if argv is None:
+        raw = list(sys.argv[1:])
+    else:
+        raw = list(argv)
+
+    cleaned: list[str] = []
+    mode = "auto"
+    index = 0
+    while index < len(raw):
+        item = raw[index]
+        if item == "--no-color":
+            mode = "never"
+            index += 1
+            continue
+        if item == "--color":
+            if index + 1 >= len(raw):
+                cleaned.append(item)
+                index += 1
+                continue
+            mode = raw[index + 1]
+            index += 2
+            continue
+        if item.startswith("--color="):
+            mode = item.split("=", 1)[1]
+            index += 1
+            continue
+        cleaned.append(item)
+        index += 1
+
+    if mode not in {"auto", "always", "never"}:
+        mode = "auto"
+    return cleaned, mode
 
 
 def _prediction_engines_help() -> str:
@@ -299,58 +335,89 @@ def _run_short_diag_command(args: argparse.Namespace) -> int:
     )
 
     print("PYMERCATOR DIAG")
-    print(ui.line(profile.get("ui", {}).get("width", 120)))
-    print(ui.kv("PRICES DIR", paths.get("prices_dir")))
-    print(ui.kv("FEATURE MATRIX", paths.get("feature_matrix")))
-    print(ui.kv("PREDICTION EVAL", paths.get("prediction_evaluation")))
+    print(muted_line())
+    print(format_kv("prices_dir", paths.get("prices_dir"), label_width=18))
+    print(format_kv("feature_matrix", paths.get("feature_matrix"), label_width=18))
+    print(format_kv("prediction_eval", paths.get("prediction_evaluation"), label_width=18))
     print("")
-    print("PREDICTION STACK:")
-    print(f"- status: {stack_status}")
-    print("- config: config/prediction.json")
-    print(f"- backend: {backend}")
-    print(f"- engine: {prediction_config.get('default_engine', '-')}")
-    print(f"- horizons: {','.join(horizon_labels)}")
-    print(f"- weights: {weights_text}")
-    print(f"- base_models: {','.join(prediction_config.get('base_engines', []))}")
-    print(f"- combiner: {prediction_config.get('meta_model', '-')}")
-    print(f"- per_horizon_combiner: {prediction_config.get('per_horizon_engine', '-')}")
-    print(f"- observer: {observer.get('mode', '-')}")
-    print("- baseline_used: false")
+    print(
+        format_kv_section(
+            "PREDICTION STACK",
+            [
+                ("status", stack_status, stack_status),
+                ("config", "config/prediction.json"),
+                ("backend", backend),
+                ("engine", prediction_config.get("default_engine", "-")),
+                ("horizons", ",".join(horizon_labels)),
+                ("weights", weights_text),
+                ("base_models", ",".join(prediction_config.get("base_engines", []))),
+                ("combiner", prediction_config.get("meta_model", "-")),
+                ("per_horizon", prediction_config.get("per_horizon_engine", "-")),
+                ("observer", observer.get("mode", "-")),
+                ("baseline_used", "false", "FALSE"),
+            ],
+            label_width=18,
+        )
+    )
 
     if not getattr(args, "verbose", False):
         return 0
 
     print("")
-    print("TECHNICAL CONFIG:")
-    print("- mode: operational")
-    print("- config: config/prediction.json")
-    print(f"- per_horizon_engine: {prediction_config.get('per_horizon_engine', '-')}")
     print(
-        "- horizons: "
-        f"{','.join(str(int(item)) for item in prediction_config.get('horizons', []))}"
+        format_kv_section(
+            "TECHNICAL CONFIG",
+            [
+                ("mode", "operational"),
+                ("config", "config/prediction.json"),
+                ("per_horizon_engine", prediction_config.get("per_horizon_engine", "-")),
+                (
+                    "horizons",
+                    ",".join(
+                        str(int(item))
+                        for item in prediction_config.get("horizons", [])
+                    ),
+                ),
+                ("base_engines", ",".join(prediction_config.get("base_engines", []))),
+                ("meta_model", prediction_config.get("meta_model", "-")),
+                ("observer", observer.get("mode", "-")),
+                ("weights", weights_text),
+                ("min_assets", prediction_config.get("min_assets", "-")),
+                ("autotune", str(bool(training.get("autotune", False))).lower()),
+                ("n_jobs", training.get("n_jobs", "-")),
+            ],
+            label_width=22,
+        )
     )
-    print(f"- base_engines: {','.join(prediction_config.get('base_engines', []))}")
-    print(f"- meta_model: {prediction_config.get('meta_model', '-')}")
-    print(f"- observer: {observer.get('mode', '-')}")
-    print(f"- weights: {weights_text}")
-    print(f"- min_assets: {prediction_config.get('min_assets', '-')}")
-    print(f"- autotune: {str(bool(training.get('autotune', False))).lower()}")
-    print(f"- n_jobs: {training.get('n_jobs', '-')}")
     print("")
-    print("LIBRARIES:")
-    print(f"- sklearn available: {bool(SKLEARN_AVAILABLE)}")
-    print(f"- xgboost available: {bool(XGBOOST_AVAILABLE)}")
-    print(f"- catboost available: {bool(CATBOOST_AVAILABLE)}")
+    print(
+        format_kv_section(
+            "LIBRARIES",
+            [
+                ("sklearn available", bool(SKLEARN_AVAILABLE), bool(SKLEARN_AVAILABLE)),
+                ("xgboost available", bool(XGBOOST_AVAILABLE), bool(XGBOOST_AVAILABLE)),
+                ("catboost available", bool(CATBOOST_AVAILABLE), bool(CATBOOST_AVAILABLE)),
+            ],
+            label_width=22,
+        )
+    )
     print("")
-    print("TECHNICAL PREDICTION ENGINES:")
     sklearn_engine_status = "available" if SKLEARN_AVAILABLE else "unavailable"
-    print("- rolling_majority: available baseline")
-    print(f"- extratrees: {sklearn_engine_status}")
-    print(f"- randomforest: {sklearn_engine_status}")
-    print(f"- gradientboosting: {sklearn_engine_status}")
-    print(f"- ridge: {sklearn_engine_status}")
-    print(f"- ridge_ensemble: {sklearn_engine_status} per-horizon")
-    print(f"- multi_horizon_ridge: {sklearn_engine_status} default")
+    print(
+        format_kv_section(
+            "TECHNICAL PREDICTION ENGINES",
+            [
+                ("rolling_majority", "available baseline"),
+                ("extratrees", sklearn_engine_status, sklearn_engine_status),
+                ("randomforest", sklearn_engine_status, sklearn_engine_status),
+                ("gradientboosting", sklearn_engine_status, sklearn_engine_status),
+                ("ridge", sklearn_engine_status, sklearn_engine_status),
+                ("ridge_ensemble", f"{sklearn_engine_status} per-horizon"),
+                ("multi_horizon_ridge", f"{sklearn_engine_status} default"),
+            ],
+            label_width=22,
+        )
+    )
 
     return 0
 
@@ -462,6 +529,17 @@ def build_parser() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(
             prog="pymercator",
             description="pyMercator command line interface",
+        )
+        parser.add_argument(
+            "--color",
+            choices=["auto", "always", "never"],
+            default="auto",
+            help="Terminal colors: auto, always, never. Default: auto",
+        )
+        parser.add_argument(
+            "--no-color",
+            action="store_true",
+            help="Disable terminal colors.",
         )
         subparsers = parser.add_subparsers(dest="command")
 
@@ -714,6 +792,7 @@ def build_parser() -> argparse.ArgumentParser:
             "--output",
             default="storage/baskets/latest_daily_basket.csv",
         )
+        basket_show_parser.add_argument("--details", action="store_true")
 
         daily_parser = subparsers.add_parser("daily", help="Run daily report")
         daily_parser.set_defaults(command="daily")
@@ -1204,8 +1283,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    cleaned_argv, color_mode = _extract_color_args(argv)
+    set_color_mode(color_mode)
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(cleaned_argv)
+    args.color = color_mode
+    args.no_color = color_mode == "never"
 
     try:
         if args.command == "daily":

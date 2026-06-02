@@ -6,7 +6,8 @@ import math
 from pathlib import Path
 from typing import Any
 
-from pymercator.terminal_ui import kv, line, render_table, render_warning_list
+from pymercator.terminal_ui import render_table, render_warning_list
+from pymercator.ui import format_kv_section
 
 BASKET_CSV_COLUMNS = [
     "ticker",
@@ -427,51 +428,47 @@ def _write_json(output_json: str | Path, payload: dict[str, Any]) -> None:
 def _write_txt(output_txt: str | Path, payload: dict[str, Any]) -> None:
     output_path = Path(output_txt)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    lines: list[str] = ["PYMERCATOR DAILY BASKET", line(100)]
-    lines.append(kv("STATUS", payload["status"]))
+    output_path.write_text(render_basket_summary(payload), encoding="utf-8")
+
+
+def render_basket_summary(
+    payload: dict[str, Any],
+    *,
+    color: bool | None = False,
+    details: bool = True,
+) -> str:
+    rows = [
+        ("status", payload["status"], payload["status"]),
+        ("capital", f"{payload['capital']:.2f}"),
+        ("slots", payload["slots"]),
+        ("assets", len(payload.get("rows", []))),
+        ("min_sectors", payload["min_sectors"]),
+        ("min_weight", payload["min_weight"]),
+        ("risk_per_trade", payload["risk_per_trade"]),
+        ("stop_mode", payload["stop_mode"]),
+        ("targets", payload["targets"]),
+    ]
     if payload.get("reason"):
-        lines.append(kv("REASON", payload["reason"]))
-    lines.append(kv("CAPITAL", f"{payload['capital']:.2f}"))
-    lines.append(kv("SLOTS", payload["slots"]))
-    lines.append(kv("MIN SECTORS", payload["min_sectors"]))
-    lines.append(kv("MIN WEIGHT", payload["min_weight"]))
-    lines.append(kv("RISK PER TRADE", payload["risk_per_trade"]))
-    lines.append(kv("STOP MODE", payload["stop_mode"]))
-    lines.append(kv("TARGETS", payload["targets"]))
-    lines.append("")
-    lines.append(
-        render_table(
-            _basket_table_rows(payload["rows"]),
-            BASKET_TABLE_COLUMNS,
-            widths=BASKET_TABLE_WIDTHS,
+        rows.insert(1, ("reason", payload["reason"]))
+
+    lines: list[str] = [
+        format_kv_section(
+            "PYMERCATOR DAILY BASKET",
+            rows,
+            label_width=18,
+            color=color,
         )
-    )
-    if payload.get("warnings"):
+    ]
+
+    if details and payload.get("rows"):
         lines.append("")
-        lines.append(render_warning_list(payload["warnings"]))
-    output_path.write_text("\n".join(lines), encoding="utf-8")
-
-
-def render_basket_summary(payload: dict[str, Any]) -> str:
-    lines: list[str] = ["PYMERCATOR DAILY BASKET", line(100)]
-    lines.append(kv("STATUS", payload["status"]))
-    if payload.get("reason"):
-        lines.append(kv("REASON", payload["reason"]))
-    lines.append(kv("CAPITAL", f"{payload['capital']:.2f}"))
-    lines.append(kv("SLOTS", payload["slots"]))
-    lines.append(kv("MIN SECTORS", payload["min_sectors"]))
-    lines.append(kv("MIN WEIGHT", payload["min_weight"]))
-    lines.append(kv("RISK PER TRADE", payload["risk_per_trade"]))
-    lines.append(kv("STOP MODE", payload["stop_mode"]))
-    lines.append(kv("TARGETS", payload["targets"]))
-    lines.append("")
-    lines.append(
-        render_table(
-            _basket_table_rows(payload["rows"]),
-            BASKET_TABLE_COLUMNS,
-            widths=BASKET_TABLE_WIDTHS,
+        lines.append(
+            render_table(
+                _basket_table_rows(payload["rows"]),
+                BASKET_TABLE_COLUMNS,
+                widths=BASKET_TABLE_WIDTHS,
+            )
         )
-    )
     if payload.get("warnings"):
         lines.append("")
         lines.append(render_warning_list(payload["warnings"]))

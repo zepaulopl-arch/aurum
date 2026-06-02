@@ -15,6 +15,7 @@ from pymercator.legacy_prediction_engines import (
 )
 from pymercator.prediction_config import effective_prediction_config, horizon_key
 from pymercator.prediction_lab import run_prediction_lab
+from pymercator.ui import colorize
 
 ENGINE_ALIASES = {
 }
@@ -1160,7 +1161,7 @@ def run_train_flow(
 
 def render_train_summary(payload: dict[str, Any]) -> str:
     status = payload.get("status", "-")
-    lines = [f"TRAIN | STATUS {status}"]
+    lines = [f"TRAIN | STATUS {colorize(status, status)}"]
 
     if status == "BLOCKED":
         lines.extend(

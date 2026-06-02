@@ -14,6 +14,7 @@ from pymercator.pipeline import run_daily_pipeline
 from pymercator.policy import normalize_profile
 from pymercator.reports.json_report import daily_report_to_dict, write_daily_report_json
 from pymercator.reports.terminal import render_daily_report
+from pymercator.ui import colorize, format_kv_section, muted_line, truncate
 
 
 def _count_status(report: DailyReport, status: ExecutionStatus) -> int:
@@ -553,13 +554,18 @@ def render_run_summary(payload: dict[str, Any]) -> str:
     status = payload.get("status", "-")
     lines = [
         (
-            f"RUN | STATUS {status} | PROFILE {payload.get('profile', '-')} | "
-            f"LIST {payload.get('list', '-')}"
+            f"RUN | STATUS {colorize(status, status)} | "
+            f"PROFILE {payload.get('profile', '-')} | LIST {payload.get('list', '-')}"
         )
     ]
 
     if status != "OK":
-        lines.append(f"REASON: {payload.get('reason', '-')}")
+        lines.extend(
+            [
+                muted_line(),
+                f"reason             {payload.get('reason', '-')}",
+            ]
+        )
         return "\n".join(lines)
 
     market = payload["market"]
@@ -569,82 +575,133 @@ def render_run_summary(payload: dict[str, Any]) -> str:
     decision = payload["decision"]
     blockers = payload.get("blockers", {})
     files = payload["files"]
+    horizons = prediction.get("horizons", [])
+    horizon_text = ",".join(f"D{item}" for item in horizons) if horizons else "-"
     lines.extend(
         [
             "",
-            "MARKET:",
-            f"- regime: {market['regime']}",
-            f"- context: {market['context']}",
-            f"- update_status: {update_status.get('status', '-')}",
+            format_kv_section(
+                "MARKET",
+                [
+                    ("regime", market["regime"], market["regime"]),
+                    ("context", market["context"]),
+                    (
+                        "update_status",
+                        update_status.get("status", "-"),
+                        update_status.get("status", "-"),
+                    ),
+                    (
+                        "impact",
+                        update_status.get("impact", "-"),
+                        update_status.get("impact", "-"),
+                    ),
+                    (
+                        "regime_reliability",
+                        update_status.get("regime_reliability", "-"),
+                        update_status.get("regime_reliability", "-"),
+                    ),
+                ],
+            ),
             "",
-            "PREDICTION:",
-            f"- engine: {prediction.get('engine_used', '-')}",
-            f"- horizons: {prediction.get('horizons', [])}",
-            f"- combined_score: {prediction.get('combined_score', '-')}",
-            f"- dominant_horizon: {prediction.get('dominant_horizon', '-')}",
-            f"- behavior: {prediction.get('behavior', '-')}",
+            format_kv_section(
+                "PREDICTION",
+                [
+                    ("engine", prediction.get("engine_used", "-")),
+                    ("horizons", horizon_text),
+                    ("combined_score", prediction.get("combined_score", "-")),
+                    ("dominant_horizon", prediction.get("dominant_horizon", "-")),
+                    (
+                        "behavior",
+                        prediction.get("behavior", "-"),
+                        prediction.get("behavior", "-"),
+                    ),
+                ],
+            ),
             "",
-            "MODEL QUALITY:",
-            f"- status: {model_quality.get('status', '-')}",
-            f"- edge: {model_quality.get('edge', '-')}",
+            format_kv_section(
+                "MODEL QUALITY",
+                [
+                    (
+                        "status",
+                        model_quality.get("status", "-"),
+                        model_quality.get("status", "-"),
+                    ),
+                    ("edge", model_quality.get("edge", "-")),
+                ],
+            ),
             "",
-            "DECISION:",
-            f"- actionable: {decision['actionable']}",
-            f"- watch: {decision['watch']}",
-            f"- blocked: {decision['blocked']}",
-            f"- rejected: {decision['rejected']}",
+            format_kv_section(
+                "DECISION",
+                [
+                    ("actionable", decision["actionable"], "ACTIONABLE"),
+                    ("watch", decision["watch"], "WATCH"),
+                    ("blocked", decision["blocked"], "BLOCKED"),
+                    ("rejected", decision["rejected"], "REJECTED"),
+                ],
+            ),
             "",
-            "BLOCKERS:",
         ]
     )
 
     if blockers:
-        for reason, count in blockers.items():
-            lines.append(f"- {reason}: {count}")
+        blocker_rows = [
+            (reason, count, reason)
+            for reason, count in blockers.items()
+        ]
+        lines.append(format_kv_section("BLOCKERS", blocker_rows, label_width=20))
     else:
-        lines.append("- none: 0")
+        lines.append(format_kv_section("BLOCKERS", [("none", 0)], label_width=20))
 
+    top_rows = payload.get("top", [])
     lines.extend(
         [
             "",
-            "TOP:",
+            "TOP",
+            muted_line(),
+            f"{'#':>2} {'TICKER':<8} {'STATUS':<10} {'SCORE':>8} {'REASONS':<38} {'BEHAVIOR':<14}",
         ]
     )
 
-    for index, item in enumerate(payload.get("top", []), start=1):
-        observer_note = ""
+    if not top_rows:
+        lines.append("No rows.")
+    for index, item in enumerate(top_rows, start=1):
+        behavior = "-"
         if item.get("dominant_horizon") and item.get("behavior"):
-            observer_note = f" | {item['dominant_horizon']} {item['behavior']}"
+            behavior = f"{item['dominant_horizon']} {item['behavior']}"
+        status_text = colorize(f"{item['decision']:<10}", item["decision"])
         lines.append(
-            f"{index}. {item['ticker']} | {item['decision']} | "
-            f"{item['score']} | {item['guard']}{observer_note}"
+            f"{index:>2} {item['ticker']:<8} {status_text} "
+            f"{float(item['score']):>8.2f} "
+            f"{truncate(item['guard'], 38):<38} "
+            f"{truncate(behavior, 14):<14}"
         )
 
     lines.extend(
         [
             "",
-            "FILES:",
-            f"- report: {files['report']}",
-            f"- json: {files['json']}",
-            f"- run_dir: {files['run_dir']}",
+            format_kv_section(
+                "FILES",
+                [
+                    ("report", files["report"]),
+                    ("json", files["json"]),
+                    ("run_dir", files["run_dir"]),
+                ],
+            ),
         ]
     )
 
     if payload.get("basket"):
         basket = payload["basket"]
-        lines.extend(
-            [
-                "",
-                "BASKET:",
-                f"- status: {basket['status']}",
-                f"- slots: {basket['slots']}",
-                f"- assets: {basket['assets']}",
-            ]
-        )
+        basket_rows = [
+            ("status", basket["status"], basket["status"]),
+            ("slots", basket["slots"]),
+            ("assets", basket["assets"]),
+        ]
         if basket.get("reason"):
-            lines.append(f"- reason: {basket['reason']}")
+            basket_rows.append(("reason", basket["reason"]))
         if basket.get("status") != "BLOCKED":
-            lines.append(f"- output: {basket['output']}")
+            basket_rows.append(("output", basket["output"]))
+        lines.extend(["", format_kv_section("BASKET", basket_rows)])
 
     return "\n".join(lines)
 

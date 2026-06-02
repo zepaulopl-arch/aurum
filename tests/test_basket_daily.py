@@ -337,7 +337,8 @@ def test_cli_basket_daily_runs(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0
-    assert "DAILY BASKET SUMMARY" in result.stdout
+    assert "PYMERCATOR DAILY BASKET" in result.stdout
+    assert "FILES" in result.stdout
     assert output_csv.exists()
 
 
@@ -400,5 +401,9 @@ def test_cli_basket_show_reads_latest_json(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0
-    assert "BASKET SHOW" in result.stdout
-    assert "ABC3.SA" in result.stdout
+    assert "PYMERCATOR DAILY BASKET" in result.stdout
+    assert "FILES" in result.stdout
+    assert "assets" in result.stdout
+    assert " 1" in result.stdout
+    assert "ABC3.SA" not in result.stdout
+    assert result.stdout.count("-" * 80) == 2

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from pymercator import basket as basket_mod
-from pymercator.terminal_ui import line, section
+from pymercator.ui import format_kv_section
 
 
 def run_basket_cli(args: object) -> int:
     if getattr(args, "basket_command", "daily") == "show":
-        json_path = basket_mod.resolve_basket_paths(args.output)[1]
+        csv_path, json_path, txt_path = basket_mod.resolve_basket_paths(args.output)
         payload = basket_mod.load_basket_json(json_path)
 
-        print(section("BASKET SHOW"))
         if payload.get("status") in {"MISSING", "INVALID"}:
             warnings = payload.get("warnings", [])
             if isinstance(warnings, list):
@@ -19,11 +18,25 @@ def run_basket_cli(args: object) -> int:
                 print(warnings)
             return 1
 
-        print(basket_mod.render_basket_summary(payload))
-        print("\n" + line(100))
-        print(f"CSV: {basket_mod.resolve_basket_paths(args.output)[0]}")
-        print(f"JSON: {json_path}")
-        print(f"TEXT: {basket_mod.resolve_basket_paths(args.output)[2]}")
+        print(
+            basket_mod.render_basket_summary(
+                payload,
+                color=None,
+                details=getattr(args, "details", False),
+            )
+        )
+        print("")
+        print(
+            format_kv_section(
+                "FILES",
+                [
+                    ("basket_csv", csv_path),
+                    ("basket_json", json_path),
+                    ("basket_txt", txt_path),
+                ],
+                label_width=16,
+            )
+        )
         return 0
 
     daily_report = getattr(args, "daily_report", "")
@@ -49,15 +62,24 @@ def run_basket_cli(args: object) -> int:
         eligible_tickers=eligible_tickers,
     )
 
-    output = [section("DAILY BASKET SUMMARY"), basket_mod.render_basket_summary(payload), ""]
-    output.append(f"CSV: {args.output}")
-    output.append(f"JSON: {basket_mod.resolve_basket_paths(args.output)[1]}")
-    output.append(f"TEXT: {basket_mod.resolve_basket_paths(args.output)[2]}")
-    output.append(line(100))
-    output.append(f"STATUS: {payload['status']}")
+    csv_path, json_path, txt_path = basket_mod.resolve_basket_paths(args.output)
+    output = [basket_mod.render_basket_summary(payload, color=None, details=False), ""]
+    output.append(
+        format_kv_section(
+            "FILES",
+            [
+                ("basket_csv", csv_path),
+                ("basket_json", json_path),
+                ("basket_txt", txt_path),
+                ("status", payload["status"], payload["status"]),
+            ],
+            label_width=16,
+        )
+    )
 
     if payload.get("warnings"):
-        output.append(section("WARNINGS"))
+        output.append("")
+        output.append("WARNINGS")
         output.append("\n".join(payload["warnings"]))
 
     print("\n".join(output))

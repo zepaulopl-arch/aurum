@@ -53,6 +53,78 @@ def _step_warnings(name: str, payload: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def _find_step(
+    steps: list[dict[str, Any]],
+    name: str,
+) -> dict[str, Any] | None:
+    return next((step for step in steps if step.get("step") == name), None)
+
+
+def _context_valid_from_steps(steps: list[dict[str, Any]]) -> bool:
+    context_check = _find_step(steps, "context_check")
+    if not context_check:
+        return False
+    payload = context_check.get("payload", {})
+    return context_check.get("status") == "OK" and bool(payload.get("valid", True))
+
+
+def _build_update_status(
+    *,
+    status: str,
+    steps: list[dict[str, Any]],
+    warnings: list[str],
+    failed_step: str = "",
+) -> dict[str, Any]:
+    indices = _find_step(steps, "indices") or {}
+    indices_payload = indices.get("payload", {})
+    required_failed = int(indices_payload.get("required_failed", 0) or 0)
+    optional_failed = int(indices_payload.get("optional_failed", 0) or 0)
+    cache_fallbacks = int(indices_payload.get("cache_fallbacks", 0) or 0)
+    context_valid = _context_valid_from_steps(steps)
+
+    if status == "FAIL" or required_failed:
+        impact = "HIGH"
+        regime_reliability = "DEGRADED"
+    elif optional_failed:
+        impact = "MEDIUM"
+        regime_reliability = "DEGRADED"
+    elif cache_fallbacks:
+        impact = "LOW"
+        regime_reliability = "OK" if context_valid else "DEGRADED"
+    elif warnings:
+        impact = "LOW"
+        regime_reliability = "OK" if context_valid else "DEGRADED"
+    else:
+        impact = "LOW"
+        regime_reliability = "OK" if context_valid else "DEGRADED"
+
+    if status == "FAIL" and failed_step in {"prices", "indices", "context", "context_check"}:
+        context_valid = False
+
+    return {
+        "status": status,
+        "impact": impact,
+        "context_valid": "YES" if context_valid else "NO",
+        "regime_reliability": regime_reliability,
+        "warnings": warnings,
+        "failed_step": failed_step,
+    }
+
+
+def _update_status_path(context_output: str) -> Path:
+    return Path(context_output).with_name("latest_update_status.json")
+
+
+def _write_update_status(context_output: str, update_status: dict[str, Any]) -> str:
+    output = _update_status_path(context_output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(update_status, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return str(output)
+
+
 def _fail_payload(
     *,
     list_name: str,
@@ -62,13 +134,25 @@ def _fail_payload(
     steps: list[dict[str, Any]],
     files: dict[str, str],
 ) -> dict[str, Any]:
+    update_status = _build_update_status(
+        status="FAIL",
+        steps=steps,
+        warnings=[],
+        failed_step=step,
+    )
+    if "context" in files:
+        files["update_status"] = _write_update_status(files["context"], update_status)
     return {
         "command": "update",
         "list": list_name,
         "status": "FAIL",
+        "impact": update_status["impact"],
+        "context_valid": update_status["context_valid"],
+        "regime_reliability": update_status["regime_reliability"],
         "failed_step": step,
         "reason": reason,
         "detail": detail,
+        "update_status": update_status,
         "steps": steps,
         "files": files,
     }
@@ -101,6 +185,7 @@ def run_update_flow(
         "universe": universe_output,
         "features_catalog": features_catalog,
         "matrix": matrix_output,
+        "update_status": str(_update_status_path(context_output)),
     }
     steps: list[dict[str, Any]] = []
     warnings: list[str] = []
@@ -332,14 +417,26 @@ def run_update_flow(
             files=files,
         )
 
+    final_status = "PARTIAL" if warnings else "OK"
+    update_status = _build_update_status(
+        status=final_status,
+        steps=steps,
+        warnings=warnings,
+    )
+    files["update_status"] = _write_update_status(context_output, update_status)
+
     return {
         "command": "update",
         "list": list_text,
-        "status": "PARTIAL" if warnings else "OK",
+        "status": final_status,
+        "impact": update_status["impact"],
+        "context_valid": update_status["context_valid"],
+        "regime_reliability": update_status["regime_reliability"],
         "start": start,
         "end": resolved_end,
         "use_cache": use_cache,
         "warnings": warnings,
+        "update_status": update_status,
         "steps": steps,
         "files": files,
     }
@@ -349,6 +446,13 @@ def render_update_summary(payload: dict[str, Any]) -> str:
     list_name = payload.get("list", "-")
     status = payload.get("status", "-")
     lines = [f"UPDATE | LIST {list_name} | STATUS {status}"]
+    impact_lines = [
+        "",
+        "OPERATIONAL IMPACT:",
+        f"- impact: {payload.get('impact', '-')}",
+        f"- context_valid: {payload.get('context_valid', '-')}",
+        f"- regime_reliability: {payload.get('regime_reliability', '-')}",
+    ]
 
     if status == "FAIL":
         lines.extend(
@@ -357,6 +461,7 @@ def render_update_summary(payload: dict[str, Any]) -> str:
                 f"REASON: {payload.get('reason', '-')}",
             ]
         )
+        lines.extend(impact_lines)
         return "\n".join(lines)
 
     lines.extend(["", "DATA:"])
@@ -384,6 +489,8 @@ def render_update_summary(payload: dict[str, Any]) -> str:
             )
         elif name == "context":
             lines.append(f"- {name}: {step.get('status', '-')}")
+
+    lines.extend(impact_lines)
 
     files = payload.get("files", {})
     if payload.get("warnings"):

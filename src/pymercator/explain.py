@@ -31,6 +31,15 @@ def decision_codes(decision: AssetDecision) -> tuple[str, ...]:
     if "market regime denied" in reason_text:
         codes.append("REGIME_DENY")
 
+    if "model_weak" in reason_text or "model quality is weak" in reason_text:
+        codes.append("MODEL_WEAK")
+
+    if "risk_off" in reason_text:
+        codes.append("RISK_OFF")
+
+    if "behavior_avoid" in reason_text or "behavior is avoid" in reason_text:
+        codes.append("BEHAVIOR_AVOID")
+
     if "regime or universe requires caution" in reason_text:
         codes.append("CAUTION")
 

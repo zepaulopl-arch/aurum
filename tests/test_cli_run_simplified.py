@@ -248,6 +248,92 @@ def test_cli_run_with_basket_generates_basket(tmp_path: Path, monkeypatch, capsy
     assert payload["basket"]["assets"] == 1
 
 
+def test_cli_run_positive_scenario_allows_actionable_and_basket(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_run as run_mod
+
+    context = tmp_path / "context.json"
+    report = tmp_path / "report.txt"
+    json_report = tmp_path / "report.json"
+    run_dir = tmp_path / "latest"
+    basket_output = tmp_path / "basket.csv"
+    evaluation = tmp_path / "evaluation.json"
+    _write_context(context)
+    _write_multi_horizon_evaluation(evaluation)
+    evaluation_payload = json.loads(evaluation.read_text(encoding="utf-8"))
+    evaluation_payload["horizon_observer"]["scores"] = {
+        "D5": 72.0,
+        "D20": 76.0,
+        "D60": 69.0,
+    }
+    evaluation_payload["horizon_observer"]["combined_score"] = 72.75
+    evaluation_payload["horizon_observer"]["dominant_horizon"] = "D20"
+    evaluation_payload["horizon_observer"]["behavior"] = "TREND_CONFIRM"
+    evaluation_payload["model_quality"]["status"] = "STRONG"
+    evaluation_payload["model_quality"]["ensemble_accuracy"] = 0.64
+    evaluation_payload["model_quality"]["edge"] = 0.14
+    evaluation.write_text(json.dumps(evaluation_payload), encoding="utf-8")
+
+    basket_rows: list[dict[str, str]] = []
+
+    def fake_basket(**kwargs):
+        assert kwargs["eligible_tickers"] == ["PRIO3"]
+        Path(kwargs["output_csv"]).parent.mkdir(parents=True, exist_ok=True)
+        Path(kwargs["output_csv"]).write_text("ticker,status\nPRIO3,READY\n", encoding="utf-8")
+        basket_rows.append({"ticker": "PRIO3", "status": "READY"})
+        return {
+            "status": "OK",
+            "slots": kwargs["slots"],
+            "output_csv": kwargs["output_csv"],
+            "rows": basket_rows,
+        }
+
+    monkeypatch.setattr(
+        run_mod,
+        "run_daily_pipeline",
+        lambda **kwargs: _fake_report(kwargs["profile"]),
+    )
+    monkeypatch.setattr(run_mod, "run_daily_basket", fake_basket)
+
+    exit_code = main(
+        [
+            "run",
+            "--profile",
+            "CON",
+            "--universe",
+            "data/universes/ibov_sample.csv",
+            "--context",
+            str(context),
+            "--report-output",
+            str(report),
+            "--json-output",
+            str(json_report),
+            "--run-dir",
+            str(run_dir),
+            "--evaluation",
+            str(evaluation),
+            "--basket",
+            "--basket-output",
+            str(basket_output),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["market"]["regime"] == "RISK_ON"
+    assert payload["prediction"]["behavior"] == "TREND_CONFIRM"
+    assert payload["prediction"]["model_quality"]["status"] == "STRONG"
+    assert payload["decision"]["actionable"] > 0
+    assert payload["basket"]["status"] == "OK"
+    assert payload["basket"]["assets"] > 0
+    assert all(row["status"] != "BLOCKED" for row in basket_rows)
+    assert payload["report"]["decisions"][0]["blocker_reasons"] == []
+
+
 def test_cli_run_blocks_invalid_unknown_context(
     tmp_path: Path,
     capsys,
@@ -353,9 +439,11 @@ def test_cli_run_with_basket_blocks_when_no_actionable_assets(
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["decision"]["actionable"] == 0
+    assert payload["blockers"]["RISK_OFF"] > 0
     assert payload["basket"]["status"] == "BLOCKED"
     assert payload["basket"]["assets"] == 0
     assert payload["basket"]["reason"] == "no actionable assets"
+    assert "BLOCKED" not in payload["top"][0]["guard"].split("+")
 
     basket_manifest = json.loads(basket_output.with_suffix(".json").read_text(encoding="utf-8"))
     assert basket_manifest["status"] == "BLOCKED"
@@ -485,6 +573,17 @@ def test_cli_run_exposes_multi_horizon_prediction_observer(
     evaluation = tmp_path / "latest_evaluation.json"
     _write_context(context)
     _write_multi_horizon_evaluation(evaluation)
+    context.with_name("latest_update_status.json").write_text(
+        json.dumps(
+            {
+                "status": "PARTIAL",
+                "impact": "LOW",
+                "context_valid": "YES",
+                "regime_reliability": "OK",
+            }
+        ),
+        encoding="utf-8",
+    )
 
     monkeypatch.setattr(
         run_mod,
@@ -534,6 +633,9 @@ def test_cli_run_exposes_multi_horizon_prediction_observer(
     assert report_payload["prediction"]["combined_score"] == 59.85
     assert report_payload["prediction"]["dominant_horizon"] == "D60"
     assert report_payload["prediction"]["behavior"] == "POSITIONAL_SETUP"
+    assert report_payload["update_status"]["status"] == "PARTIAL"
+    assert report_payload["update_status"]["impact"] == "LOW"
+    assert report_payload["blockers_count"] == {}
     assert report_payload["decisions"][0]["prediction"] == {
         "d5_score": 51.0,
         "d20_score": 58.0,
@@ -542,9 +644,10 @@ def test_cli_run_exposes_multi_horizon_prediction_observer(
         "dominant_horizon": "D60",
         "behavior": "POSITIONAL_SETUP",
     }
+    assert report_payload["decisions"][0]["blocker_reasons"] == []
 
 
-def test_cli_run_downgrades_actionable_when_model_quality_is_weak(
+def test_cli_run_blocks_actionable_when_model_quality_is_weak(
     tmp_path: Path,
     monkeypatch,
     capsys,
@@ -553,6 +656,7 @@ def test_cli_run_downgrades_actionable_when_model_quality_is_weak(
 
     context = tmp_path / "context.json"
     evaluation = tmp_path / "latest_evaluation.json"
+    basket_output = tmp_path / "basket.csv"
     _write_context(context)
     _write_multi_horizon_evaluation(evaluation)
     payload = json.loads(evaluation.read_text(encoding="utf-8"))
@@ -584,6 +688,9 @@ def test_cli_run_downgrades_actionable_when_model_quality_is_weak(
             str(tmp_path / "report.json"),
             "--run-dir",
             str(tmp_path / "latest"),
+            "--basket",
+            "--basket-output",
+            str(basket_output),
             "--json",
         ]
     )
@@ -591,14 +698,27 @@ def test_cli_run_downgrades_actionable_when_model_quality_is_weak(
     assert exit_code == 0
     result = json.loads(capsys.readouterr().out)
     assert result["decision"]["actionable"] == 0
-    assert result["decision"]["watch"] == 1
-    assert result["report"]["decisions"][0]["permission"]["status"] == "WATCH"
-    assert "model quality is weak" in result["report"]["decisions"][0]["permission"]["reasons"]
+    assert result["decision"]["watch"] == 0
+    assert result["decision"]["blocked"] == 1
+    assert result["basket"]["status"] == "BLOCKED"
+    assert result["basket"]["assets"] == 0
+    assert result["blockers"] == {"MODEL_WEAK": 1}
+    assert result["top"][0]["guard"] == "MODEL_WEAK"
+    assert result["top"][0]["guard"] != "BLOCKED"
+    assert result["report"]["decisions"][0]["permission"]["status"] == "BLOCKED"
+    assert "MODEL_WEAK: model quality is weak" in (
+        result["report"]["decisions"][0]["permission"]["reasons"]
+    )
+    assert result["report"]["decisions"][0]["blocker_reasons"] == ["MODEL_WEAK"]
+    assert result["report"]["model_quality"] == "WEAK"
+    assert result["report"]["model_edge"] == -0.02
 
     summary = run_mod.render_run_summary(result)
     assert "MODEL QUALITY:" in summary
     assert "- status: WEAK" in summary
     assert "- edge: -0.02" in summary
+    assert "BLOCKERS:" in summary
+    assert "- MODEL_WEAK: 1" in summary
 
 
 def test_cli_run_blocks_non_ok_prediction_evaluation(

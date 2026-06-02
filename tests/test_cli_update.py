@@ -104,7 +104,11 @@ def test_cli_update_json_uses_custom_paths(tmp_path: Path, monkeypatch, capsys):
     assert payload["files"]["matrix"] == str(tmp_path / "matrix.csv")
 
 
-def test_cli_update_fails_clearly_on_step_failure(monkeypatch, capsys):
+def test_cli_update_fails_clearly_on_step_failure(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
     import pymercator.cli_update as update_mod
 
     monkeypatch.setattr(
@@ -113,7 +117,15 @@ def test_cli_update_fails_clearly_on_step_failure(monkeypatch, capsys):
         lambda **kwargs: {"failed": 1, "fetched": 0, "requested": 1},
     )
 
-    exit_code = main(["update", "--list", "IBOV"])
+    exit_code = main(
+        [
+            "update",
+            "--list",
+            "IBOV",
+            "--context-output",
+            str(tmp_path / "context.json"),
+        ]
+    )
 
     assert exit_code == 1
     captured = capsys.readouterr()
@@ -160,6 +172,7 @@ def test_cli_update_no_cache_disables_price_cache(monkeypatch):
 
 
 def test_cli_update_fails_when_feature_matrix_loses_universe_assets(
+    tmp_path: Path,
     monkeypatch,
     capsys,
 ):
@@ -190,7 +203,15 @@ def test_cli_update_fails_when_feature_matrix_loses_universe_assets(
         },
     )
 
-    exit_code = main(["update", "--list", "IBOV"])
+    exit_code = main(
+        [
+            "update",
+            "--list",
+            "IBOV",
+            "--context-output",
+            str(tmp_path / "context.json"),
+        ]
+    )
 
     assert exit_code == 1
     captured = capsys.readouterr()
@@ -217,7 +238,11 @@ def test_cli_update_does_not_use_1900_for_indices(monkeypatch):
     assert captured["indices_start"] == "2000-01-01"
 
 
-def test_cli_update_marks_optional_index_failure_as_partial(monkeypatch, capsys):
+def test_cli_update_marks_optional_index_failure_as_partial(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
     import pymercator.cli_update as update_mod
 
     _patch_update_ok(monkeypatch)
@@ -233,10 +258,105 @@ def test_cli_update_marks_optional_index_failure_as_partial(monkeypatch, capsys)
         },
     )
 
-    exit_code = main(["update", "--list", "IBOV"])
+    exit_code = main(
+        [
+            "update",
+            "--list",
+            "IBOV",
+            "--context-output",
+            str(tmp_path / "context.json"),
+        ]
+    )
 
     assert exit_code == 0
     captured = capsys.readouterr()
     assert "UPDATE | LIST IBOV | STATUS PARTIAL" in captured.out
+    assert "- impact: MEDIUM" in captured.out
+    assert "- context_valid: YES" in captured.out
+    assert "- regime_reliability: DEGRADED" in captured.out
     assert "WARNINGS:" in captured.out
     assert "optional index IFNC.SA failed" in captured.out
+
+
+def test_cli_update_partial_index_cache_fallback_includes_operational_impact(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_update as update_mod
+
+    _patch_update_ok(monkeypatch)
+    monkeypatch.setattr(
+        update_mod,
+        "fetch_indices_prices",
+        lambda **kwargs: {
+            "status": "OK_WITH_WARNINGS",
+            "required_failed": 0,
+            "optional_failed": 0,
+            "cache_fallbacks": 1,
+            "warnings": ["index ^IEE used cache fallback: empty download"],
+        },
+    )
+    context_output = tmp_path / "latest_market_context.json"
+
+    exit_code = main(
+        [
+            "update",
+            "--list",
+            "IBOV",
+            "--context-output",
+            str(context_output),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "PARTIAL"
+    assert payload["impact"] == "LOW"
+    assert payload["context_valid"] == "YES"
+    assert payload["regime_reliability"] == "OK"
+    assert payload["update_status"]["status"] == "PARTIAL"
+    manifest = context_output.with_name("latest_update_status.json")
+    assert manifest.exists()
+    manifest_payload = json.loads(manifest.read_text(encoding="utf-8"))
+    assert manifest_payload["impact"] == "LOW"
+
+
+def test_cli_update_required_index_failure_is_fail(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_update as update_mod
+
+    _patch_update_ok(monkeypatch)
+    monkeypatch.setattr(
+        update_mod,
+        "fetch_indices_prices",
+        lambda **kwargs: {
+            "status": "FAILED",
+            "required_failed": 1,
+            "optional_failed": 0,
+            "cache_fallbacks": 0,
+            "warnings": ["required index ^BVSP failed: empty download"],
+        },
+    )
+
+    exit_code = main(
+        [
+            "update",
+            "--list",
+            "IBOV",
+            "--context-output",
+            str(tmp_path / "context.json"),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "FAIL"
+    assert payload["failed_step"] == "indices"
+    assert payload["impact"] == "HIGH"
+    assert payload["context_valid"] == "NO"

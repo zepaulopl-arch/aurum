@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 from pymercator.basket import run_daily_basket
 from pymercator.domain import DailyReport, ExecutionStatus
-from pymercator.explain import decision_label
+from pymercator.explain import decision_codes, decision_label
 from pymercator.market_context import load_market_context
 from pymercator.pipeline import run_daily_pipeline
 from pymercator.policy import normalize_profile
@@ -27,18 +28,101 @@ def _tickers_by_status(report: DailyReport, status: ExecutionStatus) -> list[str
     ]
 
 
-def _top_rows(report: DailyReport, limit: int = 5) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for item in report.decisions[:limit]:
-        rows.append(
-            {
-                "ticker": item.asset.ticker,
-                "decision": item.permission.status.value,
-                "score": item.ranking.context_score,
-                "guard": decision_label(item),
-            }
-        )
-    return rows
+STATUS_ONLY_CODES = {"OK", "CAUTION", "BLOCKED", "UNKNOWN"}
+GLOBAL_BLOCKER_PRIORITY = (
+    "MODEL_WEAK",
+    "RISK_OFF",
+    "BEHAVIOR_AVOID",
+    "REGIME_DENY",
+    "VOL_HIGH",
+)
+
+
+def _dedupe(values: list[str] | tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(item for item in values if item))
+
+
+def _model_quality_status(prediction: dict[str, Any]) -> str:
+    quality = prediction.get("model_quality", {})
+    if not isinstance(quality, dict):
+        return ""
+    return str(quality.get("status", "")).strip().upper()
+
+
+def _prediction_behavior(prediction: dict[str, Any]) -> str:
+    return str(prediction.get("behavior", "")).strip().upper()
+
+
+def _load_model_quality_governance(policy: str) -> dict[str, Any]:
+    default = {
+        "WEAK": {
+            "action": "BLOCK",
+            "reason_code": "MODEL_WEAK",
+            "reason": "model quality is weak",
+            "allow_watch": False,
+            "basket_status": "BLOCKED",
+        }
+    }
+    try:
+        payload = json.loads(Path(policy).read_text(encoding="utf-8-sig"))
+    except Exception:
+        return default
+    if not isinstance(payload, dict):
+        return default
+    governance = payload.get("model_quality_governance", default)
+    if not isinstance(governance, dict):
+        return default
+    merged = dict(default)
+    merged.update(governance)
+    return merged
+
+
+def _global_blockers(report: DailyReport, prediction: dict[str, Any]) -> list[str]:
+    blockers: list[str] = []
+    if _model_quality_status(prediction) == "WEAK":
+        blockers.append("MODEL_WEAK")
+    if report.market_regime.regime.value == "RISK_OFF":
+        blockers.append("RISK_OFF")
+    if _prediction_behavior(prediction) == "AVOID":
+        blockers.append("BEHAVIOR_AVOID")
+    return list(_dedupe(tuple(blockers)))
+
+
+def _ordered_blockers(codes: list[str]) -> list[str]:
+    priority = {code: index for index, code in enumerate(GLOBAL_BLOCKER_PRIORITY)}
+    unique = list(_dedupe(tuple(codes)))
+    return sorted(unique, key=lambda code: (priority.get(code, 999), code))
+
+
+def _blockers_for_decision(
+    decision: Any,
+    report: DailyReport,
+    prediction: dict[str, Any],
+) -> list[str]:
+    codes = _global_blockers(report, prediction)
+    codes.extend(
+        code
+        for code in decision_codes(decision)
+        if code not in STATUS_ONLY_CODES
+    )
+    return _ordered_blockers(codes)
+
+
+def _asset_blockers(
+    report: DailyReport,
+    prediction: dict[str, Any],
+) -> dict[str, list[str]]:
+    return {
+        decision.asset.ticker: _blockers_for_decision(decision, report, prediction)
+        for decision in report.decisions
+    }
+
+
+def _blocker_counts(blockers_by_asset: dict[str, list[str]]) -> dict[str, int]:
+    counts: Counter[str] = Counter()
+    for blockers in blockers_by_asset.values():
+        counts.update(blockers)
+    return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
 
 
 def _load_prediction_observer(path: str) -> dict[str, Any]:
@@ -95,10 +179,6 @@ def _top_rows_with_prediction(
     limit: int,
     prediction: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    rows = _top_rows(report, limit)
-    if not prediction or prediction.get("engine_used") != "multi_horizon_ridge":
-        return rows
-
     prediction_fields = {
         "d5_score": prediction.get("d5_score"),
         "d20_score": prediction.get("d20_score"),
@@ -107,8 +187,19 @@ def _top_rows_with_prediction(
         "dominant_horizon": prediction.get("dominant_horizon"),
         "behavior": prediction.get("behavior"),
     }
-    for row in rows:
-        row.update(prediction_fields)
+    rows: list[dict[str, Any]] = []
+    for item in report.decisions[:limit]:
+        blockers = _blockers_for_decision(item, report, prediction)
+        row = {
+            "ticker": item.asset.ticker,
+            "decision": item.permission.status.value,
+            "score": item.ranking.context_score,
+            "guard": "+".join(blockers) if blockers else decision_label(item),
+            "blockers": blockers,
+        }
+        if prediction and prediction.get("engine_used") == "multi_horizon_ridge":
+            row.update(prediction_fields)
+        rows.append(row)
     return rows
 
 
@@ -134,35 +225,76 @@ def _blocked_payload(
 def _apply_model_quality_guard(
     report: DailyReport,
     prediction: dict[str, Any],
+    policy: str,
 ) -> DailyReport:
-    quality = prediction.get("model_quality", {})
-    if not isinstance(quality, dict) or quality.get("status") != "WEAK":
+    if _model_quality_status(prediction) != "WEAK":
+        return report
+
+    governance = _load_model_quality_governance(policy)
+    weak_policy = governance.get("WEAK", {})
+    if not isinstance(weak_policy, dict):
+        weak_policy = {}
+    action = str(weak_policy.get("action", "BLOCK")).strip().upper()
+    reason_code = str(weak_policy.get("reason_code", "MODEL_WEAK")).strip().upper()
+    reason_text = str(weak_policy.get("reason", "model quality is weak")).strip()
+    reason = f"{reason_code}: {reason_text}"
+
+    if action != "BLOCK":
         return report
 
     decisions = []
     for decision in report.decisions:
-        if decision.permission.status != ExecutionStatus.READY:
-            decisions.append(decision)
-            continue
-
         permission = replace(
             decision.permission,
-            status=ExecutionStatus.WATCH,
-            reasons=(
+            status=ExecutionStatus.BLOCKED,
+            max_position_factor=0.0,
+            reasons=_dedupe((
                 *decision.permission.reasons,
-                "model quality is weak",
-            ),
+                reason,
+            )),
         )
         decisions.append(replace(decision, permission=permission))
 
     return replace(
         report,
         decisions=tuple(decisions),
-        posture="WATCH_ONLY",
-        reasons=(
+        posture="STAND_ASIDE",
+        reasons=_dedupe((
             *report.reasons,
-            "model quality is weak; actionable trades downgraded",
-        ),
+            f"{reason}; operations blocked",
+        )),
+    )
+
+
+def _apply_prediction_behavior_guard(
+    report: DailyReport,
+    prediction: dict[str, Any],
+) -> DailyReport:
+    if _prediction_behavior(prediction) != "AVOID":
+        return report
+
+    reason = "BEHAVIOR_AVOID: behavior is AVOID"
+    decisions = []
+    for decision in report.decisions:
+        permission = replace(
+            decision.permission,
+            status=ExecutionStatus.BLOCKED,
+            max_position_factor=0.0,
+            reasons=_dedupe((
+                *decision.permission.reasons,
+                reason,
+            )),
+        )
+        decisions.append(replace(decision, permission=permission))
+
+    return replace(
+        report,
+        decisions=tuple(decisions),
+        posture="STAND_ASIDE",
+        reasons=_dedupe((
+            *report.reasons,
+            f"{reason}; operations blocked",
+        )),
     )
 
 
@@ -186,6 +318,28 @@ def _load_operational_market_context(path: str) -> dict[str, Any]:
         raise ValueError("; ".join(errors))
 
     return context
+
+
+def _update_status_path_for_context(context_path: str) -> Path:
+    return Path(context_path).with_name("latest_update_status.json")
+
+
+def _load_update_status(context_path: str) -> dict[str, Any]:
+    source = _update_status_path_for_context(context_path)
+    if not source.exists():
+        return {}
+    try:
+        payload = json.loads(source.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        return {"status": "UNKNOWN", "error": str(exc), "source": str(source)}
+    if not isinstance(payload, dict):
+        return {
+            "status": "UNKNOWN",
+            "error": "update status must be a JSON object",
+            "source": str(source),
+        }
+    payload.setdefault("source", str(source))
+    return payload
 
 
 def run_decision_flow(
@@ -223,6 +377,7 @@ def run_decision_flow(
         "json": json_output,
         "run_dir": run_dir,
         "basket": basket_output,
+        "update_status": str(_update_status_path_for_context(context)),
     }
 
     try:
@@ -236,6 +391,7 @@ def run_decision_flow(
             detail={"error": str(exc), "context": context},
         )
 
+    update_status_payload = _load_update_status(context)
     prediction_payload = _load_prediction_observer(evaluation)
     if prediction_payload.get("status") and prediction_payload.get("status") != "OK":
         return _blocked_payload(
@@ -278,7 +434,10 @@ def run_decision_flow(
                 },
             )
 
-        report = _apply_model_quality_guard(report, prediction_payload)
+        report = _apply_model_quality_guard(report, prediction_payload, policy)
+        report = _apply_prediction_behavior_guard(report, prediction_payload)
+        asset_blockers = _asset_blockers(report, prediction_payload)
+        blockers_count = _blocker_counts(asset_blockers)
 
         rendered = render_daily_report(report, limit=limit)
         report_path = Path(report_output)
@@ -289,9 +448,23 @@ def run_decision_flow(
         run_path.mkdir(parents=True, exist_ok=True)
 
         report_path.write_text(rendered, encoding="utf-8")
-        write_daily_report_json(report, json_path, prediction=prediction_payload)
+        write_daily_report_json(
+            report,
+            json_path,
+            prediction=prediction_payload,
+            blockers_count=blockers_count,
+            asset_blockers=asset_blockers,
+            update_status=update_status_payload,
+        )
         (run_path / "report.txt").write_text(rendered, encoding="utf-8")
-        write_daily_report_json(report, run_path / "report.json", prediction=prediction_payload)
+        write_daily_report_json(
+            report,
+            run_path / "report.json",
+            prediction=prediction_payload,
+            blockers_count=blockers_count,
+            asset_blockers=asset_blockers,
+            update_status=update_status_payload,
+        )
 
         ready_tickers = _tickers_by_status(report, ExecutionStatus.READY)
         basket_payload: dict[str, Any] | None = None
@@ -344,8 +517,10 @@ def run_decision_flow(
         "market": {
             "regime": report.market_regime.regime.value,
             "context": context,
+            "update_status": update_status_payload,
         },
         "prediction": prediction_payload,
+        "blockers": blockers_count,
         "decision": {
             "actionable": ready,
             "watch": watch,
@@ -359,7 +534,13 @@ def run_decision_flow(
         ),
         "files": files,
         "basket": basket_summary,
-        "report": daily_report_to_dict(report, prediction=prediction_payload),
+        "report": daily_report_to_dict(
+            report,
+            prediction=prediction_payload,
+            blockers_count=blockers_count,
+            asset_blockers=asset_blockers,
+            update_status=update_status_payload,
+        ),
     }
 
 
@@ -377,9 +558,11 @@ def render_run_summary(payload: dict[str, Any]) -> str:
         return "\n".join(lines)
 
     market = payload["market"]
+    update_status = market.get("update_status", {})
     prediction = payload.get("prediction", {})
     model_quality = prediction.get("model_quality", {})
     decision = payload["decision"]
+    blockers = payload.get("blockers", {})
     files = payload["files"]
     lines.extend(
         [
@@ -387,6 +570,7 @@ def render_run_summary(payload: dict[str, Any]) -> str:
             "MARKET:",
             f"- regime: {market['regime']}",
             f"- context: {market['context']}",
+            f"- update_status: {update_status.get('status', '-')}",
             "",
             "PREDICTION:",
             f"- engine: {prediction.get('engine_used', '-')}",
@@ -404,6 +588,19 @@ def render_run_summary(payload: dict[str, Any]) -> str:
             f"- watch: {decision['watch']}",
             f"- blocked: {decision['blocked']}",
             f"- rejected: {decision['rejected']}",
+            "",
+            "BLOCKERS:",
+        ]
+    )
+
+    if blockers:
+        for reason, count in blockers.items():
+            lines.append(f"- {reason}: {count}")
+    else:
+        lines.append("- none: 0")
+
+    lines.extend(
+        [
             "",
             "TOP:",
         ]

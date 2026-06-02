@@ -43,6 +43,9 @@ def _prediction_global(prediction: dict[str, Any] | None) -> dict[str, Any]:
         "weights": prediction.get("weights", {}),
         "model_quality": prediction.get("model_quality", {}),
     }
+    quality = payload.get("model_quality", {})
+    if isinstance(quality, dict):
+        payload["model_edge"] = quality.get("edge")
     return {key: value for key, value in payload.items() if value is not None}
 
 
@@ -65,6 +68,9 @@ def _prediction_for_decision(prediction: dict[str, Any] | None) -> dict[str, Any
 def daily_report_to_dict(
     report: DailyReport,
     prediction: dict[str, Any] | None = None,
+    blockers_count: dict[str, int] | None = None,
+    asset_blockers: dict[str, list[str]] | None = None,
+    update_status: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     raw = _convert(asdict(report))
     global_prediction = _prediction_global(prediction)
@@ -72,10 +78,24 @@ def daily_report_to_dict(
 
     if global_prediction:
         raw["prediction"] = global_prediction
+        quality = global_prediction.get("model_quality", {})
+        if isinstance(quality, dict):
+            raw["model_quality"] = quality.get("status")
+            raw["model_edge"] = quality.get("edge")
+
+    if blockers_count is not None:
+        raw["blockers_count"] = dict(blockers_count)
+
+    if update_status:
+        raw["update_status"] = dict(update_status)
 
     for index, decision in enumerate(report.decisions):
+        ticker = decision.asset.ticker
         raw["decisions"][index]["decision_codes"] = list(decision_codes(decision))
         raw["decisions"][index]["decision_label"] = decision_label(decision)
+        raw["decisions"][index]["blocker_reasons"] = list(
+            (asset_blockers or {}).get(ticker, [])
+        )
         if decision_prediction:
             raw["decisions"][index]["prediction"] = dict(decision_prediction)
 
@@ -86,8 +106,17 @@ def render_daily_report_json(
     report: DailyReport,
     indent: int = 2,
     prediction: dict[str, Any] | None = None,
+    blockers_count: dict[str, int] | None = None,
+    asset_blockers: dict[str, list[str]] | None = None,
+    update_status: dict[str, Any] | None = None,
 ) -> str:
-    payload = daily_report_to_dict(report, prediction=prediction)
+    payload = daily_report_to_dict(
+        report,
+        prediction=prediction,
+        blockers_count=blockers_count,
+        asset_blockers=asset_blockers,
+        update_status=update_status,
+    )
     return json.dumps(payload, ensure_ascii=False, indent=indent)
 
 
@@ -95,10 +124,19 @@ def write_daily_report_json(
     report: DailyReport,
     path: str | Path,
     prediction: dict[str, Any] | None = None,
+    blockers_count: dict[str, int] | None = None,
+    asset_blockers: dict[str, list[str]] | None = None,
+    update_status: dict[str, Any] | None = None,
 ) -> None:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
-        render_daily_report_json(report, prediction=prediction),
+        render_daily_report_json(
+            report,
+            prediction=prediction,
+            blockers_count=blockers_count,
+            asset_blockers=asset_blockers,
+            update_status=update_status,
+        ),
         encoding="utf-8",
     )

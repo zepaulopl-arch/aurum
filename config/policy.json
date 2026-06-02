@@ -171,6 +171,15 @@
     "extreme_headline_caps_ready": true,
     "require_human_confirmation": true
   },
+  "model_quality_governance": {
+    "WEAK": {
+      "action": "BLOCK",
+      "reason_code": "MODEL_WEAK",
+      "reason": "model quality is weak",
+      "allow_watch": false,
+      "basket_status": "BLOCKED"
+    }
+  },
   "calibration": {
     "volatility_pct_basis": "annualized",
     "atr_pct_basis": "daily_percent",

@@ -33,6 +33,16 @@ DEFAULT_TRAIN_CALIBRATION_CV = 3
 DEFAULT_TRAIN_THRESHOLD_METRIC = "balanced_accuracy"
 
 
+class _TrainEnginesAction(argparse.Action):
+    def __init__(self, option_strings, dest, **kwargs):
+        kwargs["nargs"] = "?"
+        super().__init__(option_strings, dest, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values or "")
+        setattr(namespace, "detail_engines", True)
+
+
 def _run_sentiment_command(args: argparse.Namespace) -> int:
     from pymercator.cli_sentiment import run_sentiment_command
 
@@ -628,12 +638,22 @@ def build_parser() -> argparse.ArgumentParser:
             help="Train multi-horizon prediction ensemble. Profile-independent.",
             description="Train multi-horizon prediction ensemble. Profile-independent.",
         )
-        train_parser.set_defaults(command="train")
+        train_parser.set_defaults(command="train", detail_engines=False)
         train_parser.add_argument("--profile", default="", help=argparse.SUPPRESS)
         train_parser.add_argument(
             "--details",
             action="store_true",
-            help="Print detailed per-horizon training report.",
+            help="Print operational training detail report.",
+        )
+        train_parser.add_argument(
+            "--prob-dist",
+            action="store_true",
+            help="Include probability distribution buckets in --details.",
+        )
+        train_parser.add_argument(
+            "--full",
+            action="store_true",
+            help="Include all detail report sections.",
         )
         train_parser.add_argument(
             "--output",
@@ -679,7 +699,16 @@ def build_parser() -> argparse.ArgumentParser:
             default=None,
             help=train_min_train_rows_help,
         )
-        train_parser.add_argument("--engines", default="", help=train_engines_help)
+        train_parser.add_argument(
+            "--engines",
+            action=_TrainEnginesAction,
+            default="",
+            metavar="ENGINES",
+            help=(
+                f"{train_engines_help} With --details, a bare --engines includes "
+                "complete base engine metrics."
+            ),
+        )
         train_parser.add_argument("--meta", default="", help="Meta model. Default: ridge")
         train_parser.add_argument(
             "--observer",

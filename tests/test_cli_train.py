@@ -30,7 +30,7 @@ def _fake_lab_factory(
     status_by_horizon = status_by_horizon or {}
     accuracy_by_horizon = accuracy_by_horizon or {5: 0.61, 20: 0.64, 60: 0.67}
 
-    def rich_metrics(accuracy: float, observations: int = 1) -> dict[str, float | int]:
+    def rich_metrics(accuracy: float, observations: int = 1) -> dict[str, object]:
         return {
             "observations": observations,
             "accuracy": accuracy,
@@ -43,6 +43,34 @@ def _fake_lab_factory(
             "true_negative": 6,
             "false_positive": 3,
             "false_negative": 2,
+            "false_positive_rate": 0.3333,
+            "false_negative_rate": 0.2222,
+            "TP": 7,
+            "TN": 6,
+            "FP": 3,
+            "FN": 2,
+            "confusion_matrix": {"TP": 7, "TN": 6, "FP": 3, "FN": 2},
+            "quality_status": "OK",
+            "optimal_threshold": 0.51,
+            "calibrated_probability_stats": {
+                "mean": 0.51,
+                "std": 0.015,
+                "p05": 0.48,
+                "p50": 0.51,
+                "p95": 0.54,
+            },
+            "probability_distribution": {
+                "0.0-0.1": 0,
+                "0.1-0.2": 0,
+                "0.2-0.3": 0,
+                "0.3-0.4": 0,
+                "0.4-0.5": 3,
+                "0.5-0.6": 6,
+                "0.6-0.7": 0,
+                "0.7-0.8": 0,
+                "0.8-0.9": 0,
+                "0.9-1.0": 0,
+            },
             "fit_time_seconds": 0.12,
             "predict_time_seconds": 0.03,
         }
@@ -230,7 +258,7 @@ def test_cli_train_generates_multi_horizon_evaluation_by_default(
     assert "profile" not in evaluation_payload
 
 
-def test_cli_train_details_prints_and_writes_full_report(
+def test_cli_train_details_prints_operational_report_and_writes_plain_output(
     tmp_path: Path,
     monkeypatch,
     capsys,
@@ -265,57 +293,169 @@ def test_cli_train_details_prints_and_writes_full_report(
     )
 
     assert exit_code == 0
-    output = capsys.readouterr().out
-    assert "\x1b[" in output
-    assert "PYMERCATOR TRAIN DETAIL REPORT" in output
-    assert "GLOBAL" in output
-    assert "engine_used              multi_horizon_ridge" in strip_ansi(output)
-    assert "model_quality" in output
+    raw_output = capsys.readouterr().out
+    output = strip_ansi(raw_output)
+    assert "\x1b[" in raw_output
+    assert "PYMERCATOR TRAIN DETAIL" in output
+    assert "GLOBAL SUMMARY" in output
+    assert "engine" in output
+    assert "multi_horizon_ridge" in output
+    assert "quality" in output
     assert "edge" in output
     for horizon in ("D5", "D20", "D60"):
         assert horizon in output
-    assert "HORIZON SUMMARY" in output
-    assert "BASE ENGINE METRICS" in output
-    assert "extratrees" in output
-    assert "randomforest" in output
-    assert "gradientboosting" in output
-    assert "observations" in output
-    assert "false_positive_rate" in output
-    assert "false_negative_rate" in output
-    assert "mae_return" in output
-    assert "optimal_threshold" in output
-    assert "confusion_matrix" in output
-    assert "calibrated_probability_stats" in output
-    assert "probability_distribution" in output
-    assert "train_rows" in output
-    assert "test_rows" in output
-    assert "fit_time_seconds" in output
-    assert "predict_time_seconds" in output
-    assert "RIDGE RESPONSE" in output
-    assert "ridge_coefficients" in output
-    assert "intercept" in output
-    assert "alpha" in output
-    assert "normalized_weights" in output
-    assert "strongest_engine" in output
-    assert "weakest_engine" in output
-    assert "RIDGE / ENSEMBLE METRICS" in output
-    assert "edge_vs_baseline" in output
-    assert "quality_status" in output
-    assert "HORIZON OBSERVER" in output
+
+    assert "HORIZON SCOREBOARD" in output
+    assert "RIDGE WEIGHTS" in output
+    assert "PROBABILITY PROFILE" in output
+    assert "CONFUSION SUMMARY" in output
+    assert output.splitlines().count("OBSERVER") == 1
+    assert "VERDICT" in output
+
+    assert "HORIZON OBSERVER" not in output
+    assert "BASE ENGINE METRICS" not in output
+    assert "RIDGE RESPONSE" not in output
+    assert "ridge_coefficients" not in output
+    assert "probability_distribution" not in output
+    assert "0.5-0.6=6" not in output
+
     assert "D5 score" in output
     assert "D20 score" in output
     assert "D60 score" in output
     assert "combined_score" in output
-    assert "dominant_horizon" in output
+    assert "dominant" in output
     assert "behavior" in output
 
     text = detail_report.read_text(encoding="utf-8")
     assert "\x1b[" not in text
-    assert "PYMERCATOR TRAIN DETAIL REPORT" in text
-    assert "ridge_coefficients" in text
+    assert "PYMERCATOR TRAIN DETAIL" in text
+    assert "HORIZON SCOREBOARD" in text
+    assert "BASE ENGINE METRICS" not in text
+    assert "probability_distribution" not in text
     assert json.loads(evaluation.read_text(encoding="utf-8"))["engine_used"] == (
         "multi_horizon_ridge"
     )
+
+
+def test_cli_train_details_prob_dist_prints_probability_buckets(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+
+    matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
+    calls: list[dict] = []
+    monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--min-train-rows",
+            "2",
+            "--details",
+            "--prob-dist",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "PROBABILITY DISTRIBUTION" in output
+    assert "probability_distribution" in output
+    assert "0.5-0.6=6" in output
+    assert "BASE ENGINE METRICS" not in output
+
+
+def test_cli_train_details_engines_prints_complete_base_engine_metrics(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+
+    matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
+    calls: list[dict] = []
+    monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--min-train-rows",
+            "2",
+            "--details",
+            "--engines",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "BASE ENGINE METRICS" in output
+    assert "D5 extratrees" in output
+    assert "D5 randomforest" in output
+    assert "D5 gradientboosting" in output
+    assert "observations" in output
+    assert "false_positive_rate" in output
+    assert "fit_time_seconds" in output
+    assert "probability_distribution" not in output
+
+
+def test_cli_train_details_full_prints_all_detail_sections(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+
+    matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
+    calls: list[dict] = []
+    monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--min-train-rows",
+            "2",
+            "--details",
+            "--full",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "HORIZON SCOREBOARD" in output
+    assert "RIDGE WEIGHTS" in output
+    assert "BASE ENGINE METRICS" in output
+    assert "PROBABILITY DISTRIBUTION" in output
+    assert "RIDGE RESPONSE" in output
+    assert "ridge_coefficients" in output
+    assert "RIDGE / ENSEMBLE METRICS" in output
+    assert "probability_distribution" in output
+    assert "0.5-0.6=6" in output
+    assert "edge_vs_baseline" in output
 
 
 def test_cli_train_profile_is_ignored_with_warning(tmp_path: Path, monkeypatch, capsys):

@@ -351,4 +351,5 @@ def test_train_detail_report_shows_degenerate_warning():
     )
 
     assert "DEGENERATE WARNING" in report
-    assert "optimal_threshold" in report
+    assert "HORIZON SCOREBOARD" in report
+    assert ".7300" in report

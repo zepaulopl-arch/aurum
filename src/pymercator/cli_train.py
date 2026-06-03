@@ -1294,6 +1294,7 @@ def _metric_lines(
     test_rows: int | None = None,
     baseline_accuracy: float = 0.5,
     include_edge: bool = False,
+    include_probability_distribution: bool = True,
     quality_status: str = "",
 ) -> list[str]:
     rows = [
@@ -1326,11 +1327,6 @@ def _metric_lines(
             None,
         ),
         (
-            "probability_distribution",
-            _format_probability_distribution(metrics.get("probability_distribution", {})),
-            None,
-        ),
-        (
             "quality_status",
             colorize(metrics.get("quality_status", "-"), metrics.get("quality_status", "-")),
             None,
@@ -1338,6 +1334,15 @@ def _metric_lines(
         ("train_rows", metrics.get("train_rows", train_rows), None),
         ("test_rows", metrics.get("test_rows", test_rows), None),
     ]
+    if include_probability_distribution:
+        rows.insert(
+            13,
+            (
+                "probability_distribution",
+                _format_probability_distribution(metrics.get("probability_distribution", {})),
+                None,
+            ),
+        )
     if "fit_time_seconds" in metrics:
         rows.append(("fit_time_seconds", metrics.get("fit_time_seconds"), None))
     if "predict_time_seconds" in metrics:
@@ -1380,13 +1385,58 @@ def _normalized_weights(weights: dict[str, float]) -> dict[str, float]:
     }
 
 
-def _format_weights(weights: dict[str, Any]) -> str:
+def _as_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_optional_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _format_compact_decimal(
+    value: Any,
+    precision: int,
+    *,
+    sign: bool = False,
+) -> str:
+    number = _as_optional_float(value)
+    if number is None:
+        return "-"
+    text = f"{number:+.{precision}f}" if sign else f"{number:.{precision}f}"
+    if text.startswith("0."):
+        return text[1:]
+    if text.startswith("-0."):
+        return "-." + text[3:]
+    if text.startswith("+0."):
+        return "+." + text[3:]
+    return text
+
+
+def _format_score(value: Any) -> str:
+    number = _as_optional_float(value)
+    return "-" if number is None else f"{number:.2f}"
+
+
+def _format_weights(weights: dict[str, Any], *, precision: int = 6) -> str:
     if not weights:
         return "-"
     parts = []
     for key, value in weights.items():
         if isinstance(value, int | float):
-            parts.append(f"{key}={float(value):.6f}")
+            parts.append(f"{key}={_format_compact_decimal(value, precision)}")
         else:
             parts.append(f"{key}={value}")
     return " ".join(parts)
@@ -1471,7 +1521,637 @@ def _horizon_sort_key(key: str) -> int:
         return 999
 
 
-def render_train_detail_report(payload: dict[str, Any]) -> str:
+def _detail_report_kv(
+    label: str,
+    value: Any,
+    *,
+    status: Any = None,
+    width: int = 17,
+) -> str:
+    text = "-" if value in {None, ""} else str(value)
+    if status is not None:
+        text = colorize(text, status)
+    return f"{label:<{width}} {text}"
+
+
+def _table_cell(
+    value: Any,
+    width: int,
+    *,
+    align: str = "<",
+    status: Any = None,
+) -> str:
+    text = "-" if value in {None, ""} else str(value)
+    padded = f"{text:>{width}}" if align == ">" else f"{text:<{width}}"
+    return colorize(padded, status) if status is not None else padded
+
+
+def _table_lines(
+    title: str,
+    columns: list[tuple[str, int, str]],
+    rows: list[list[tuple[Any, Any | None] | Any]],
+) -> list[str]:
+    lines = [
+        title,
+        muted_line(),
+        " ".join(
+            _table_cell(label, width, align=align)
+            for label, width, align in columns
+        ),
+    ]
+    for row in rows:
+        cells = []
+        for column, value in zip(columns, row, strict=False):
+            _label, width, align = column
+            status = None
+            cell_value = value
+            if isinstance(value, tuple) and len(value) == 2:
+                cell_value, status = value
+            cells.append(_table_cell(cell_value, width, align=align, status=status))
+        lines.append(" ".join(cells))
+    return lines
+
+
+def _horizon_items(horizon_models: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    items: list[tuple[str, dict[str, Any]]] = []
+    for horizon in sorted(horizon_models, key=_horizon_sort_key):
+        model = horizon_models.get(horizon, {})
+        if isinstance(model, dict):
+            items.append((str(horizon), model))
+    return items
+
+
+def _detail_horizons(payload: dict[str, Any], horizon_models: dict[str, Any]) -> list[str]:
+    raw_horizons = payload.get("horizons", [])
+    if isinstance(raw_horizons, list) and raw_horizons:
+        return [horizon_key(item) for item in raw_horizons]
+    return [horizon for horizon, _model in _horizon_items(horizon_models)]
+
+
+def _detail_assets(
+    payload: dict[str, Any],
+    asset_count_by_horizon: dict[str, Any],
+) -> Any:
+    if payload.get("assets") not in {None, ""}:
+        return payload.get("assets")
+    values = [_as_int(value) for value in asset_count_by_horizon.values()]
+    return max(values) if values else "-"
+
+
+def _model_ensemble_metrics(model: dict[str, Any]) -> dict[str, Any]:
+    metrics = model.get("ensemble_metrics", {})
+    return metrics if isinstance(metrics, dict) else {}
+
+
+def _model_base_metrics(model: dict[str, Any]) -> dict[str, Any]:
+    metrics = model.get("base_metrics", {})
+    return metrics if isinstance(metrics, dict) else {}
+
+
+def _model_threshold(model: dict[str, Any], metrics: dict[str, Any]) -> Any:
+    if model.get("optimal_threshold") not in {None, ""}:
+        return model.get("optimal_threshold")
+    if metrics.get("optimal_threshold") not in {None, ""}:
+        return metrics.get("optimal_threshold")
+    thresholds = model.get("probability_thresholds", {})
+    if isinstance(thresholds, dict):
+        for key in ("ridge_ensemble", "ensemble", "threshold"):
+            if thresholds.get(key) not in {None, ""}:
+                return thresholds.get(key)
+    return "-"
+
+
+def _metric_edge(metrics: dict[str, Any], baseline_accuracy: float) -> float | None:
+    accuracy = _as_optional_float(_metric_field(metrics, "accuracy"))
+    if accuracy is None:
+        return None
+    return round(accuracy - baseline_accuracy, 6)
+
+
+def _edge_read(edge: float | None) -> str:
+    if edge is None:
+        return "-"
+    if edge > 0.02:
+        return "GOOD"
+    if edge > 0:
+        return "THIN EDGE"
+    if edge >= -0.005:
+        return "NO EDGE"
+    return "BAD"
+
+
+def _edge_read_status(read: str) -> str:
+    if read == "GOOD":
+        return "OK"
+    if read in {"THIN EDGE", "NO EDGE"}:
+        return "WATCH"
+    if read == "BAD":
+        return "FAIL"
+    return "-"
+
+
+def _horizon_quality(metrics: dict[str, Any], edge: float | None) -> str:
+    metric_quality = str(metrics.get("quality_status", "") or "").strip().upper()
+    if metric_quality == "DEGENERATE":
+        return "DEGENERATE"
+    accuracy = _as_float(_metric_field(metrics, "accuracy"))
+    model_edge = _as_float(edge)
+    if accuracy >= 0.58 and model_edge >= 0.08:
+        return "STRONG"
+    if accuracy >= 0.52 and model_edge >= 0.02:
+        return "OK"
+    return "WEAK"
+
+
+def _scoreboard_data(
+    *,
+    horizon_models: dict[str, Any],
+    asset_count_by_horizon: dict[str, Any],
+    baseline_accuracy: float,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for horizon, model in _horizon_items(horizon_models):
+        metrics = _model_ensemble_metrics(model)
+        edge = _metric_edge(metrics, baseline_accuracy)
+        read = _edge_read(edge)
+        quality = _horizon_quality(metrics, edge)
+        rows.append(
+            {
+                "horizon": horizon,
+                "rows": _as_int(model.get("rows")),
+                "assets": asset_count_by_horizon.get(horizon, "-"),
+                "threshold": _model_threshold(model, metrics),
+                "accuracy": _metric_field(metrics, "accuracy"),
+                "edge": edge,
+                "predicted_up_rate": _metric_field(metrics, "predicted_up_rate"),
+                "target_up_rate": _metric_field(metrics, "target_up_rate"),
+                "quality": quality,
+                "read": read,
+            }
+        )
+    return rows
+
+
+def _scoreboard_lines(rows: list[dict[str, Any]]) -> list[str]:
+    table_rows: list[list[tuple[Any, Any | None] | Any]] = []
+    for row in rows:
+        read = str(row["read"])
+        table_rows.append(
+            [
+                row["horizon"],
+                row["rows"],
+                row["assets"],
+                _format_compact_decimal(row["threshold"], 4),
+                _format_compact_decimal(row["accuracy"], 4),
+                _format_compact_decimal(row["edge"], 4, sign=True),
+                _format_compact_decimal(row["predicted_up_rate"], 4),
+                _format_compact_decimal(row["target_up_rate"], 4),
+                (row["quality"], row["quality"]),
+                (read, _edge_read_status(read)),
+            ]
+        )
+    return _table_lines(
+        "HORIZON SCOREBOARD",
+        [
+            ("HZ", 4, "<"),
+            ("ROWS", 7, ">"),
+            ("ASSETS", 6, ">"),
+            ("THRESH", 7, ">"),
+            ("ACC", 7, ">"),
+            ("EDGE", 8, ">"),
+            ("P_UP", 7, ">"),
+            ("TARGET", 7, ">"),
+            ("QUALITY", 8, "<"),
+            ("READ", 10, "<"),
+        ],
+        table_rows,
+    )
+
+
+def _engine_abbrev(engine: str) -> str:
+    aliases = {
+        "extratrees": "ET",
+        "randomforest": "RF",
+        "gradientboosting": "GB",
+    }
+    return aliases.get(engine.lower(), engine.upper())
+
+
+def _ridge_weight_payload(model: dict[str, Any]) -> tuple[dict[str, float], dict[str, float]]:
+    coefficients = model.get("ridge_coefficients", {})
+    if not isinstance(coefficients, dict):
+        coefficients = {}
+    raw = _coefficient_weights(coefficients)
+    normalized = coefficients.get("normalized_weights")
+    if isinstance(normalized, dict):
+        display: dict[str, float] = {}
+        for engine, value in normalized.items():
+            parsed = _as_optional_float(value)
+            if parsed is not None:
+                display[str(engine)] = parsed
+    else:
+        display = _normalized_weights(raw)
+    return raw, display
+
+
+def _ridge_read(strongest: str, display_weights: dict[str, float]) -> str:
+    if not strongest or strongest == "-":
+        return "-"
+    if display_weights:
+        ignored = min(display_weights, key=lambda key: display_weights[key])
+        if display_weights.get(ignored, 0.0) <= 0.05:
+            return f"{_engine_abbrev(ignored)} IGNORED"
+    return f"{_engine_abbrev(strongest)} LEADS"
+
+
+def _ridge_weight_lines(
+    *,
+    horizon_models: dict[str, Any],
+    base_engines: list[str],
+) -> list[str]:
+    engines = list(base_engines)
+    if not engines:
+        seen: list[str] = []
+        for _horizon, model in _horizon_items(horizon_models):
+            _raw, display = _ridge_weight_payload(model)
+            for engine in display:
+                if engine not in seen:
+                    seen.append(engine)
+        engines = seen
+
+    columns: list[tuple[str, int, str]] = [("HZ", 4, "<")]
+    columns.extend((engine.upper(), max(8, len(engine.upper())), ">") for engine in engines)
+    columns.extend([("STRONGEST", 16, "<"), ("READ", 12, "<")])
+
+    rows: list[list[tuple[Any, Any | None] | Any]] = []
+    for horizon, model in _horizon_items(horizon_models):
+        raw, display = _ridge_weight_payload(model)
+        strongest_source = raw or display
+        strongest = (
+            max(strongest_source, key=lambda key: abs(strongest_source[key]))
+            if strongest_source
+            else "-"
+        )
+        read = _ridge_read(strongest, display)
+        row: list[tuple[Any, Any | None] | Any] = [horizon]
+        row.extend(_format_compact_decimal(display.get(engine), 3) for engine in engines)
+        row.extend([strongest, read])
+        rows.append(row)
+
+    return _table_lines("RIDGE WEIGHTS", columns, rows)
+
+
+def _probability_stats(metrics: dict[str, Any]) -> dict[str, Any]:
+    stats = metrics.get("calibrated_probability_stats", {})
+    return stats if isinstance(stats, dict) else {}
+
+
+def _probability_read(
+    *,
+    stats: dict[str, Any],
+    predicted_up_rate: Any,
+    target_up_rate: Any,
+) -> str:
+    p_up = _as_optional_float(predicted_up_rate)
+    target = _as_optional_float(target_up_rate)
+    if p_up is not None and target is not None:
+        if p_up > target + 0.07:
+            return "BIASED_UP"
+        if p_up < target - 0.07:
+            return "BIASED_DOWN"
+
+    std = _as_optional_float(stats.get("std"))
+    p05 = _as_optional_float(stats.get("p05"))
+    p95 = _as_optional_float(stats.get("p95"))
+    if std is not None and p05 is not None and p95 is not None:
+        if std < 0.02 and (p95 - p05) < 0.08:
+            return "COMPRESSED"
+        return "BALANCED"
+
+    return "-"
+
+
+def _probability_profile_data(horizon_models: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for horizon, model in _horizon_items(horizon_models):
+        metrics = _model_ensemble_metrics(model)
+        stats = _probability_stats(metrics)
+        p_up = _metric_field(metrics, "predicted_up_rate")
+        target = _metric_field(metrics, "target_up_rate")
+        rows.append(
+            {
+                "horizon": horizon,
+                "mean": stats.get("mean"),
+                "std": stats.get("std"),
+                "p05": stats.get("p05"),
+                "p50": stats.get("p50"),
+                "p95": stats.get("p95"),
+                "predicted_up_rate": p_up,
+                "target_up_rate": target,
+                "read": _probability_read(
+                    stats=stats,
+                    predicted_up_rate=p_up,
+                    target_up_rate=target,
+                ),
+            }
+        )
+    return rows
+
+
+def _probability_profile_lines(rows: list[dict[str, Any]]) -> list[str]:
+    table_rows: list[list[tuple[Any, Any | None] | Any]] = []
+    for row in rows:
+        read = str(row["read"])
+        table_rows.append(
+            [
+                row["horizon"],
+                _format_compact_decimal(row["mean"], 3),
+                _format_compact_decimal(row["std"], 3),
+                _format_compact_decimal(row["p05"], 3),
+                _format_compact_decimal(row["p50"], 3),
+                _format_compact_decimal(row["p95"], 3),
+                _format_compact_decimal(row["predicted_up_rate"], 3),
+                (read, read),
+            ]
+        )
+    return _table_lines(
+        "PROBABILITY PROFILE",
+        [
+            ("HZ", 4, "<"),
+            ("MEAN", 6, ">"),
+            ("STD", 6, ">"),
+            ("P05", 6, ">"),
+            ("P50", 6, ">"),
+            ("P95", 6, ">"),
+            ("P_UP", 6, ">"),
+            ("READ", 12, "<"),
+        ],
+        table_rows,
+    )
+
+
+def _confusion_counts(metrics: dict[str, Any]) -> dict[str, int]:
+    matrix = metrics.get("confusion_matrix", {})
+    if not isinstance(matrix, dict):
+        matrix = {}
+    return {
+        "TP": _as_int(matrix.get("TP", metrics.get("TP", metrics.get("true_positive", 0)))),
+        "TN": _as_int(matrix.get("TN", metrics.get("TN", metrics.get("true_negative", 0)))),
+        "FP": _as_int(matrix.get("FP", metrics.get("FP", metrics.get("false_positive", 0)))),
+        "FN": _as_int(matrix.get("FN", metrics.get("FN", metrics.get("false_negative", 0)))),
+    }
+
+
+def _confusion_read(*, edge: float | None, fpr: float | None, fnr: float | None) -> str:
+    if fpr is not None and fpr > 0.60:
+        return "TOO_MANY_FP"
+    if fnr is not None and fnr > 0.60:
+        return "TOO_MANY_FN"
+    return "OK" if edge is not None and edge > 0 else "WEAK"
+
+
+def _confusion_summary_data(
+    *,
+    horizon_models: dict[str, Any],
+    baseline_accuracy: float,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for horizon, model in _horizon_items(horizon_models):
+        metrics = _model_ensemble_metrics(model)
+        counts = _confusion_counts(metrics)
+        fpr = _as_optional_float(_metric_field(metrics, "false_positive_rate"))
+        fnr = _as_optional_float(_metric_field(metrics, "false_negative_rate"))
+        edge = _metric_edge(metrics, baseline_accuracy)
+        rows.append(
+            {
+                "horizon": horizon,
+                **counts,
+                "fpr": fpr,
+                "fnr": fnr,
+                "read": _confusion_read(edge=edge, fpr=fpr, fnr=fnr),
+            }
+        )
+    return rows
+
+
+def _confusion_summary_lines(rows: list[dict[str, Any]]) -> list[str]:
+    table_rows: list[list[tuple[Any, Any | None] | Any]] = []
+    for row in rows:
+        read = str(row["read"])
+        table_rows.append(
+            [
+                row["horizon"],
+                row["TP"],
+                row["TN"],
+                row["FP"],
+                row["FN"],
+                _format_compact_decimal(row["fpr"], 4),
+                _format_compact_decimal(row["fnr"], 4),
+                (read, read),
+            ]
+        )
+    return _table_lines(
+        "CONFUSION SUMMARY",
+        [
+            ("HZ", 4, "<"),
+            ("TP", 7, ">"),
+            ("TN", 7, ">"),
+            ("FP", 7, ">"),
+            ("FN", 7, ">"),
+            ("FPR", 7, ">"),
+            ("FNR", 7, ">"),
+            ("READ", 12, "<"),
+        ],
+        table_rows,
+    )
+
+
+def _observer_detail_lines(observer: dict[str, Any]) -> list[str]:
+    scores = observer.get("scores", {})
+    weights = observer.get("weights", {})
+    if not isinstance(scores, dict):
+        scores = {}
+    if not isinstance(weights, dict):
+        weights = {}
+
+    lines = ["OBSERVER", muted_line()]
+    for horizon in sorted(scores, key=_horizon_sort_key):
+        lines.append(_detail_report_kv(f"{horizon} score", _format_score(scores.get(horizon))))
+    lines.extend(
+        [
+            _detail_report_kv("weights", _format_weights(weights, precision=3)),
+            _detail_report_kv(
+                "combined_score",
+                _format_compact_decimal(observer.get("combined_score"), 4),
+            ),
+            _detail_report_kv("dominant", observer.get("dominant_horizon", "-")),
+            _detail_report_kv(
+                "behavior",
+                observer.get("behavior", "-"),
+                status=observer.get("behavior", "-"),
+            ),
+        ]
+    )
+    return lines
+
+
+def _probability_distribution_lines(horizon_models: dict[str, Any]) -> list[str]:
+    lines = ["PROBABILITY DISTRIBUTION", muted_line()]
+    for horizon, model in _horizon_items(horizon_models):
+        metrics = _model_ensemble_metrics(model)
+        lines.append(
+            _detail_report_kv(
+                f"{horizon} probability_distribution",
+                _format_probability_distribution(metrics.get("probability_distribution", {})),
+                width=29,
+            )
+        )
+    return lines
+
+
+def _base_engine_metric_lines(
+    *,
+    horizon_models: dict[str, Any],
+    base_engines: list[str],
+    baseline_accuracy: float,
+    include_probability_distribution: bool,
+) -> list[str]:
+    lines = ["BASE ENGINE METRICS", muted_line()]
+    for horizon, model in _horizon_items(horizon_models):
+        rows = _as_int(model.get("rows"))
+        test_rows = _as_int(model.get("evaluated_rows"))
+        train_rows = max(0, rows - test_rows)
+        metrics_by_engine = _model_base_metrics(model)
+        engines = base_engines or sorted(metrics_by_engine)
+        for engine in engines:
+            metrics = metrics_by_engine.get(engine, {})
+            if not isinstance(metrics, dict):
+                metrics = {}
+            lines.append(f"{horizon} {engine}")
+            lines.extend(
+                _metric_lines(
+                    metrics,
+                    train_rows=train_rows,
+                    test_rows=test_rows,
+                    baseline_accuracy=baseline_accuracy,
+                    include_probability_distribution=include_probability_distribution,
+                )
+            )
+            lines.append("")
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines
+
+
+def _ensemble_metric_lines(
+    *,
+    horizon_models: dict[str, Any],
+    baseline_accuracy: float,
+    model_quality_status: str,
+    include_probability_distribution: bool,
+) -> list[str]:
+    lines = ["RIDGE / ENSEMBLE METRICS", muted_line()]
+    for horizon, model in _horizon_items(horizon_models):
+        rows = _as_int(model.get("rows"))
+        test_rows = _as_int(model.get("evaluated_rows"))
+        train_rows = max(0, rows - test_rows)
+        metrics = _model_ensemble_metrics(model)
+        lines.append(horizon)
+        lines.extend(
+            _metric_lines(
+                metrics,
+                train_rows=train_rows,
+                test_rows=test_rows,
+                baseline_accuracy=baseline_accuracy,
+                include_edge=True,
+                include_probability_distribution=include_probability_distribution,
+                quality_status=model_quality_status,
+            )
+        )
+        lines.append("")
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines
+
+
+def _ridge_response_detail_lines(horizon_models: dict[str, Any]) -> list[str]:
+    lines = ["RIDGE RESPONSE", muted_line()]
+    for horizon, model in _horizon_items(horizon_models):
+        lines.append(horizon)
+        lines.extend(_ridge_response_lines(model))
+        lines.append("")
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines
+
+
+def _verdict_lines(
+    *,
+    status: str,
+    quality: str,
+    behavior: str,
+    scoreboard_rows: list[dict[str, Any]],
+    probability_rows: list[dict[str, Any]],
+    confusion_rows: list[dict[str, Any]],
+) -> list[str]:
+    lines = ["VERDICT", muted_line()]
+    if status in {"OK", "DEGRADED"}:
+        lines.append(f"Model executed correctly, but quality is {quality}.")
+    else:
+        lines.append(f"Model status is {status}; quality is {quality}.")
+
+    prob_reads = {str(row.get("read", "-")) for row in probability_rows}
+    if "COMPRESSED" in prob_reads:
+        lines.append("Probabilities are calibrated but compressed near 0.50.")
+    elif {"BIASED_UP", "BIASED_DOWN"} & prob_reads:
+        lines.append("Probability profile shows directional bias.")
+    elif "BALANCED" in prob_reads:
+        lines.append("Probability profile is balanced across horizons.")
+    else:
+        lines.append("Probability profile is unavailable for one or more horizons.")
+
+    positive_edges = [
+        row
+        for row in scoreboard_rows
+        if _as_float(row.get("edge")) > 0
+    ]
+    high_fp_horizons = {
+        str(row.get("horizon"))
+        for row in confusion_rows
+        if str(row.get("read")) == "TOO_MANY_FP"
+    }
+    if positive_edges:
+        best = max(positive_edges, key=lambda row: _as_float(row.get("edge")))
+        horizon = str(best.get("horizon", "-"))
+        edge_read = str(best.get("read", "-"))
+        edge_descriptor = {
+            "GOOD": "good",
+            "THIN EDGE": "thin",
+        }.get(edge_read, edge_read.lower())
+        if horizon in high_fp_horizons:
+            lines.append(
+                f"{horizon} has {edge_descriptor} positive edge, "
+                "but false positives remain high."
+            )
+        else:
+            lines.append(f"{horizon} has {edge_descriptor} positive edge.")
+    else:
+        lines.append("No horizon shows enough positive edge for actionable use.")
+
+    if quality in {"WEAK", "DEGENERATE"} or behavior == "AVOID":
+        lines.append("Do not allow actionable trades unless regime and model quality improve.")
+    else:
+        lines.append("Allow action only with policy gates and regime confirmation.")
+    return lines
+
+
+def render_train_detail_report(
+    payload: dict[str, Any],
+    *,
+    include_engines: bool = False,
+    include_prob_dist: bool = False,
+    full: bool = False,
+) -> str:
     quality = payload.get("model_quality", {})
     if not isinstance(quality, dict):
         quality = {}
@@ -1489,117 +2169,103 @@ def render_train_detail_report(payload: dict[str, Any]) -> str:
         for engine in payload.get("base_engines", [])
         if str(engine).strip()
     ]
-    horizons = [horizon_key(item) for item in payload.get("horizons", [])]
-    model_quality_status = quality.get("status", "-")
-    baseline_accuracy = float(quality.get("baseline_accuracy", 0.5) or 0.5)
+    horizons = _detail_horizons(payload, horizon_models)
+    model_quality_status = str(quality.get("status", "-") or "-").upper()
+    baseline_accuracy = _as_float(quality.get("baseline_accuracy", 0.5), 0.5)
+    status = str(payload.get("status", "-") or "-").upper()
+    behavior = str(observer.get("behavior", "-") or "-").upper()
+
+    scoreboard_rows = _scoreboard_data(
+        horizon_models=horizon_models,
+        asset_count_by_horizon=asset_count_by_horizon,
+        baseline_accuracy=baseline_accuracy,
+    )
+    probability_rows = _probability_profile_data(horizon_models)
+    confusion_rows = _confusion_summary_data(
+        horizon_models=horizon_models,
+        baseline_accuracy=baseline_accuracy,
+    )
 
     lines = [
-        "PYMERCATOR TRAIN DETAIL REPORT",
+        "PYMERCATOR TRAIN DETAIL",
         muted_line(),
         "",
-        "GLOBAL",
+        "GLOBAL SUMMARY",
         muted_line(),
-        _detail_kv("engine_used", payload.get("engine_used", "-")),
-        _detail_kv("status", colorize(payload.get("status", "-"), payload.get("status", "-"))),
-        _detail_kv("operational", str(bool(payload.get("operational", False))).lower()),
-        _detail_kv("horizons", ",".join(horizons) or "-"),
-        _detail_kv("base_engines", ",".join(base_engines) or "-"),
-        _detail_kv("meta_model", payload.get("meta_model", "-")),
-        _detail_kv("observer", observer.get("mode", payload.get("observer_mode", "-"))),
-        _detail_kv("assets", payload.get("assets", "-")),
-        _detail_kv("model_quality", colorize(model_quality_status, model_quality_status)),
-        _detail_kv("edge", quality.get("edge", "-"), "edge"),
+        _detail_report_kv("engine", payload.get("engine_used", "-")),
+        _detail_report_kv("status", status, status=status),
+        _detail_report_kv("quality", model_quality_status, status=model_quality_status),
+        _detail_report_kv(
+            "edge",
+            _format_compact_decimal(quality.get("edge", "-"), 4, sign=True),
+        ),
+        _detail_report_kv("behavior", behavior, status=behavior),
+        _detail_report_kv("assets", _detail_assets(payload, asset_count_by_horizon)),
+        _detail_report_kv("horizons", ",".join(horizons) or "-"),
+        _detail_report_kv("models", ",".join(base_engines) or "-"),
+        _detail_report_kv("combiner", payload.get("meta_model", "-")),
+        _detail_report_kv("observer", observer.get("mode", payload.get("observer_mode", "-"))),
     ]
     if model_quality_status == "DEGENERATE":
         lines.extend(
             [
-                _detail_kv(
+                _detail_report_kv(
                     "DEGENERATE WARNING",
                     colorize("base probability outputs are degenerate", "DEGENERATE"),
+                    width=20,
                 ),
-                _detail_kv(
+                _detail_report_kv(
                     "degenerate_models",
                     len(quality.get("degenerate_warnings", []) or []),
+                    width=20,
                 ),
             ]
         )
 
-    for horizon in sorted(horizon_models, key=_horizon_sort_key):
-        model = horizon_models[horizon]
-        if not isinstance(model, dict):
-            continue
-        ensemble_metrics = model.get("ensemble_metrics", {})
-        if not isinstance(ensemble_metrics, dict):
-            ensemble_metrics = {}
-        rows = int(model.get("rows", 0) or 0)
-        test_rows = int(model.get("evaluated_rows", 0) or 0)
-        train_rows = max(0, rows - test_rows)
-        assets = asset_count_by_horizon.get(horizon, "-")
+    sections = [
+        _scoreboard_lines(scoreboard_rows),
+        _ridge_weight_lines(horizon_models=horizon_models, base_engines=base_engines),
+        _probability_profile_lines(probability_rows),
+        _confusion_summary_lines(confusion_rows),
+    ]
 
-        lines.extend(
-            [
-                "",
-                horizon,
-                muted_line(),
-                "",
-                "HORIZON SUMMARY",
-                muted_line(),
-                _detail_kv("status", colorize(model.get("status", "-"), model.get("status", "-"))),
-                _detail_kv("engine_used", model.get("engine_used", "-")),
-                _detail_kv("rows", rows),
-                _detail_kv("assets", assets),
-                _detail_kv("optimal_threshold", model.get("optimal_threshold", "-")),
-                _detail_kv("target_up_rate", ensemble_metrics.get("target_up_rate")),
-                _detail_kv("predicted_up_rate", ensemble_metrics.get("predicted_up_rate")),
-                "",
-                "BASE ENGINE METRICS",
-                muted_line(),
-            ]
-        )
-
-        base_metrics = model.get("base_metrics", {})
-        if not isinstance(base_metrics, dict):
-            base_metrics = {}
-        for engine in base_engines or sorted(base_metrics):
-            metrics = base_metrics.get(engine, {})
-            if not isinstance(metrics, dict):
-                metrics = {}
-            lines.append(engine)
-            lines.extend(
-                _metric_lines(
-                    metrics,
-                    train_rows=train_rows,
-                    test_rows=test_rows,
-                    baseline_accuracy=baseline_accuracy,
-                )
+    if include_engines or full:
+        sections.append(
+            _base_engine_metric_lines(
+                horizon_models=horizon_models,
+                base_engines=base_engines,
+                baseline_accuracy=baseline_accuracy,
+                include_probability_distribution=include_prob_dist or full,
             )
-            lines.append("")
-        if lines and lines[-1] == "":
-            lines.pop()
-
-        lines.extend(
-            [
-                "",
-                "RIDGE RESPONSE",
-                muted_line(),
-                *_ridge_response_lines(model),
-                "",
-                "RIDGE / ENSEMBLE METRICS",
-                muted_line(),
-                *_metric_lines(
-                    ensemble_metrics,
-                    train_rows=train_rows,
-                    test_rows=test_rows,
-                    baseline_accuracy=baseline_accuracy,
-                    include_edge=True,
-                    quality_status=model_quality_status,
-                ),
-                "",
-                "HORIZON OBSERVER",
-                muted_line(),
-                *_observer_lines(observer),
-            ]
         )
+    if include_prob_dist or full:
+        sections.append(_probability_distribution_lines(horizon_models))
+    if full:
+        sections.append(_ridge_response_detail_lines(horizon_models))
+        sections.append(
+            _ensemble_metric_lines(
+                horizon_models=horizon_models,
+                baseline_accuracy=baseline_accuracy,
+                model_quality_status=model_quality_status,
+                include_probability_distribution=True,
+            )
+        )
+
+    sections.extend(
+        [
+            _observer_detail_lines(observer),
+            _verdict_lines(
+                status=status,
+                quality=model_quality_status,
+                behavior=behavior,
+                scoreboard_rows=scoreboard_rows,
+                probability_rows=probability_rows,
+                confusion_rows=confusion_rows,
+            ),
+        ]
+    )
+    for section in sections:
+        lines.extend(["", *section])
 
     return "\n".join(lines)
 
@@ -1803,7 +2469,13 @@ def run_train_command(args: Any) -> int:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     elif getattr(args, "details", False):
         detail_payload = _load_train_detail_payload(args.evaluation_output, payload)
-        report = render_train_detail_report(detail_payload)
+        include_full = bool(getattr(args, "full", False))
+        report = render_train_detail_report(
+            detail_payload,
+            include_engines=bool(getattr(args, "detail_engines", False)) or include_full,
+            include_prob_dist=bool(getattr(args, "prob_dist", False)) or include_full,
+            full=include_full,
+        )
         print(report)
         output = str(getattr(args, "output", "") or "").strip()
         if output:

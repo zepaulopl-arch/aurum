@@ -1,7 +1,7 @@
-param([string]$Python = "")
+﻿param([string]$Python = "")
 
 $ErrorActionPreference = "Stop"
-. (Join-Path $PSScriptRoot "ops_common.ps1")
+. (Join-Path $PSScriptRoot "..\ops_common.ps1")
 
 $Python = Initialize-PyMercatorScript -RequestedPython $Python
 $logDir = New-PyMercatorLogDir -Prefix "daily_operation"
@@ -43,3 +43,4 @@ Write-Host "============================================================"
 Write-Host "DAILY OPERATION FINISHED"
 Write-Host "LOGS: $logDir"
 Write-Host "============================================================"
+

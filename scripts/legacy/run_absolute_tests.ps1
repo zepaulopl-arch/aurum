@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Python = "",
     [switch]$SkipUpdate,
     [switch]$SkipTrain
@@ -360,3 +360,4 @@ if ($failures.Count -gt 0) {
 Write-Host ""
 Write-Host "ALL ABSOLUTE TESTS PASSED" -ForegroundColor Green
 Write-Host "Logs saved at: $logDir"
+

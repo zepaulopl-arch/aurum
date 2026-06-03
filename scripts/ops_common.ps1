@@ -74,6 +74,25 @@ function New-PyMercatorLogDir {
     return $logDir
 }
 
+function Show-PyMercatorLogTail {
+    param(
+        [string]$LogFile,
+        [int]$Lines = 100
+    )
+
+    if (-not (Test-Path -LiteralPath $LogFile)) {
+        return
+    }
+
+    Write-Host ""
+    Write-Host "LAST $Lines LOG LINES: $LogFile" -ForegroundColor Yellow
+    Write-Host "------------------------------------------------------------"
+    Get-Content -LiteralPath $LogFile -Tail $Lines | ForEach-Object {
+        Write-Host $_
+    }
+    Write-Host "------------------------------------------------------------"
+}
+
 function Invoke-NativeStep {
     param(
         [string]$Name,
@@ -111,6 +130,7 @@ function Invoke-NativeStep {
     if ($code -ne 0) {
         Write-Host "FAILED: $Name" -ForegroundColor Red
         if ($Critical) {
+            Show-PyMercatorLogTail -LogFile $LogFile -Lines 100
             throw "FAILED: $Name"
         }
     }
@@ -127,7 +147,7 @@ function Invoke-PyMercatorStep {
 
     Invoke-NativeStep `
         -Name $Name `
-        -Command (@($Python, "-m", "pymercator") + $PyArgs) `
+        -Command (@($Python, "-m", "pymercator", "--no-color") + $PyArgs) `
         -LogFile $LogFile `
         -Critical $Critical
 }
@@ -164,6 +184,7 @@ function Invoke-PythonCode {
     if ($code -ne 0) {
         Write-Host "FAILED: $Name" -ForegroundColor Red
         if ($Critical) {
+            Show-PyMercatorLogTail -LogFile $LogFile -Lines 100
             throw "FAILED: $Name"
         }
     }

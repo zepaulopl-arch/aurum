@@ -2,13 +2,18 @@
 from __future__ import annotations
 
 import itertools
+import math
 import random
 from typing import Any
 
 try:
+    from sklearn.calibration import CalibratedClassifierCV
     from sklearn.ensemble import (
+        ExtraTreesClassifier,
         ExtraTreesRegressor,
+        GradientBoostingClassifier,
         GradientBoostingRegressor,
+        RandomForestClassifier,
         RandomForestRegressor,
     )
     from sklearn.metrics import mean_absolute_error
@@ -16,8 +21,12 @@ try:
 
     SKLEARN_AVAILABLE = True
 except Exception:
+    CalibratedClassifierCV = None
+    ExtraTreesClassifier = None
     ExtraTreesRegressor = None
+    GradientBoostingClassifier = None
     GradientBoostingRegressor = None
+    RandomForestClassifier = None
     RandomForestRegressor = None
     TimeSeriesSplit = None
     mean_absolute_error = None
@@ -54,6 +63,14 @@ LEGACY_ENGINE_ALIASES: dict[str, str] = {}
 LEGACY_RETURN_CLIP_LOWER: float = -20.0
 LEGACY_RETURN_CLIP_UPPER: float = 20.0
 LEGACY_CONSENSUS_DEVIATION_THRESHOLD: float = 0.5
+DEGENERATE_UP_RATE_LOW: float = 0.20
+DEGENERATE_UP_RATE_HIGH: float = 0.80
+DEFAULT_PROBABILITY_CALIBRATION: dict[str, Any] = {
+    "enabled": True,
+    "method": "sigmoid",
+    "cv": 3,
+    "threshold_metric": "balanced_accuracy",
+}
 
 FEATURE_COLUMNS = [
     "return_1d",
@@ -192,6 +209,231 @@ def _median(values: list[float]) -> float:
 
 def _clip_return_value(value: float) -> float:
     return max(LEGACY_RETURN_CLIP_LOWER, min(LEGACY_RETURN_CLIP_UPPER, value))
+
+
+def _clip_probability(value: float) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return 0.5
+    if math.isnan(number):
+        return 0.5
+    return max(0.0, min(1.0, number))
+
+
+def _return_to_probability(value: float) -> float:
+    clipped = _clip_return_value(value)
+    if clipped <= -50:
+        return 0.0
+    if clipped >= 50:
+        return 1.0
+    return _clip_probability(1.0 / (1.0 + math.exp(-clipped)))
+
+
+def _normalize_calibration_config(calibration: dict[str, Any] | None = None) -> dict[str, Any]:
+    config = DEFAULT_PROBABILITY_CALIBRATION.copy()
+    if isinstance(calibration, dict):
+        config.update(calibration)
+
+    method = str(config.get("method", "sigmoid")).strip().lower()
+    if method in {"platt", "platt_scaling"}:
+        method = "sigmoid"
+    if method not in {"sigmoid", "isotonic"}:
+        method = "sigmoid"
+
+    metric = str(config.get("threshold_metric", "balanced_accuracy")).strip().lower()
+    if metric not in {"balanced_accuracy", "accuracy", "f1", "youden"}:
+        metric = "balanced_accuracy"
+
+    return {
+        "enabled": bool(config.get("enabled", True)),
+        "method": method,
+        "cv": max(2, int(config.get("cv", 3) or 3)),
+        "threshold_metric": metric,
+    }
+
+
+def _confusion_counts(actual: list[int], predictions: list[int]) -> dict[str, int]:
+    true_positive = sum(
+        1 for y, p in zip(actual, predictions, strict=True) if y == 1 and p == 1
+    )
+    true_negative = sum(
+        1 for y, p in zip(actual, predictions, strict=True) if y == 0 and p == 0
+    )
+    false_positive = sum(
+        1 for y, p in zip(actual, predictions, strict=True) if y == 0 and p == 1
+    )
+    false_negative = sum(
+        1 for y, p in zip(actual, predictions, strict=True) if y == 1 and p == 0
+    )
+    return {
+        "true_positive": true_positive,
+        "true_negative": true_negative,
+        "false_positive": false_positive,
+        "false_negative": false_negative,
+    }
+
+
+def _rate(numerator: int | float, denominator: int | float) -> float:
+    return round(float(numerator) / float(denominator), 6) if denominator else 0.0
+
+
+def _is_degenerate_up_rate(value: float) -> bool:
+    return value > DEGENERATE_UP_RATE_HIGH or value < DEGENERATE_UP_RATE_LOW
+
+
+def _quality_status_from_up_rate(value: float) -> str:
+    return "DEGENERATE" if _is_degenerate_up_rate(value) else "OK"
+
+
+def _probability_threshold_candidates(probabilities: list[float]) -> list[float]:
+    values = sorted({_clip_probability(value) for value in probabilities})
+    if not values:
+        return [0.5]
+
+    candidates = {0.5, 0.0, 1.0, *values}
+    for left, right in zip(values, values[1:], strict=False):
+        candidates.add((left + right) / 2.0)
+
+    return sorted(candidates)
+
+
+def tune_probability_threshold(
+    probabilities: list[float],
+    actual_up: list[int],
+    *,
+    metric: str = "balanced_accuracy",
+) -> dict[str, Any]:
+    if not probabilities or len(probabilities) != len(actual_up):
+        return {
+            "threshold": 0.5,
+            "metric": metric,
+            "score": 0.0,
+            "predicted_up_rate": 0.0,
+            "target_up_rate": 0.0,
+            "status": "NO_DATA",
+        }
+
+    normalized_metric = str(metric or "balanced_accuracy").strip().lower()
+    if normalized_metric not in {"balanced_accuracy", "accuracy", "f1", "youden"}:
+        normalized_metric = "balanced_accuracy"
+
+    target_up_rate = sum(actual_up) / len(actual_up)
+    best: tuple[float, float, float, float, float, int, dict[str, Any]] | None = None
+
+    for candidate_index, threshold in enumerate(_probability_threshold_candidates(probabilities)):
+        predictions = [1 if _clip_probability(value) >= threshold else 0 for value in probabilities]
+        counts = _confusion_counts(actual_up, predictions)
+        tp = counts["true_positive"]
+        tn = counts["true_negative"]
+        fp = counts["false_positive"]
+        fn = counts["false_negative"]
+        total = len(predictions)
+        predicted_up_rate = sum(predictions) / total
+        recall = _rate(tp, tp + fn)
+        specificity = _rate(tn, tn + fp)
+        precision = _rate(tp, tp + fp)
+        false_positive_rate = _rate(fp, fp + tn)
+        accuracy = _rate(tp + tn, total)
+
+        if normalized_metric == "accuracy":
+            score = accuracy
+        elif normalized_metric == "f1":
+            score = _rate(2 * precision * recall, precision + recall)
+        elif normalized_metric == "youden":
+            score = round(recall - false_positive_rate, 6)
+        else:
+            score = round((recall + specificity) / 2.0, 6)
+
+        degenerate_penalty = 0.05 if _is_degenerate_up_rate(predicted_up_rate) else 0.0
+        ranked = (
+            score - degenerate_penalty,
+            -abs(predicted_up_rate - target_up_rate),
+            -false_positive_rate,
+            -abs(threshold - 0.5),
+            threshold,
+            -candidate_index,
+            {
+                "threshold": round(threshold, 6),
+                "metric": normalized_metric,
+                "score": round(score, 6),
+                "predicted_up_rate": round(predicted_up_rate, 6),
+                "target_up_rate": round(target_up_rate, 6),
+                "false_positive_rate": false_positive_rate,
+                "quality_status": _quality_status_from_up_rate(predicted_up_rate),
+                "status": "OK",
+            },
+        )
+        if best is None or ranked > best:
+            best = ranked
+
+    return dict(best[-1]) if best else {
+        "threshold": 0.5,
+        "metric": normalized_metric,
+        "score": 0.0,
+        "predicted_up_rate": round(target_up_rate, 6),
+        "target_up_rate": round(target_up_rate, 6),
+        "status": "NO_CANDIDATES",
+    }
+
+
+def _quantile(ordered_values: list[float], fraction: float) -> float:
+    if not ordered_values:
+        return 0.0
+    if len(ordered_values) == 1:
+        return ordered_values[0]
+
+    position = (len(ordered_values) - 1) * fraction
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    if lower == upper:
+        return ordered_values[lower]
+    weight = position - lower
+    return ordered_values[lower] * (1.0 - weight) + ordered_values[upper] * weight
+
+
+def probability_stats(probabilities: list[float]) -> dict[str, Any]:
+    values = [_clip_probability(value) for value in probabilities]
+    count = len(values)
+    if count == 0:
+        return {
+            "count": 0,
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "std": 0.0,
+            "p05": 0.0,
+            "p25": 0.0,
+            "p50": 0.0,
+            "p75": 0.0,
+            "p95": 0.0,
+        }
+
+    ordered = sorted(values)
+    mean = sum(values) / count
+    variance = sum((value - mean) ** 2 for value in values) / count
+    return {
+        "count": count,
+        "min": round(ordered[0], 6),
+        "max": round(ordered[-1], 6),
+        "mean": round(mean, 6),
+        "std": round(math.sqrt(variance), 6),
+        "p05": round(_quantile(ordered, 0.05), 6),
+        "p25": round(_quantile(ordered, 0.25), 6),
+        "p50": round(_quantile(ordered, 0.50), 6),
+        "p75": round(_quantile(ordered, 0.75), 6),
+        "p95": round(_quantile(ordered, 0.95), 6),
+    }
+
+
+def probability_distribution(probabilities: list[float]) -> dict[str, int]:
+    buckets = {f"{index / 10:.1f}-{(index + 1) / 10:.1f}": 0 for index in range(10)}
+    for value in probabilities:
+        clipped = _clip_probability(value)
+        index = min(9, int(clipped * 10))
+        key = f"{index / 10:.1f}-{(index + 1) / 10:.1f}"
+        buckets[key] += 1
+    return buckets
 
 
 def apply_consensus_guard(
@@ -390,6 +632,67 @@ def _make_model(
     raise ValueError(f"Unknown legacy engine: {engine}")
 
 
+def _make_classifier(
+    engine: str,
+    params: dict[str, Any],
+    *,
+    n_jobs: int = 4,
+) -> Any:
+    if engine == "extratrees":
+        if not SKLEARN_AVAILABLE or ExtraTreesClassifier is None:
+            return None
+
+        return ExtraTreesClassifier(
+            **params,
+            random_state=42,
+            n_jobs=n_jobs,
+        )
+
+    if engine == "randomforest":
+        if not SKLEARN_AVAILABLE or RandomForestClassifier is None:
+            return None
+
+        return RandomForestClassifier(
+            **params,
+            random_state=42,
+            n_jobs=n_jobs,
+        )
+
+    if engine == "gradientboosting":
+        if not SKLEARN_AVAILABLE or GradientBoostingClassifier is None:
+            return None
+
+        return GradientBoostingClassifier(
+            **params,
+            random_state=42,
+        )
+
+    return None
+
+
+def _make_calibrated_classifier(
+    classifier: Any,
+    *,
+    method: str,
+    cv: int,
+) -> Any:
+    if CalibratedClassifierCV is None:
+        return None
+
+    try:
+        return CalibratedClassifierCV(
+            estimator=classifier,
+            method=method,
+            cv=cv,
+        )
+    except TypeError:
+        return CalibratedClassifierCV(
+            base_estimator=classifier,
+            method=method,
+            cv=cv,
+        )
+
+
 def _candidate_param_sets(
     engine: str,
     *,
@@ -556,6 +859,74 @@ def fit_legacy_engine(
     }
 
 
+def fit_calibrated_legacy_classifier(
+    engine: str,
+    train_rows: list[dict[str, Any]],
+    target_up_column: str,
+    *,
+    params: dict[str, Any],
+    calibration: dict[str, Any] | None = None,
+    n_jobs: int = 4,
+) -> tuple[Any, dict[str, Any]]:
+    config = _normalize_calibration_config(calibration)
+    x_train = _feature_matrix(train_rows)
+    y_train = _target_up_values(train_rows, target_up_column)
+    meta: dict[str, Any] = {
+        "enabled": config["enabled"],
+        "method": config["method"],
+        "cv": config["cv"],
+        "threshold_metric": config["threshold_metric"],
+        "params": params,
+        "status": "OK",
+        "probability_source": "calibrated_classifier",
+    }
+
+    if not x_train:
+        meta["status"] = "NO_DATA"
+        return None, meta
+
+    class_counts = {0: y_train.count(0), 1: y_train.count(1)}
+    meta["class_counts"] = class_counts
+    min_class_count = min(class_counts.values())
+    if min_class_count < 2:
+        meta["status"] = "ONE_CLASS"
+        meta["probability_source"] = "return_sigmoid_fallback"
+        return None, meta
+
+    classifier = _make_classifier(engine, params, n_jobs=n_jobs)
+    if classifier is None:
+        meta["status"] = "UNAVAILABLE"
+        meta["probability_source"] = "return_sigmoid_fallback"
+        return None, meta
+
+    try:
+        if not config["enabled"]:
+            classifier.fit(x_train, y_train)
+            meta["status"] = "RAW_PROBABILITY"
+            meta["probability_source"] = "raw_classifier"
+            return classifier, meta
+
+        folds = min(config["cv"], min_class_count)
+        calibrated = _make_calibrated_classifier(
+            classifier,
+            method=config["method"],
+            cv=folds,
+        )
+        if calibrated is None:
+            meta["status"] = "UNAVAILABLE"
+            meta["probability_source"] = "return_sigmoid_fallback"
+            return None, meta
+
+        calibrated.fit(x_train, y_train)
+        meta["cv"] = folds
+        return calibrated, meta
+    except Exception as exc:
+        meta["status"] = "FAILED"
+        meta["error"] = str(exc)
+        meta["probability_source"] = "return_sigmoid_fallback"
+        return None, meta
+
+
 def predict_legacy_engine(model: Any, row: dict[str, Any]) -> float:
     if model is None:
         return 0.0
@@ -573,6 +944,92 @@ def predict_legacy_engine_many(
 
     values = model.predict(_feature_matrix(rows))
     return [_clip_return_value(float(value)) for value in values]
+
+
+def predict_legacy_engine_probability(model: Any, row: dict[str, Any]) -> float | None:
+    if model is None or not hasattr(model, "predict_proba"):
+        return None
+
+    probabilities = model.predict_proba([_feature_vector(row)])
+    if probabilities is None:
+        return None
+    first = probabilities[0]
+    classes = list(getattr(model, "classes_", []))
+    if 1 in classes:
+        return _clip_probability(float(first[classes.index(1)]))
+    if len(first) >= 2:
+        return _clip_probability(float(first[1]))
+    return _clip_probability(float(first[0]))
+
+
+def predict_legacy_engine_probability_many(
+    model: Any,
+    rows: list[dict[str, Any]],
+) -> list[float] | None:
+    if model is None or not rows or not hasattr(model, "predict_proba"):
+        return None
+
+    probabilities = model.predict_proba(_feature_matrix(rows))
+    classes = list(getattr(model, "classes_", []))
+    index = classes.index(1) if 1 in classes else 1
+    values: list[float] = []
+    for row_probabilities in probabilities:
+        selected_index = index if len(row_probabilities) > index else 0
+        values.append(_clip_probability(float(row_probabilities[selected_index])))
+    return values
+
+
+def _probabilities_for_rows(
+    *,
+    probability_model: Any,
+    rows: list[dict[str, Any]],
+    fallback_returns: list[float],
+) -> list[float]:
+    probabilities = predict_legacy_engine_probability_many(probability_model, rows)
+    if probabilities is not None and len(probabilities) == len(rows):
+        return probabilities
+    return [_return_to_probability(value) for value in fallback_returns]
+
+
+def _threshold_predictions(probabilities: list[float], threshold: float) -> list[int]:
+    return [1 if _clip_probability(value) >= threshold else 0 for value in probabilities]
+
+
+def _normalized_abs_weights(engines: list[str], weights: list[float]) -> dict[str, float]:
+    raw = {
+        engine: abs(float(weight))
+        for engine, weight in zip(engines, weights, strict=False)
+    }
+    total = sum(raw.values())
+    if total <= 0:
+        return {engine: 1.0 / max(1, len(engines)) for engine in engines}
+    return {engine: value / total for engine, value in raw.items()}
+
+
+def _weighted_probabilities(
+    probabilities_by_engine: dict[str, list[float]],
+    engines: list[str],
+    weights: dict[str, float],
+) -> list[float]:
+    if not engines:
+        return []
+
+    row_count = min(
+        (len(probabilities_by_engine.get(engine, [])) for engine in engines),
+        default=0,
+    )
+    if row_count <= 0:
+        return []
+
+    total_weight = sum(weights.get(engine, 0.0) for engine in engines) or float(len(engines))
+    values: list[float] = []
+    for index in range(row_count):
+        weighted = 0.0
+        for engine in engines:
+            weight = weights.get(engine, 0.0) or 1.0
+            weighted += weight * _clip_probability(probabilities_by_engine[engine][index])
+        values.append(_clip_probability(weighted / total_weight))
+    return values
 
 
 def majority_prediction(train_rows: list[dict[str, Any]], target_up_column: str) -> int:
@@ -600,6 +1057,10 @@ def metric_report(
     predictions_return: list[float],
     target_up_column: str,
     target_return_column: str,
+    probabilities_up: list[float] | None = None,
+    optimal_threshold: float | None = None,
+    threshold_tuning: dict[str, Any] | None = None,
+    calibration: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     total = len(rows)
 
@@ -617,31 +1078,24 @@ def metric_report(
             "true_negative": 0,
             "false_positive": 0,
             "false_negative": 0,
+            "false_positive_rate": 0.0,
+            "false_negative_rate": 0.0,
+            "TP": 0,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "confusion_matrix": {"TP": 0, "TN": 0, "FP": 0, "FN": 0},
+            "quality_status": "NO_DATA",
         }
 
     actual_up = _target_up_values(rows, target_up_column)
     actual_return = _target_return_values(rows, target_return_column)
 
-    tp = sum(
-        1
-        for y, p in zip(actual_up, predictions_up, strict=True)
-        if y == 1 and p == 1
-    )
-    tn = sum(
-        1
-        for y, p in zip(actual_up, predictions_up, strict=True)
-        if y == 0 and p == 0
-    )
-    fp = sum(
-        1
-        for y, p in zip(actual_up, predictions_up, strict=True)
-        if y == 0 and p == 1
-    )
-    fn = sum(
-        1
-        for y, p in zip(actual_up, predictions_up, strict=True)
-        if y == 1 and p == 0
-    )
+    counts = _confusion_counts(actual_up, predictions_up)
+    tp = counts["true_positive"]
+    tn = counts["true_negative"]
+    fp = counts["false_positive"]
+    fn = counts["false_negative"]
 
     mae = sum(
         abs(y - p)
@@ -650,21 +1104,53 @@ def metric_report(
 
     precision_den = tp + fp
     recall_den = tp + fn
+    predicted_up_rate = sum(predictions_up) / total
+    quality_status = _quality_status_from_up_rate(predicted_up_rate)
 
-    return {
+    report: dict[str, Any] = {
         "observations": total,
         "accuracy": round((tp + tn) / total, 4),
         "precision": round(tp / precision_den, 4) if precision_den else 0.0,
         "recall": round(tp / recall_den, 4) if recall_den else 0.0,
         "mae_return": round(mae, 4),
         "target_up_rate": round(sum(actual_up) / total, 4),
-        "predicted_up_rate": round(sum(predictions_up) / total, 4),
+        "predicted_up_rate": round(predicted_up_rate, 4),
         "mean_predicted_return": round(sum(predictions_return) / total, 4),
         "true_positive": tp,
         "true_negative": tn,
         "false_positive": fp,
         "false_negative": fn,
+        "false_positive_rate": _rate(fp, fp + tn),
+        "false_negative_rate": _rate(fn, fn + tp),
+        "TP": tp,
+        "TN": tn,
+        "FP": fp,
+        "FN": fn,
+        "confusion_matrix": {
+            "TP": tp,
+            "TN": tn,
+            "FP": fp,
+            "FN": fn,
+        },
+        "quality_status": quality_status,
     }
+
+    if quality_status == "DEGENERATE":
+        report["degenerate_warning"] = (
+            "DEGENERATE WARNING: predicted_up_rate outside 0.20-0.80"
+        )
+
+    if optimal_threshold is not None:
+        report["optimal_threshold"] = round(float(optimal_threshold), 6)
+    if threshold_tuning:
+        report["threshold_tuning"] = dict(threshold_tuning)
+    if probabilities_up is not None:
+        report["calibrated_probability_stats"] = probability_stats(probabilities_up)
+        report["probability_distribution"] = probability_distribution(probabilities_up)
+    if calibration:
+        report["calibration"] = dict(calibration)
+
+    return report
 
 
 def _normalize_base_engines(base_engines: list[str] | None = None) -> list[str]:
@@ -693,6 +1179,14 @@ def _zero_metrics() -> dict[str, Any]:
         "true_negative": 0,
         "false_positive": 0,
         "false_negative": 0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "TP": 0,
+        "TN": 0,
+        "FP": 0,
+        "FN": 0,
+        "confusion_matrix": {"TP": 0, "TN": 0, "FP": 0, "FN": 0},
+        "quality_status": "NO_DATA",
     }
 
 
@@ -721,14 +1215,20 @@ def _evaluate_ridge_ensemble_temporal(
     autotune: bool,
     autotune_iter: int,
     autotune_cv: int,
+    calibration: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     target_return_column = f"target_return_{horizon}d"
     target_up_column = f"target_up_{horizon}d"
     train_rows, test_rows = _temporal_train_test_split(rows, min_train_rows=min_train_rows)
+    calibration_config = _normalize_calibration_config(calibration)
 
     engine_status: dict[str, str] = {}
     tuned_params: dict[str, dict[str, Any]] = {}
     base_models: dict[str, Any] = {}
+    probability_models: dict[str, Any] = {}
+    calibration_meta: dict[str, dict[str, Any]] = {}
+    threshold_tuning: dict[str, dict[str, Any]] = {}
+    probability_thresholds: dict[str, float] = {}
     base_failure: dict[str, str] = {}
 
     for engine in base_engines:
@@ -748,15 +1248,35 @@ def _evaluate_ridge_ensemble_temporal(
             base_failure[engine] = str(
                 tune_meta.get("error") or tune_meta.get("status") or "failed"
             )
+            calibration_meta[engine] = {
+                **calibration_config,
+                "status": "SKIPPED",
+                "probability_source": "return_sigmoid_fallback",
+            }
+            continue
+
+        probability_model, probability_meta = fit_calibrated_legacy_classifier(
+            engine,
+            train_rows,
+            target_up_column,
+            params=dict(tune_meta.get("params", {})),
+            calibration=calibration_config,
+            n_jobs=n_jobs,
+        )
+        probability_models[engine] = probability_model
+        calibration_meta[engine] = probability_meta
 
     valid_base_engines = [engine for engine in base_engines if base_models.get(engine) is not None]
     failed_engines = [engine for engine in base_engines if engine not in valid_base_engines]
 
     pred_ret: dict[str, list[float]] = {engine: [] for engine in base_engines}
     pred_up: dict[str, list[int]] = {engine: [] for engine in base_engines}
+    pred_prob: dict[str, list[float]] = {engine: [] for engine in base_engines}
     pred_ret["ridge_ensemble"] = []
     pred_up["ridge_ensemble"] = []
+    pred_prob["ridge_ensemble"] = []
     ridge_coefficients: dict[str, Any] = {"intercept": 0.0, "weights": {}}
+    ridge_probability_weights: dict[str, float] = {}
     reason = ""
 
     if len(valid_base_engines) >= 2 and test_rows:
@@ -764,6 +1284,24 @@ def _evaluate_ridge_ensemble_temporal(
             engine: predict_legacy_engine_many(base_models[engine], train_rows)
             for engine in valid_base_engines
         }
+        train_probabilities = {
+            engine: _probabilities_for_rows(
+                probability_model=probability_models.get(engine),
+                rows=train_rows,
+                fallback_returns=train_predictions[engine],
+            )
+            for engine in valid_base_engines
+        }
+        actual_train_up = _target_up_values(train_rows, target_up_column)
+        for engine in valid_base_engines:
+            tuning = tune_probability_threshold(
+                train_probabilities[engine],
+                actual_train_up,
+                metric=calibration_config["threshold_metric"],
+            )
+            threshold_tuning[engine] = tuning
+            probability_thresholds[engine] = float(tuning.get("threshold", 0.5))
+
         ridge_x: list[list[float]] = []
         ridge_y: list[float] = []
         for row_index, row in enumerate(train_rows):
@@ -784,11 +1322,38 @@ def _evaluate_ridge_ensemble_temporal(
                 for engine, weight in zip(valid_base_engines, ridge.weights, strict=False)
             },
         }
+        ridge_probability_weights = _normalized_abs_weights(valid_base_engines, ridge.weights)
+
+        train_ensemble_probabilities = _weighted_probabilities(
+            train_probabilities,
+            valid_base_engines,
+            ridge_probability_weights,
+        )
+        ensemble_tuning = tune_probability_threshold(
+            train_ensemble_probabilities,
+            actual_train_up[: len(train_ensemble_probabilities)],
+            metric=calibration_config["threshold_metric"],
+        )
+        threshold_tuning["ridge_ensemble"] = ensemble_tuning
+        probability_thresholds["ridge_ensemble"] = float(ensemble_tuning.get("threshold", 0.5))
 
         test_predictions = {
             engine: predict_legacy_engine_many(base_models[engine], test_rows)
             for engine in valid_base_engines
         }
+        test_probabilities = {
+            engine: _probabilities_for_rows(
+                probability_model=probability_models.get(engine),
+                rows=test_rows,
+                fallback_returns=test_predictions[engine],
+            )
+            for engine in valid_base_engines
+        }
+        test_ensemble_probabilities = _weighted_probabilities(
+            test_probabilities,
+            valid_base_engines,
+            ridge_probability_weights,
+        )
         for row_index, _row in enumerate(test_rows):
             base_pred = {
                 engine: test_predictions[engine][row_index]
@@ -798,13 +1363,28 @@ def _evaluate_ridge_ensemble_temporal(
             for engine in base_engines:
                 value = guarded.get(engine, 0.0)
                 pred_ret[engine].append(value)
-                pred_up[engine].append(1 if value > 0 else 0)
+                probability = (
+                    test_probabilities.get(engine, [])[row_index]
+                    if engine in test_probabilities
+                    else _return_to_probability(value)
+                )
+                pred_prob[engine].append(probability)
+                threshold = probability_thresholds.get(engine, 0.5)
+                pred_up[engine].append(1 if probability >= threshold else 0)
 
             ridge_value = ridge.predict_one(
                 [guarded.get(engine, 0.0) for engine in valid_base_engines]
             )
             pred_ret["ridge_ensemble"].append(ridge_value)
-            pred_up["ridge_ensemble"].append(1 if ridge_value > 0 else 0)
+            ridge_probability = (
+                test_ensemble_probabilities[row_index]
+                if row_index < len(test_ensemble_probabilities)
+                else _return_to_probability(ridge_value)
+            )
+            pred_prob["ridge_ensemble"].append(ridge_probability)
+            pred_up["ridge_ensemble"].append(
+                1 if ridge_probability >= probability_thresholds.get("ridge_ensemble", 0.5) else 0
+            )
 
     if len(valid_base_engines) < 2:
         status = "FAIL"
@@ -822,6 +1402,10 @@ def _evaluate_ridge_ensemble_temporal(
         "failed_engines": {
             engine: base_failure.get(engine, "failed") for engine in failed_engines
         },
+        "probability_weights": {
+            engine: round(weight, 6)
+            for engine, weight in ridge_probability_weights.items()
+        },
         "status": status,
     }
 
@@ -833,6 +1417,10 @@ def _evaluate_ridge_ensemble_temporal(
                 predictions_return=pred_ret[engine],
                 target_up_column=target_up_column,
                 target_return_column=target_return_column,
+                probabilities_up=pred_prob[engine],
+                optimal_threshold=probability_thresholds.get(engine),
+                threshold_tuning=threshold_tuning.get(engine),
+                calibration=calibration_meta.get(engine),
             )
             if engine in valid_base_engines
             and test_rows
@@ -848,6 +1436,18 @@ def _evaluate_ridge_ensemble_temporal(
             predictions_return=pred_ret["ridge_ensemble"],
             target_up_column=target_up_column,
             target_return_column=target_return_column,
+            probabilities_up=pred_prob["ridge_ensemble"],
+            optimal_threshold=probability_thresholds.get("ridge_ensemble"),
+            threshold_tuning=threshold_tuning.get("ridge_ensemble"),
+            calibration={
+                **calibration_config,
+                "status": "OK",
+                "probability_source": "weighted_base_probabilities",
+                "weights": {
+                    engine: round(weight, 6)
+                    for engine, weight in ridge_probability_weights.items()
+                },
+            },
         )
         if len(valid_base_engines) >= 2 and test_rows
         else _zero_metrics()
@@ -884,6 +1484,23 @@ def _evaluate_ridge_ensemble_temporal(
         "base_metrics": base_metrics,
         "ensemble_metrics": ensemble_metrics,
         "ridge_coefficients": ridge_coefficients,
+        "calibration": {
+            **calibration_config,
+            "models": calibration_meta,
+            "thresholds": {
+                engine: round(value, 6)
+                for engine, value in probability_thresholds.items()
+            },
+            "threshold_tuning": threshold_tuning,
+        },
+        "probability_thresholds": {
+            engine: round(value, 6)
+            for engine, value in probability_thresholds.items()
+        },
+        "optimal_threshold": round(
+            probability_thresholds.get("ridge_ensemble", 0.5),
+            6,
+        ),
         "rows": len(rows),
         "evaluated_rows": len(test_rows),
         "models": models,
@@ -902,6 +1519,7 @@ def evaluate_legacy_walk_forward(
     autotune: bool = False,
     autotune_iter: int = 15,
     autotune_cv: int = 3,
+    calibration: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     selected = parse_legacy_engines(engines)
     uses_ridge_ensemble = "ridge_ensemble" in selected
@@ -923,6 +1541,7 @@ def evaluate_legacy_walk_forward(
             autotune=autotune,
             autotune_iter=autotune_iter,
             autotune_cv=autotune_cv,
+            calibration=calibration,
         )
 
     target_return_column = f"target_return_{horizon}d"

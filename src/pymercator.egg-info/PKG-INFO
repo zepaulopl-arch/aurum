@@ -7,3 +7,4 @@ Requires-Python: >=3.10
 Requires-Dist: pandas
 Requires-Dist: yfinance
 Requires-Dist: PyYAML
+Requires-Dist: scikit-learn

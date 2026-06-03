@@ -24,6 +24,12 @@ DEFAULT_OPERATIONAL_CONFIG: dict[str, Any] = {
     "autotune": False,
     "autotune_iter": 20,
     "autotune_cv": 3,
+    "calibration": {
+        "enabled": True,
+        "method": "sigmoid",
+        "cv": 3,
+        "threshold_metric": "balanced_accuracy",
+    },
 }
 
 DEFAULT_EXPERIMENTAL_CONFIG: dict[str, Any] = {
@@ -71,6 +77,26 @@ def parse_weights(value: str | dict[str, float] | None) -> dict[str, float]:
         key, raw = part.split("=", 1)
         weights[_weight_key(key)] = float(raw.strip())
     return weights
+
+
+def normalize_calibration_config(value: dict[str, Any] | None = None) -> dict[str, Any]:
+    payload = value if isinstance(value, dict) else {}
+    method = str(payload.get("method", "sigmoid")).strip().lower()
+    if method in {"platt", "platt_scaling"}:
+        method = "sigmoid"
+    if method not in {"sigmoid", "isotonic"}:
+        method = "sigmoid"
+
+    metric = str(payload.get("threshold_metric", "balanced_accuracy")).strip().lower()
+    if metric not in {"balanced_accuracy", "accuracy", "f1", "youden"}:
+        metric = "balanced_accuracy"
+
+    return {
+        "enabled": bool(payload.get("enabled", True)),
+        "method": method,
+        "cv": max(2, int(payload.get("cv", 3) or 3)),
+        "threshold_metric": metric,
+    }
 
 
 def _weight_key(value: str) -> str:
@@ -179,6 +205,7 @@ def effective_prediction_config(
             "independent_analysis": True,
             "combined_analysis": True,
         },
+        "calibration": normalize_calibration_config(operational.get("calibration", {})),
         "training": {
             "min_history": int(operational.get("min_history", 120)),
             "min_train_rows": int(operational.get("min_train_rows", 100)),
@@ -216,5 +243,16 @@ def effective_prediction_config(
             training[key] = int(overrides[key])
     if overrides.get("autotune") is not None:
         training["autotune"] = bool(overrides["autotune"])
+
+    calibration = config.setdefault("calibration", {})
+    if overrides.get("calibration_enabled") is not None:
+        calibration["enabled"] = bool(overrides["calibration_enabled"])
+    if overrides.get("calibration_method"):
+        calibration["method"] = str(overrides["calibration_method"]).strip().lower()
+    if overrides.get("calibration_cv") is not None:
+        calibration["cv"] = int(overrides["calibration_cv"])
+    if overrides.get("threshold_metric"):
+        calibration["threshold_metric"] = str(overrides["threshold_metric"]).strip().lower()
+    config["calibration"] = normalize_calibration_config(calibration)
 
     return config

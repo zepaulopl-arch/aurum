@@ -15,7 +15,7 @@ from pymercator.legacy_prediction_engines import (
 )
 from pymercator.prediction_config import effective_prediction_config, horizon_key
 from pymercator.prediction_lab import run_prediction_lab
-from pymercator.ui import colorize
+from pymercator.ui import color_metric, colorize, muted_line, strip_ansi
 
 ENGINE_ALIASES = {
 }
@@ -357,6 +357,52 @@ def _weighted_metric(
     return round(sum(value * (weight or 1.0) for value, weight in values) / total_weight, 6)
 
 
+def _degenerate_metric_warnings(horizon_models: dict[str, Any]) -> list[dict[str, Any]]:
+    warnings: list[dict[str, Any]] = []
+    for horizon, model in horizon_models.items():
+        if not isinstance(model, dict):
+            continue
+        metric_groups: list[tuple[str, dict[str, Any]]] = []
+        ensemble_metrics = model.get("ensemble_metrics", {})
+        if isinstance(ensemble_metrics, dict):
+            metric_groups.append(("ridge_ensemble", ensemble_metrics))
+        base_metrics = model.get("base_metrics", {})
+        if isinstance(base_metrics, dict):
+            metric_groups.extend(
+                (str(engine), metrics)
+                for engine, metrics in base_metrics.items()
+                if isinstance(metrics, dict)
+            )
+
+        for engine, metrics in metric_groups:
+            try:
+                observations = int(metrics.get("observations", 0) or 0)
+            except (TypeError, ValueError):
+                observations = 0
+            if observations <= 0:
+                continue
+            try:
+                predicted_up_rate = float(metrics.get("predicted_up_rate", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                continue
+            quality_status = str(metrics.get("quality_status", "")).strip().upper()
+            if (
+                quality_status == "DEGENERATE"
+                or predicted_up_rate > 0.80
+                or predicted_up_rate < 0.20
+            ):
+                warnings.append(
+                    {
+                        "horizon": str(horizon),
+                        "engine": engine,
+                        "predicted_up_rate": round(predicted_up_rate, 6),
+                        "quality_status": "DEGENERATE",
+                        "warning": "DEGENERATE WARNING",
+                    }
+                )
+    return warnings
+
+
 def _model_quality(
     *,
     horizon_models: dict[str, Any],
@@ -415,6 +461,10 @@ def _model_quality(
     else:
         status = "WEAK"
 
+    degenerate_warnings = _degenerate_metric_warnings(horizon_models)
+    if degenerate_warnings:
+        status = "DEGENERATE"
+
     return {
         "baseline_accuracy": baseline_accuracy,
         "ensemble_accuracy": ensemble_accuracy,
@@ -423,6 +473,9 @@ def _model_quality(
         "recall": recall,
         "false_positive_rate": false_positive_rate,
         "status": status,
+        "quality_status": status,
+        "degenerate": bool(degenerate_warnings),
+        "degenerate_warnings": degenerate_warnings,
     }
 
 
@@ -621,6 +674,10 @@ def run_train_flow(
     autotune: bool | None = None,
     autotune_iter: int | None = None,
     autotune_cv: int | None = None,
+    calibration_enabled: bool | None = None,
+    calibration_method: str | None = None,
+    calibration_cv: int | None = None,
+    threshold_metric: str | None = None,
     experimental: bool = False,
     allow_small_universe: bool = False,
 ) -> dict[str, Any]:
@@ -641,6 +698,10 @@ def run_train_flow(
             "autotune": autotune,
             "autotune_iter": autotune_iter,
             "autotune_cv": autotune_cv,
+            "calibration_enabled": calibration_enabled,
+            "calibration_method": calibration_method,
+            "calibration_cv": calibration_cv,
+            "threshold_metric": threshold_metric,
         },
     )
     training = config.get("training", {})
@@ -658,6 +719,7 @@ def run_train_flow(
     selected_autotune = bool(training.get("autotune", False))
     selected_autotune_iter = int(training.get("autotune_iter", 20))
     selected_autotune_cv = int(training.get("autotune_cv", 3))
+    selected_calibration = dict(config.get("calibration", {}))
     is_experimental = bool(experimental)
     baseline_requested = explicit_engines and selected_engines == ["rolling_majority"]
     dataset_output, evaluation_output, output_root = _resolved_train_outputs(
@@ -795,6 +857,7 @@ def run_train_flow(
             autotune=selected_autotune,
             autotune_iter=selected_autotune_iter,
             autotune_cv=selected_autotune_cv,
+            calibration=selected_calibration,
         )
 
     if baseline_requested:
@@ -912,6 +975,9 @@ def run_train_flow(
             "base_metrics": evaluation_payload.get("base_metrics", {}),
             "ridge_coefficients": evaluation_payload.get("ridge_coefficients", {}),
             "ensemble_metrics": evaluation_payload.get("ensemble_metrics", {}),
+            "calibration": evaluation_payload.get("calibration", {}),
+            "probability_thresholds": evaluation_payload.get("probability_thresholds", {}),
+            "optimal_threshold": evaluation_payload.get("optimal_threshold"),
             "autotune": evaluation_payload.get("autotune", {}),
             "status": evaluation_payload.get("status", payload.get("status", "OK")),
             "reason": evaluation_payload.get("reason", ""),
@@ -1003,6 +1069,7 @@ def run_train_flow(
         "horizons": selected_horizons,
         "base_engines": selected_base_engines,
         "meta_model": selected_meta,
+        "calibration": selected_calibration,
         "observer_mode": config.get("observer", {}).get("mode", "weighted"),
         "weights": observer.get("weights", {}),
         "min_assets": selected_min_assets,
@@ -1020,6 +1087,7 @@ def run_train_flow(
             "autotune": selected_autotune,
             "autotune_iter": selected_autotune_iter,
             "autotune_cv": selected_autotune_cv,
+            "calibration": selected_calibration,
             "min_history": selected_min_history,
             "min_train_rows": selected_min_train_rows,
             "min_assets": selected_min_assets,
@@ -1028,6 +1096,16 @@ def run_train_flow(
             "shuffle": False,
         },
         "horizon_models": horizon_models,
+        "thresholds_by_horizon": {
+            key: model.get("optimal_threshold")
+            for key, model in horizon_models.items()
+            if isinstance(model, dict) and model.get("optimal_threshold") is not None
+        },
+        "calibration_by_horizon": {
+            key: model.get("calibration", {})
+            for key, model in horizon_models.items()
+            if isinstance(model, dict)
+        },
         "horizon_observer": observer,
         "row_count_by_horizon": row_count_by_horizon,
         "asset_count_by_horizon": asset_count_by_horizon,
@@ -1063,6 +1141,7 @@ def run_train_flow(
             "experimental": is_experimental,
             "base_engines": selected_base_engines,
             "meta_model": selected_meta,
+            "calibration": selected_calibration,
             "observer": final_payload["observer"],
             "horizon_observer": observer,
             "training": final_payload["training"],
@@ -1082,6 +1161,8 @@ def run_train_flow(
             "diagnostic": diagnostic,
             "model_quality": model_quality,
             "dropped_assets_by_horizon": dropped_assets_by_horizon,
+            "thresholds_by_horizon": final_payload["thresholds_by_horizon"],
+            "calibration_by_horizon": final_payload["calibration_by_horizon"],
             "evaluation": {
                 "engine_used": "multi_horizon_ridge",
                 "status": status,
@@ -1120,6 +1201,7 @@ def run_train_flow(
         "experimental": is_experimental,
         "base_engines": selected_base_engines,
         "meta_model": selected_meta,
+        "calibration": selected_calibration,
         "observer": final_payload["observer"],
         "horizon_observer": observer,
         "training": final_payload["training"],
@@ -1139,6 +1221,8 @@ def run_train_flow(
         "diagnostic": diagnostic,
         "model_quality": model_quality,
         "dropped_assets_by_horizon": dropped_assets_by_horizon,
+        "thresholds_by_horizon": final_payload["thresholds_by_horizon"],
+        "calibration_by_horizon": final_payload["calibration_by_horizon"],
         "autotune": autotune_payload,
         "evaluation": {
             "engine_used": "multi_horizon_ridge",
@@ -1157,6 +1241,375 @@ def run_train_flow(
         "files": files,
         "payload": final_payload,
     }
+
+
+def _colored_metric(value: Any, metric: str) -> str:
+    if value in {None, ""}:
+        return "-"
+    return color_metric(value, metric)
+
+
+def _detail_value(value: Any, metric: str | None = None) -> str:
+    if value in {None, ""}:
+        return "-"
+    if metric:
+        return color_metric(value, metric)
+    return str(value)
+
+
+def _detail_kv(label: str, value: Any, metric: str | None = None, width: int = 24) -> str:
+    return f"{label:<{width}} {_detail_value(value, metric)}"
+
+
+def _rate_from_counts(metrics: dict[str, Any], *, positive: str) -> float | None:
+    if positive == "false_positive":
+        if "false_positive_rate" in metrics:
+            return float(metrics["false_positive_rate"])
+        numerator = float(metrics.get("false_positive", 0.0) or 0.0)
+        denominator = numerator + float(metrics.get("true_negative", 0.0) or 0.0)
+    else:
+        if "false_negative_rate" in metrics:
+            return float(metrics["false_negative_rate"])
+        numerator = float(metrics.get("false_negative", 0.0) or 0.0)
+        denominator = numerator + float(metrics.get("true_positive", 0.0) or 0.0)
+    if denominator <= 0:
+        return None
+    return round(numerator / denominator, 6)
+
+
+def _metric_field(metrics: dict[str, Any], key: str) -> Any:
+    if key in metrics:
+        return metrics[key]
+    if key == "false_positive_rate":
+        return _rate_from_counts(metrics, positive="false_positive")
+    if key == "false_negative_rate":
+        return _rate_from_counts(metrics, positive="false_negative")
+    return None
+
+
+def _metric_lines(
+    metrics: dict[str, Any],
+    *,
+    train_rows: int | None = None,
+    test_rows: int | None = None,
+    baseline_accuracy: float = 0.5,
+    include_edge: bool = False,
+    quality_status: str = "",
+) -> list[str]:
+    rows = [
+        ("observations", _metric_field(metrics, "observations"), None),
+        ("accuracy", _metric_field(metrics, "accuracy"), "accuracy"),
+        ("precision", _metric_field(metrics, "precision"), "precision"),
+        ("recall", _metric_field(metrics, "recall"), "recall"),
+        (
+            "false_positive_rate",
+            _metric_field(metrics, "false_positive_rate"),
+            "false_positive_rate",
+        ),
+        (
+            "false_negative_rate",
+            _metric_field(metrics, "false_negative_rate"),
+            "false_negative_rate",
+        ),
+        ("target_up_rate", _metric_field(metrics, "target_up_rate"), "target_up_rate"),
+        (
+            "predicted_up_rate",
+            _metric_field(metrics, "predicted_up_rate"),
+            "predicted_up_rate",
+        ),
+        ("mae_return", _metric_field(metrics, "mae_return"), "mae_return"),
+        ("optimal_threshold", metrics.get("optimal_threshold"), None),
+        ("confusion_matrix", _format_confusion(metrics), None),
+        (
+            "calibrated_probability_stats",
+            _format_probability_stats(metrics.get("calibrated_probability_stats", {})),
+            None,
+        ),
+        (
+            "probability_distribution",
+            _format_probability_distribution(metrics.get("probability_distribution", {})),
+            None,
+        ),
+        (
+            "quality_status",
+            colorize(metrics.get("quality_status", "-"), metrics.get("quality_status", "-")),
+            None,
+        ),
+        ("train_rows", metrics.get("train_rows", train_rows), None),
+        ("test_rows", metrics.get("test_rows", test_rows), None),
+    ]
+    if "fit_time_seconds" in metrics:
+        rows.append(("fit_time_seconds", metrics.get("fit_time_seconds"), None))
+    if "predict_time_seconds" in metrics:
+        rows.append(("predict_time_seconds", metrics.get("predict_time_seconds"), None))
+    if include_edge:
+        accuracy = _metric_field(metrics, "accuracy")
+        edge = None if accuracy is None else round(float(accuracy) - baseline_accuracy, 6)
+        rows.append(("edge_vs_baseline", edge, "edge"))
+        if quality_status:
+            rows.append(
+                (
+                    "global_quality_status",
+                    colorize(quality_status, quality_status),
+                    None,
+                )
+            )
+    return [_detail_kv(label, value, metric) for label, value, metric in rows]
+
+
+def _coefficient_weights(coefficients: dict[str, Any]) -> dict[str, float]:
+    raw = coefficients.get("weights", coefficients.get("coefficients", {}))
+    if not isinstance(raw, dict):
+        return {}
+    weights: dict[str, float] = {}
+    for engine, value in raw.items():
+        try:
+            weights[str(engine)] = float(value)
+        except (TypeError, ValueError):
+            continue
+    return weights
+
+
+def _normalized_weights(weights: dict[str, float]) -> dict[str, float]:
+    total = sum(abs(value) for value in weights.values())
+    if total <= 0:
+        return {}
+    return {
+        engine: round(abs(value) / total, 6)
+        for engine, value in weights.items()
+    }
+
+
+def _format_weights(weights: dict[str, Any]) -> str:
+    if not weights:
+        return "-"
+    parts = []
+    for key, value in weights.items():
+        if isinstance(value, int | float):
+            parts.append(f"{key}={float(value):.6f}")
+        else:
+            parts.append(f"{key}={value}")
+    return " ".join(parts)
+
+
+def _format_confusion(metrics: dict[str, Any]) -> str:
+    matrix = metrics.get("confusion_matrix", {})
+    if not isinstance(matrix, dict):
+        matrix = {}
+    tp = matrix.get("TP", metrics.get("TP", metrics.get("true_positive", 0)))
+    tn = matrix.get("TN", metrics.get("TN", metrics.get("true_negative", 0)))
+    fp = matrix.get("FP", metrics.get("FP", metrics.get("false_positive", 0)))
+    fn = matrix.get("FN", metrics.get("FN", metrics.get("false_negative", 0)))
+    return f"TP={tp} TN={tn} FP={fp} FN={fn}"
+
+
+def _format_probability_stats(stats: dict[str, Any]) -> str:
+    if not isinstance(stats, dict) or not stats:
+        return "-"
+    keys = ("mean", "std", "p05", "p50", "p95", "min", "max")
+    return " ".join(f"{key}={stats.get(key, '-')}" for key in keys)
+
+
+def _format_probability_distribution(distribution: dict[str, Any]) -> str:
+    if not isinstance(distribution, dict) or not distribution:
+        return "-"
+    return " ".join(f"{key}={value}" for key, value in distribution.items())
+
+
+def _ridge_response_lines(model: dict[str, Any]) -> list[str]:
+    coefficients = model.get("ridge_coefficients", {})
+    if not isinstance(coefficients, dict):
+        coefficients = {}
+    weights = _coefficient_weights(coefficients)
+    normalized = coefficients.get("normalized_weights")
+    if not isinstance(normalized, dict):
+        normalized = _normalized_weights(weights)
+    alpha = coefficients.get("alpha")
+    if alpha is None:
+        alpha = (
+            model.get("autotune", {})
+            .get("tuned_params", {})
+            .get("ridge_ensemble", {})
+            .get("params", {})
+            .get("alpha", 1.0)
+        )
+    strongest = max(weights, key=lambda key: abs(weights[key])) if weights else "-"
+    weakest = min(weights, key=lambda key: abs(weights[key])) if weights else "-"
+    return [
+        _detail_kv("ridge_coefficients", _format_weights(weights)),
+        _detail_kv("intercept", coefficients.get("intercept", "-")),
+        _detail_kv("alpha", alpha),
+        _detail_kv("normalized_weights", _format_weights(normalized)),
+        _detail_kv("strongest_engine", strongest),
+        _detail_kv("weakest_engine", weakest),
+    ]
+
+
+def _observer_lines(observer: dict[str, Any]) -> list[str]:
+    scores = observer.get("scores", {})
+    weights = observer.get("weights", {})
+    if not isinstance(scores, dict):
+        scores = {}
+    if not isinstance(weights, dict):
+        weights = {}
+    behavior = observer.get("behavior", "-")
+    return [
+        _detail_kv("D5 score", scores.get("D5"), "combined_score"),
+        _detail_kv("D20 score", scores.get("D20"), "combined_score"),
+        _detail_kv("D60 score", scores.get("D60"), "combined_score"),
+        _detail_kv("weights", _format_weights(weights)),
+        _detail_kv("combined_score", observer.get("combined_score"), "combined_score"),
+        _detail_kv("dominant_horizon", observer.get("dominant_horizon", "-")),
+        _detail_kv("behavior", colorize(behavior, behavior)),
+    ]
+
+
+def _horizon_sort_key(key: str) -> int:
+    try:
+        return int(str(key).upper().removeprefix("D"))
+    except ValueError:
+        return 999
+
+
+def render_train_detail_report(payload: dict[str, Any]) -> str:
+    quality = payload.get("model_quality", {})
+    if not isinstance(quality, dict):
+        quality = {}
+    observer = payload.get("horizon_observer", {})
+    if not isinstance(observer, dict):
+        observer = {}
+    horizon_models = payload.get("horizon_models", {})
+    if not isinstance(horizon_models, dict):
+        horizon_models = {}
+    asset_count_by_horizon = payload.get("asset_count_by_horizon", {})
+    if not isinstance(asset_count_by_horizon, dict):
+        asset_count_by_horizon = {}
+    base_engines = [
+        str(engine)
+        for engine in payload.get("base_engines", [])
+        if str(engine).strip()
+    ]
+    horizons = [horizon_key(item) for item in payload.get("horizons", [])]
+    model_quality_status = quality.get("status", "-")
+    baseline_accuracy = float(quality.get("baseline_accuracy", 0.5) or 0.5)
+
+    lines = [
+        "PYMERCATOR TRAIN DETAIL REPORT",
+        muted_line(),
+        "",
+        "GLOBAL",
+        muted_line(),
+        _detail_kv("engine_used", payload.get("engine_used", "-")),
+        _detail_kv("status", colorize(payload.get("status", "-"), payload.get("status", "-"))),
+        _detail_kv("operational", str(bool(payload.get("operational", False))).lower()),
+        _detail_kv("horizons", ",".join(horizons) or "-"),
+        _detail_kv("base_engines", ",".join(base_engines) or "-"),
+        _detail_kv("meta_model", payload.get("meta_model", "-")),
+        _detail_kv("observer", observer.get("mode", payload.get("observer_mode", "-"))),
+        _detail_kv("assets", payload.get("assets", "-")),
+        _detail_kv("model_quality", colorize(model_quality_status, model_quality_status)),
+        _detail_kv("edge", quality.get("edge", "-"), "edge"),
+    ]
+    if model_quality_status == "DEGENERATE":
+        lines.extend(
+            [
+                _detail_kv(
+                    "DEGENERATE WARNING",
+                    colorize("base probability outputs are degenerate", "DEGENERATE"),
+                ),
+                _detail_kv(
+                    "degenerate_models",
+                    len(quality.get("degenerate_warnings", []) or []),
+                ),
+            ]
+        )
+
+    for horizon in sorted(horizon_models, key=_horizon_sort_key):
+        model = horizon_models[horizon]
+        if not isinstance(model, dict):
+            continue
+        ensemble_metrics = model.get("ensemble_metrics", {})
+        if not isinstance(ensemble_metrics, dict):
+            ensemble_metrics = {}
+        rows = int(model.get("rows", 0) or 0)
+        test_rows = int(model.get("evaluated_rows", 0) or 0)
+        train_rows = max(0, rows - test_rows)
+        assets = asset_count_by_horizon.get(horizon, "-")
+
+        lines.extend(
+            [
+                "",
+                horizon,
+                muted_line(),
+                "",
+                "HORIZON SUMMARY",
+                muted_line(),
+                _detail_kv("status", colorize(model.get("status", "-"), model.get("status", "-"))),
+                _detail_kv("engine_used", model.get("engine_used", "-")),
+                _detail_kv("rows", rows),
+                _detail_kv("assets", assets),
+                _detail_kv("optimal_threshold", model.get("optimal_threshold", "-")),
+                _detail_kv("target_up_rate", ensemble_metrics.get("target_up_rate")),
+                _detail_kv("predicted_up_rate", ensemble_metrics.get("predicted_up_rate")),
+                "",
+                "BASE ENGINE METRICS",
+                muted_line(),
+            ]
+        )
+
+        base_metrics = model.get("base_metrics", {})
+        if not isinstance(base_metrics, dict):
+            base_metrics = {}
+        for engine in base_engines or sorted(base_metrics):
+            metrics = base_metrics.get(engine, {})
+            if not isinstance(metrics, dict):
+                metrics = {}
+            lines.append(engine)
+            lines.extend(
+                _metric_lines(
+                    metrics,
+                    train_rows=train_rows,
+                    test_rows=test_rows,
+                    baseline_accuracy=baseline_accuracy,
+                )
+            )
+            lines.append("")
+        if lines and lines[-1] == "":
+            lines.pop()
+
+        lines.extend(
+            [
+                "",
+                "RIDGE RESPONSE",
+                muted_line(),
+                *_ridge_response_lines(model),
+                "",
+                "RIDGE / ENSEMBLE METRICS",
+                muted_line(),
+                *_metric_lines(
+                    ensemble_metrics,
+                    train_rows=train_rows,
+                    test_rows=test_rows,
+                    baseline_accuracy=baseline_accuracy,
+                    include_edge=True,
+                    quality_status=model_quality_status,
+                ),
+                "",
+                "HORIZON OBSERVER",
+                muted_line(),
+                *_observer_lines(observer),
+            ]
+        )
+
+    return "\n".join(lines)
+
+
+def _load_train_detail_payload(path: str | Path, fallback: dict[str, Any]) -> dict[str, Any]:
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    except Exception:
+        payload = fallback.get("payload", fallback)
+    return payload if isinstance(payload, dict) else fallback
 
 
 def render_train_summary(payload: dict[str, Any]) -> str:
@@ -1253,17 +1706,51 @@ def render_train_summary(payload: dict[str, Any]) -> str:
         lines.append(f"- failed_engines: {', '.join(evaluation.get('failed_engines', []))}")
     model_quality = payload.get("model_quality") or evaluation.get("model_quality") or {}
     if model_quality:
-        lines.append(f"- model_quality: {model_quality.get('status', '-')}")
-        lines.append(f"- ensemble_accuracy: {model_quality.get('ensemble_accuracy', '-')}")
-        lines.append(f"- edge: {model_quality.get('edge', '-')}")
+        quality_status = model_quality.get("status", "-")
+        lines.append(f"- model_quality: {colorize(quality_status, quality_status)}")
+        if str(quality_status).upper() == "DEGENERATE":
+            lines.append("- DEGENERATE WARNING: base probability outputs are degenerate")
+        lines.append(
+            "- baseline_accuracy: "
+            f"{_colored_metric(model_quality.get('baseline_accuracy'), 'baseline_accuracy')}"
+        )
+        lines.append(
+            "- ensemble_accuracy: "
+            f"{_colored_metric(model_quality.get('ensemble_accuracy'), 'ensemble_accuracy')}"
+        )
+        lines.append(f"- edge: {_colored_metric(model_quality.get('edge'), 'edge')}")
+        lines.append(
+            f"- precision: {_colored_metric(model_quality.get('precision'), 'precision')}"
+        )
+        lines.append(f"- recall: {_colored_metric(model_quality.get('recall'), 'recall')}")
+        lines.append(
+            "- false_positive_rate: "
+            f"{_colored_metric(model_quality.get('false_positive_rate'), 'false_positive_rate')}"
+        )
+    observer = payload.get("horizon_observer", {})
+    if observer:
+        lines.append(
+            f"- combined_score: {_colored_metric(observer.get('combined_score'), 'combined_score')}"
+        )
+        lines.append(f"- dominant_horizon: {observer.get('dominant_horizon', '-')}")
+        behavior = observer.get("behavior", "-")
+        lines.append(f"- behavior: {colorize(behavior, behavior)}")
+
+    for key, model in payload.get("horizon_models", {}).items():
+        model_status = model.get("status", "-")
+        metrics = model.get("ensemble_metrics", {})
+        lines.append(
+            f"- {key}: {colorize(model_status, model_status)} "
+            f"acc={_colored_metric(metrics.get('accuracy'), 'accuracy')} "
+            f"prec={_colored_metric(metrics.get('precision'), 'precision')} "
+            f"recall={_colored_metric(metrics.get('recall'), 'recall')}"
+        )
+
+    observer_status = observer.get("status", "-")
     lines.extend(
         [
-            *[
-                f"- {key}: {model.get('status', '-')}"
-                for key, model in payload.get("horizon_models", {}).items()
-            ],
-            f"- observer: {payload.get('horizon_observer', {}).get('status', '-')}",
-            f"- status: {status}",
+            f"- observer: {colorize(observer_status, observer_status)}",
+            f"- status: {colorize(status, status)}",
             f"- output: {evaluation.get('output', '-')}",
         ]
     )
@@ -1302,12 +1789,27 @@ def run_train_command(args: Any) -> int:
         autotune=getattr(args, "autotune", None),
         autotune_iter=getattr(args, "autotune_iter", None),
         autotune_cv=getattr(args, "autotune_cv", None),
+        calibration_enabled=(
+            False if bool(getattr(args, "disable_calibration", False)) else None
+        ),
+        calibration_method=getattr(args, "calibration_method", None),
+        calibration_cv=getattr(args, "calibration_cv", None),
+        threshold_metric=getattr(args, "threshold_metric", None),
         experimental=bool(getattr(args, "experimental", False)),
         allow_small_universe=bool(getattr(args, "allow_small_universe", False)),
     )
 
     if getattr(args, "json", False):
         print(json.dumps(payload, ensure_ascii=False, indent=2))
+    elif getattr(args, "details", False):
+        detail_payload = _load_train_detail_payload(args.evaluation_output, payload)
+        report = render_train_detail_report(detail_payload)
+        print(report)
+        output = str(getattr(args, "output", "") or "").strip()
+        if output:
+            output_path = Path(output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(strip_ansi(report), encoding="utf-8")
     else:
         print(render_train_summary(payload))
 

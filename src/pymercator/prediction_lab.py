@@ -12,6 +12,7 @@ from pymercator.legacy_prediction_engines import (
     evaluate_legacy_walk_forward,
     parse_legacy_engines,
 )
+from pymercator.ui import color_metric, colorize
 
 DATASET_COLUMNS = [
     "date",
@@ -647,6 +648,7 @@ def walk_forward_evaluate(
     autotune: bool = False,
     autotune_iter: int = 15,
     autotune_cv: int = 3,
+    calibration: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     rows = _read_csv(dataset)
 
@@ -661,6 +663,7 @@ def walk_forward_evaluate(
         autotune=autotune,
         autotune_iter=autotune_iter,
         autotune_cv=autotune_cv,
+        calibration=calibration,
     )
 
 
@@ -676,6 +679,7 @@ def write_evaluation_report(
     autotune: bool = False,
     autotune_iter: int = 15,
     autotune_cv: int = 3,
+    calibration: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = walk_forward_evaluate(
         dataset=dataset,
@@ -687,6 +691,7 @@ def write_evaluation_report(
         autotune=autotune,
         autotune_iter=autotune_iter,
         autotune_cv=autotune_cv,
+        calibration=calibration,
     )
 
     output_path = Path(output)
@@ -716,6 +721,7 @@ def run_prediction_lab(
     autotune: bool = False,
     autotune_iter: int = 15,
     autotune_cv: int = 3,
+    calibration: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     dataset_payload = write_prediction_dataset(
         matrix=matrix,
@@ -736,6 +742,7 @@ def run_prediction_lab(
         autotune=autotune,
         autotune_iter=autotune_iter,
         autotune_cv=autotune_cv,
+        calibration=calibration,
     )
 
     models = evaluation_payload["models"]
@@ -793,6 +800,9 @@ def run_prediction_lab(
             "base_metrics": evaluation_payload.get("base_metrics", {}),
             "ensemble_metrics": evaluation_payload.get("ensemble_metrics", {}),
             "ridge_coefficients": evaluation_payload.get("ridge_coefficients", {}),
+            "calibration": evaluation_payload.get("calibration", {}),
+            "probability_thresholds": evaluation_payload.get("probability_thresholds", {}),
+            "optimal_threshold": evaluation_payload.get("optimal_threshold"),
             "autotune": evaluation_payload.get("autotune", {}),
             "models": evaluation_payload["models"],
         },
@@ -819,6 +829,10 @@ def render_prediction_dataset_summary(payload: dict[str, Any]) -> str:
     )
 
 
+def _metric_part(label: str, value: Any, metric: str) -> str:
+    return f"{label}={color_metric(value, metric)}"
+
+
 def render_evaluation_summary(payload: dict[str, Any]) -> str:
     line = "-" * 100
     lines = [
@@ -837,17 +851,17 @@ def render_evaluation_summary(payload: dict[str, Any]) -> str:
     ]
 
     for engine, status in payload.get("engine_status", {}).items():
-        lines.append(f"{engine:<22} {status}")
+        lines.append(f"{engine:<22} {colorize(status, status)}")
 
     lines.extend(["", "MODELS", line])
 
     for engine, metrics in payload["models"].items():
         lines.append(
             f"{engine:<20} "
-            f"acc={metrics['accuracy']:<7} "
-            f"mae={metrics.get('mae_return', 0.0):<7} "
-            f"prec={metrics['precision']:<7} "
-            f"recall={metrics['recall']:<7} "
+            f"{_metric_part('acc', metrics['accuracy'], 'accuracy'):<18} "
+            f"{_metric_part('mae', metrics.get('mae_return', 0.0), 'mae_return'):<18} "
+            f"{_metric_part('prec', metrics['precision'], 'precision'):<18} "
+            f"{_metric_part('recall', metrics['recall'], 'recall'):<18} "
             f"obs={metrics['observations']}"
         )
 
@@ -861,7 +875,7 @@ def render_prediction_lab_summary(payload: dict[str, Any]) -> str:
     lines = [
         "PYMERCATOR PREDICTION LAB",
         line,
-        f"{'STATUS':<22} {payload['status']}",
+        f"{'STATUS':<22} {colorize(payload['status'], payload['status'])}",
         f"{'DATASET FILE':<22} {payload['dataset']['file']}",
         f"{'DATASET ROWS':<22} {payload['dataset']['rows']}",
         f"{'EVALUATION FILE':<22} {evaluation['file']}",
@@ -875,17 +889,17 @@ def render_prediction_lab_summary(payload: dict[str, Any]) -> str:
     ]
 
     for engine, status in evaluation.get("engine_status", {}).items():
-        lines.append(f"{engine:<22} {status}")
+        lines.append(f"{engine:<22} {colorize(status, status)}")
 
     lines.extend(["", "MODELS", line])
 
     for engine, metrics in evaluation["models"].items():
         lines.append(
             f"{engine:<20} "
-            f"acc={metrics['accuracy']:<7} "
-            f"mae={metrics.get('mae_return', 0.0):<7} "
-            f"prec={metrics['precision']:<7} "
-            f"recall={metrics['recall']:<7} "
+            f"{_metric_part('acc', metrics['accuracy'], 'accuracy'):<18} "
+            f"{_metric_part('mae', metrics.get('mae_return', 0.0), 'mae_return'):<18} "
+            f"{_metric_part('prec', metrics['precision'], 'precision'):<18} "
+            f"{_metric_part('recall', metrics['recall'], 'recall'):<18} "
             f"obs={metrics['observations']}"
         )
 

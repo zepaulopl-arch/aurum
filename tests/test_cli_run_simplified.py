@@ -722,6 +722,73 @@ def test_cli_run_blocks_actionable_when_model_quality_is_weak(
     assert summary.count("TICKER") == 1
 
 
+def test_cli_run_blocks_actionable_when_model_quality_is_degenerate(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_run as run_mod
+
+    context = tmp_path / "context.json"
+    evaluation = tmp_path / "latest_evaluation.json"
+    basket_output = tmp_path / "basket.csv"
+    _write_context(context)
+    _write_multi_horizon_evaluation(evaluation)
+    payload = json.loads(evaluation.read_text(encoding="utf-8"))
+    payload["model_quality"]["status"] = "DEGENERATE"
+    payload["model_quality"]["degenerate"] = True
+    payload["model_quality"]["degenerate_warnings"] = [
+        {
+            "horizon": "D5",
+            "engine": "extratrees",
+            "predicted_up_rate": 0.996,
+            "warning": "DEGENERATE WARNING",
+        }
+    ]
+    evaluation.write_text(json.dumps(payload), encoding="utf-8")
+
+    monkeypatch.setattr(
+        run_mod,
+        "run_daily_pipeline",
+        lambda **kwargs: _fake_report(kwargs["profile"]),
+    )
+
+    exit_code = main(
+        [
+            "run",
+            "--profile",
+            "CON",
+            "--universe",
+            "data/universes/ibov_sample.csv",
+            "--context",
+            str(context),
+            "--evaluation",
+            str(evaluation),
+            "--report-output",
+            str(tmp_path / "report.txt"),
+            "--json-output",
+            str(tmp_path / "report.json"),
+            "--run-dir",
+            str(tmp_path / "latest"),
+            "--basket",
+            "--basket-output",
+            str(basket_output),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["decision"]["actionable"] == 0
+    assert result["basket"]["status"] == "BLOCKED"
+    assert result["blockers"] == {"MODEL_WEAK": 1}
+    assert result["top"][0]["guard"] == "MODEL_WEAK"
+    assert result["report"]["model_quality"] == "DEGENERATE"
+    assert "MODEL_WEAK: model quality is degenerate" in (
+        result["report"]["decisions"][0]["permission"]["reasons"]
+    )
+
+
 def test_cli_run_blocks_non_ok_prediction_evaluation(
     tmp_path: Path,
     monkeypatch,

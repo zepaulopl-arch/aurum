@@ -13,7 +13,8 @@ authors = [
 dependencies = [
   "pandas",
   "yfinance",
-  "PyYAML"
+  "PyYAML",
+  "scikit-learn"
 ]
 
 [project.scripts]

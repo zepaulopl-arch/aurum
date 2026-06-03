@@ -30,6 +30,23 @@ def _fake_lab_factory(
     status_by_horizon = status_by_horizon or {}
     accuracy_by_horizon = accuracy_by_horizon or {5: 0.61, 20: 0.64, 60: 0.67}
 
+    def rich_metrics(accuracy: float, observations: int = 1) -> dict[str, float | int]:
+        return {
+            "observations": observations,
+            "accuracy": accuracy,
+            "precision": 0.56,
+            "recall": 0.57,
+            "mae_return": 0.018,
+            "target_up_rate": 0.52,
+            "predicted_up_rate": 0.49,
+            "true_positive": 7,
+            "true_negative": 6,
+            "false_positive": 3,
+            "false_negative": 2,
+            "fit_time_seconds": 0.12,
+            "predict_time_seconds": 0.03,
+        }
+
     def fake_lab(**kwargs):
         calls.append(dict(kwargs))
         dataset_output = Path(kwargs["dataset_output"])
@@ -63,7 +80,7 @@ def _fake_lab_factory(
                     "engine_used": "rolling_majority",
                     "is_baseline": True,
                     "models": {
-                        "rolling_majority": {"accuracy": 0.5, "observations": 1}
+                        "rolling_majority": rich_metrics(0.5)
                     },
                     "output": str(evaluation_output),
                 },
@@ -81,15 +98,12 @@ def _fake_lab_factory(
         elif status == "DEGRADED":
             valid_base_engines = base_engines[:2]
             failed_engines = base_engines[2:]
-            ensemble_metrics = {"accuracy": 0.57, "observations": 1}
+            ensemble_metrics = rich_metrics(0.57)
             reason = "one or more base engines failed"
         else:
             valid_base_engines = base_engines
             failed_engines = []
-            ensemble_metrics = {
-                "accuracy": accuracy_by_horizon.get(horizon, 0.6),
-                "observations": 1,
-            }
+            ensemble_metrics = rich_metrics(accuracy_by_horizon.get(horizon, 0.6))
             reason = ""
 
         weights = (
@@ -111,7 +125,7 @@ def _fake_lab_factory(
             "failed_engines": failed_engines,
             "meta_model": "ridge",
             "base_metrics": {
-                engine: {"accuracy": 0.55, "observations": 1}
+                engine: rich_metrics(0.55)
                 for engine in valid_base_engines
             },
             "ensemble_metrics": ensemble_metrics,
@@ -214,6 +228,94 @@ def test_cli_train_generates_multi_horizon_evaluation_by_default(
     assert evaluation_payload["horizon_models"]["D5"]["meta_model"] == "ridge"
     assert "extratrees" != evaluation_payload["engine_used"]
     assert "profile" not in evaluation_payload
+
+
+def test_cli_train_details_prints_and_writes_full_report(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+):
+    import pymercator.cli_train as train_mod
+    from pymercator.ui import strip_ansi
+
+    matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
+    detail_report = tmp_path / "latest_train_detail_report.txt"
+    calls: list[dict] = []
+    monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
+
+    exit_code = main(
+        [
+            "train",
+            "--matrix",
+            str(matrix),
+            "--prices-dir",
+            str(prices_dir),
+            "--dataset-output",
+            str(dataset),
+            "--evaluation-output",
+            str(evaluation),
+            "--min-train-rows",
+            "2",
+            "--details",
+            "--output",
+            str(detail_report),
+            "--color",
+            "always",
+        ]
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "\x1b[" in output
+    assert "PYMERCATOR TRAIN DETAIL REPORT" in output
+    assert "GLOBAL" in output
+    assert "engine_used              multi_horizon_ridge" in strip_ansi(output)
+    assert "model_quality" in output
+    assert "edge" in output
+    for horizon in ("D5", "D20", "D60"):
+        assert horizon in output
+    assert "HORIZON SUMMARY" in output
+    assert "BASE ENGINE METRICS" in output
+    assert "extratrees" in output
+    assert "randomforest" in output
+    assert "gradientboosting" in output
+    assert "observations" in output
+    assert "false_positive_rate" in output
+    assert "false_negative_rate" in output
+    assert "mae_return" in output
+    assert "optimal_threshold" in output
+    assert "confusion_matrix" in output
+    assert "calibrated_probability_stats" in output
+    assert "probability_distribution" in output
+    assert "train_rows" in output
+    assert "test_rows" in output
+    assert "fit_time_seconds" in output
+    assert "predict_time_seconds" in output
+    assert "RIDGE RESPONSE" in output
+    assert "ridge_coefficients" in output
+    assert "intercept" in output
+    assert "alpha" in output
+    assert "normalized_weights" in output
+    assert "strongest_engine" in output
+    assert "weakest_engine" in output
+    assert "RIDGE / ENSEMBLE METRICS" in output
+    assert "edge_vs_baseline" in output
+    assert "quality_status" in output
+    assert "HORIZON OBSERVER" in output
+    assert "D5 score" in output
+    assert "D20 score" in output
+    assert "D60 score" in output
+    assert "combined_score" in output
+    assert "dominant_horizon" in output
+    assert "behavior" in output
+
+    text = detail_report.read_text(encoding="utf-8")
+    assert "\x1b[" not in text
+    assert "PYMERCATOR TRAIN DETAIL REPORT" in text
+    assert "ridge_coefficients" in text
+    assert json.loads(evaluation.read_text(encoding="utf-8"))["engine_used"] == (
+        "multi_horizon_ridge"
+    )
 
 
 def test_cli_train_profile_is_ignored_with_warning(tmp_path: Path, monkeypatch, capsys):

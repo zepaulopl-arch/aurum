@@ -9,7 +9,14 @@ from typing import Any
 from pymercator import presets as presets_mod
 from pymercator import terminal_ui as ui
 from pymercator.cli_context import resolve_market_context_args
-from pymercator.ui import format_kv, format_kv_section, muted_line, set_color_mode
+from pymercator.ui import (
+    format_kv,
+    format_kv_section,
+    muted_line,
+    set_color_mode,
+    set_palette,
+    set_ui_config_path,
+)
 
 DEFAULT_PREDICTION_HORIZON = 5
 DEFAULT_PREDICTION_MIN_HISTORY = 20
@@ -21,6 +28,9 @@ DEFAULT_TRAIN_MIN_TRAIN_ROWS = 100
 DEFAULT_TRAIN_N_JOBS = 4
 DEFAULT_TRAIN_AUTOTUNE_ITER = 20
 DEFAULT_TRAIN_AUTOTUNE_CV = 3
+DEFAULT_TRAIN_CALIBRATION_METHOD = "sigmoid"
+DEFAULT_TRAIN_CALIBRATION_CV = 3
+DEFAULT_TRAIN_THRESHOLD_METRIC = "balanced_accuracy"
 
 
 def _run_sentiment_command(args: argparse.Namespace) -> int:
@@ -103,7 +113,7 @@ def _parse_csv_arg(value: str) -> list[str]:
     ]
 
 
-def _extract_color_args(argv: list[str] | None) -> tuple[list[str] | None, str]:
+def _extract_ui_args(argv: list[str] | None) -> tuple[list[str] | None, str, str, str]:
     if argv is None:
         raw = list(sys.argv[1:])
     else:
@@ -111,6 +121,8 @@ def _extract_color_args(argv: list[str] | None) -> tuple[list[str] | None, str]:
 
     cleaned: list[str] = []
     mode = "auto"
+    palette = ""
+    ui_config = ""
     index = 0
     while index < len(raw):
         item = raw[index]
@@ -130,12 +142,36 @@ def _extract_color_args(argv: list[str] | None) -> tuple[list[str] | None, str]:
             mode = item.split("=", 1)[1]
             index += 1
             continue
+        if item == "--palette":
+            if index + 1 >= len(raw):
+                cleaned.append(item)
+                index += 1
+                continue
+            palette = raw[index + 1]
+            index += 2
+            continue
+        if item.startswith("--palette="):
+            palette = item.split("=", 1)[1]
+            index += 1
+            continue
+        if item == "--ui-config":
+            if index + 1 >= len(raw):
+                cleaned.append(item)
+                index += 1
+                continue
+            ui_config = raw[index + 1]
+            index += 2
+            continue
+        if item.startswith("--ui-config="):
+            ui_config = item.split("=", 1)[1]
+            index += 1
+            continue
         cleaned.append(item)
         index += 1
 
     if mode not in {"auto", "always", "never"}:
         mode = "auto"
-    return cleaned, mode
+    return cleaned, mode, palette, ui_config
 
 
 def _prediction_engines_help() -> str:
@@ -516,6 +552,17 @@ def build_parser() -> argparse.ArgumentParser:
         )
         train_autotune_iter_help = f"Autotune iterations. Default: {DEFAULT_TRAIN_AUTOTUNE_ITER}"
         train_autotune_cv_help = f"Autotune CV folds. Default: {DEFAULT_TRAIN_AUTOTUNE_CV}"
+        train_calibration_method_help = (
+            "Probability calibration method. Valid: sigmoid, isotonic. "
+            f"Default: {DEFAULT_TRAIN_CALIBRATION_METHOD}"
+        )
+        train_calibration_cv_help = (
+            f"Probability calibration CV folds. Default: {DEFAULT_TRAIN_CALIBRATION_CV}"
+        )
+        train_threshold_metric_help = (
+            "Threshold tuning metric. Valid: balanced_accuracy, accuracy, f1, youden. "
+            f"Default: {DEFAULT_TRAIN_THRESHOLD_METRIC}"
+        )
         horizon_help = (
             f"Prediction horizon in trading days. Default: {DEFAULT_PREDICTION_HORIZON}"
         )
@@ -540,6 +587,16 @@ def build_parser() -> argparse.ArgumentParser:
             "--no-color",
             action="store_true",
             help="Disable terminal colors.",
+        )
+        parser.add_argument(
+            "--palette",
+            default="",
+            help="Terminal palette from config/ui.json. Default: configured default.",
+        )
+        parser.add_argument(
+            "--ui-config",
+            default="config/ui.json",
+            help="Terminal UI config file. Default: config/ui.json",
         )
         subparsers = parser.add_subparsers(dest="command")
 
@@ -573,6 +630,16 @@ def build_parser() -> argparse.ArgumentParser:
         )
         train_parser.set_defaults(command="train")
         train_parser.add_argument("--profile", default="", help=argparse.SUPPRESS)
+        train_parser.add_argument(
+            "--details",
+            action="store_true",
+            help="Print detailed per-horizon training report.",
+        )
+        train_parser.add_argument(
+            "--output",
+            default="",
+            help="Write detailed training report TXT. Used with --details.",
+        )
         train_parser.add_argument(
             "--config",
             default="config/prediction.json",
@@ -644,6 +711,29 @@ def build_parser() -> argparse.ArgumentParser:
             type=int,
             default=None,
             help=train_autotune_cv_help,
+        )
+        train_parser.add_argument(
+            "--calibration-method",
+            choices=["sigmoid", "isotonic"],
+            default="",
+            help=train_calibration_method_help,
+        )
+        train_parser.add_argument(
+            "--calibration-cv",
+            type=int,
+            default=None,
+            help=train_calibration_cv_help,
+        )
+        train_parser.add_argument(
+            "--threshold-metric",
+            choices=["balanced_accuracy", "accuracy", "f1", "youden"],
+            default="",
+            help=train_threshold_metric_help,
+        )
+        train_parser.add_argument(
+            "--disable-calibration",
+            action="store_true",
+            help="Disable probability calibration for base engines.",
         )
         train_parser.add_argument(
             "--experimental",
@@ -1283,12 +1373,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    cleaned_argv, color_mode = _extract_color_args(argv)
+    cleaned_argv, color_mode, palette, ui_config = _extract_ui_args(argv)
+    if ui_config:
+        set_ui_config_path(ui_config)
     set_color_mode(color_mode)
+    set_palette(palette)
     parser = build_parser()
     args = parser.parse_args(cleaned_argv)
     args.color = color_mode
     args.no_color = color_mode == "never"
+    args.palette = palette
+    args.ui_config = ui_config or "config/ui.json"
 
     try:
         if args.command == "daily":

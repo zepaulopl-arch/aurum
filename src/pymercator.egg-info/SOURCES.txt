@@ -43,6 +43,7 @@ src/pymercator/market_context.py
 src/pymercator/market_context_auto.py
 src/pymercator/pipeline.py
 src/pymercator/policy.py
+src/pymercator/prediction_config.py
 src/pymercator/prediction_lab.py
 src/pymercator/presets.py
 src/pymercator/real_run.py
@@ -95,8 +96,8 @@ tests/test_cli_packs_real.py
 tests/test_cli_prediction_lab.py
 tests/test_cli_prices.py
 tests/test_cli_real_pack.py
-tests/test_cli_run_simplified.py
 tests/test_cli_run_dir.py
+tests/test_cli_run_simplified.py
 tests/test_cli_scenario_pack.py
 tests/test_cli_sentiment.py
 tests/test_cli_stability_ranking.py
@@ -128,9 +129,13 @@ tests/test_market_context_auto.py
 tests/test_market_context_presets.py
 tests/test_permission.py
 tests/test_policy_calibration.py
+tests/test_prediction_calibration.py
+tests/test_prediction_config.py
 tests/test_prediction_lab.py
 tests/test_presets.py
 tests/test_prices_csv.py
+tests/test_prices_yahoo.py
+tests/test_provider_terminal_noise.py
 tests/test_ranking.py
 tests/test_real_pack_manifest.py
 tests/test_real_run.py

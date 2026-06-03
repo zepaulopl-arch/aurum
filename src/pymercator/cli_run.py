@@ -37,6 +37,7 @@ GLOBAL_BLOCKER_PRIORITY = (
     "REGIME_DENY",
     "VOL_HIGH",
 )
+BLOCKING_MODEL_QUALITY = {"WEAK", "DEGENERATE"}
 
 
 def _dedupe(values: list[str] | tuple[str, ...]) -> tuple[str, ...]:
@@ -62,7 +63,14 @@ def _load_model_quality_governance(policy: str) -> dict[str, Any]:
             "reason": "model quality is weak",
             "allow_watch": False,
             "basket_status": "BLOCKED",
-        }
+        },
+        "DEGENERATE": {
+            "action": "BLOCK",
+            "reason_code": "MODEL_WEAK",
+            "reason": "model quality is degenerate",
+            "allow_watch": False,
+            "basket_status": "BLOCKED",
+        },
     }
     try:
         payload = json.loads(Path(policy).read_text(encoding="utf-8-sig"))
@@ -80,7 +88,7 @@ def _load_model_quality_governance(policy: str) -> dict[str, Any]:
 
 def _global_blockers(report: DailyReport, prediction: dict[str, Any]) -> list[str]:
     blockers: list[str] = []
-    if _model_quality_status(prediction) == "WEAK":
+    if _model_quality_status(prediction) in BLOCKING_MODEL_QUALITY:
         blockers.append("MODEL_WEAK")
     if report.market_regime.regime.value == "RISK_OFF":
         blockers.append("RISK_OFF")
@@ -228,11 +236,12 @@ def _apply_model_quality_guard(
     prediction: dict[str, Any],
     policy: str,
 ) -> DailyReport:
-    if _model_quality_status(prediction) != "WEAK":
+    quality_status = _model_quality_status(prediction)
+    if quality_status not in BLOCKING_MODEL_QUALITY:
         return report
 
     governance = _load_model_quality_governance(policy)
-    weak_policy = governance.get("WEAK", {})
+    weak_policy = governance.get(quality_status, governance.get("WEAK", {}))
     if not isinstance(weak_policy, dict):
         weak_policy = {}
     action = str(weak_policy.get("action", "BLOCK")).strip().upper()

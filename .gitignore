@@ -42,9 +42,11 @@ temp/
 data/prices/
 data/indices/
 data/sentiment/
+data/universes/ibov_live.csv
 
 # Generated operational artifacts
 storage/scenario_runs/
+storage/scenarios/
 storage/cache/
 storage/baskets/
 storage/prediction/*.csv

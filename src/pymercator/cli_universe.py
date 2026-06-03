@@ -48,9 +48,18 @@ def _render_universe_summary(payload: dict[str, Any]) -> str:
                 ("file", payload["path"]),
                 ("assets", payload["assets"]),
                 ("avg_volume_brl", f"{payload['avg_volume_brl']:.2f}"),
-                ("avg_trend", f"{payload['avg_trend_score']:.2f}"),
-                ("avg_momentum", f"{payload['avg_momentum_score']:.2f}"),
-                ("avg_volatility", f"{payload['avg_volatility_pct']:.2f}"),
+                (
+                    "avg_trend",
+                    color_metric(payload["avg_trend_score"], "trend", precision=2),
+                ),
+                (
+                    "avg_momentum",
+                    color_metric(payload["avg_momentum_score"], "mom", precision=2),
+                ),
+                (
+                    "avg_volatility",
+                    color_metric(payload["avg_volatility_pct"], "vol", precision=2),
+                ),
             ],
             label_width=18,
         ),
@@ -80,6 +89,12 @@ def _fmt_sector(value: object, width: int = 24) -> str:
     return short_sector(value, width)
 
 
+def _color_warning_count(value: object, *, width: int, status: str) -> str:
+    count = int(value or 0)
+    color_status = "NORMAL" if count == 0 else status
+    return colorize(f"{count:>{width}}", color_status)
+
+
 def _render_sector_warning_summary(payload: dict[str, Any]) -> list[str]:
     line = muted_line()
     rows = payload.get("sector_warning_summary", [])
@@ -106,10 +121,10 @@ def _render_sector_warning_summary(payload: dict[str, Any]) -> list[str]:
         lines.append(
             f"{_fmt_sector(item['sector'], 20):<20} "
             f"{int(item['assets']):>5} "
-            f"{int(item['vol_high']):>4} "
-            f"{int(item['atr_high']):>4} "
-            f"{int(item['weak_trend']):>7} "
-            f"{int(item['weak_momentum']):>8} "
+            f"{_color_warning_count(item['vol_high'], width=4, status='WATCH')} "
+            f"{_color_warning_count(item['atr_high'], width=4, status='HIGH')} "
+            f"{_color_warning_count(item['weak_trend'], width=7, status='WEAK')} "
+            f"{_color_warning_count(item['weak_momentum'], width=8, status='WEAK')} "
             f"{colorize(f'{read:<8}', read)}"
         )
 

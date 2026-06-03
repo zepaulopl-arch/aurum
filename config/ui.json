@@ -1,0 +1,136 @@
+{
+  "default_palette": "soft",
+  "palettes": {
+    "soft": {
+      "green": "\u001b[38;5;71m",
+      "yellow": "\u001b[38;5;179m",
+      "red": "\u001b[38;5;167m",
+      "gray": "\u001b[38;5;245m",
+      "header": "\u001b[38;5;110m",
+      "number": "\u001b[38;5;250m"
+    },
+    "bright": {
+      "green": "\u001b[38;5;77m",
+      "yellow": "\u001b[38;5;221m",
+      "red": "\u001b[38;5;203m",
+      "gray": "\u001b[38;5;248m",
+      "header": "\u001b[38;5;117m",
+      "number": "\u001b[38;5;255m"
+    },
+    "classic": {
+      "green": "\u001b[32m",
+      "yellow": "\u001b[33m",
+      "red": "\u001b[31m",
+      "gray": "\u001b[90m",
+      "header": "\u001b[36m",
+      "number": "\u001b[37m"
+    }
+  },
+  "metric_aliases": {
+    "trend": "trend",
+    "trend_score": "trend",
+    "tr": "trend",
+    "mom": "mom",
+    "momentum": "mom",
+    "momentum_score": "mom",
+    "weak_mom": "mom",
+    "vol": "vol",
+    "volatility": "vol",
+    "volatility_pct": "vol",
+    "vol_high": "vol",
+    "atr": "atr",
+    "atr_pct": "atr",
+    "qtr": "atr",
+    "atr_high": "atr",
+    "accuracy": "accuracy",
+    "best_accuracy": "accuracy",
+    "baseline_accuracy": "accuracy",
+    "ensemble_accuracy": "accuracy",
+    "precision": "precision",
+    "prec": "precision",
+    "recall": "recall",
+    "edge": "edge",
+    "model_edge": "edge",
+    "false_positive_rate": "false_positive_rate",
+    "fpr": "false_positive_rate",
+    "false_negative_rate": "false_negative_rate",
+    "fnr": "false_negative_rate",
+    "mae": "mae_return",
+    "mae_return": "mae_return",
+    "combined_score": "combined_score",
+    "score": "combined_score",
+    "target_up_rate": "target_up_rate",
+    "predicted_up_rate": "predicted_up_rate"
+  },
+  "metric_thresholds": {
+    "trend": [
+      {"min": 60.0, "status": "OK"},
+      {"min": 45.0, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "mom": [
+      {"min": 60.0, "status": "OK"},
+      {"min": 45.0, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "vol": [
+      {"min": 80.0, "status": "HIGH"},
+      {"min": 55.0, "status": "WATCH"},
+      {"status": "NORMAL"}
+    ],
+    "atr": [
+      {"min": 8.0, "status": "HIGH"},
+      {"status": "NORMAL"}
+    ],
+    "accuracy": [
+      {"min": 0.58, "status": "OK"},
+      {"min": 0.52, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "precision": [
+      {"min": 0.55, "status": "OK"},
+      {"min": 0.50, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "recall": [
+      {"min": 0.55, "status": "OK"},
+      {"min": 0.50, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "edge": [
+      {"min": 0.02, "status": "OK"},
+      {"min": 0.0, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "false_positive_rate": [
+      {"max": 0.20, "status": "OK"},
+      {"max": 0.35, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "false_negative_rate": [
+      {"max": 0.20, "status": "OK"},
+      {"max": 0.35, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "combined_score": [
+      {"min": 60.0, "status": "OK"},
+      {"min": 50.0, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "mae_return": [
+      {"max": 0.01, "status": "OK"},
+      {"max": 0.03, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "target_up_rate": [
+      {"min": 0.45, "max": 0.60, "status": "OK"},
+      {"min": 0.35, "max": 0.70, "status": "WATCH"},
+      {"status": "WEAK"}
+    ],
+    "predicted_up_rate": [
+      {"min": 0.45, "max": 0.60, "status": "OK"},
+      {"min": 0.35, "max": 0.70, "status": "WATCH"},
+      {"status": "WEAK"}
+    ]
+  }
+}

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pymercator.ui.colors import colorize
+from pymercator.ui.colors import color_metric, colorize, is_metric_configured
 from pymercator.ui.formatters import format_title
 
 Column = tuple[str, str, int] | tuple[str, str, int, str]
@@ -65,6 +65,10 @@ def format_table(
             cell = _format_cell(value, col_width, align)
             if status_key:
                 cell = colorize(cell, row.get(status_key, value), enabled=color)
+            elif is_metric_configured(key):
+                cell = color_metric(value, key, width=col_width, enabled=color)
+            elif is_metric_configured(_header):
+                cell = color_metric(value, _header, width=col_width, enabled=color)
             cells.append(cell)
         lines.append(" ".join(cells))
     return "\n".join(lines)

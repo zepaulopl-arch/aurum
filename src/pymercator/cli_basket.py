@@ -40,11 +40,12 @@ def run_basket_cli(args: object) -> int:
         return 0
 
     daily_report = getattr(args, "daily_report", "")
-    eligible_tickers = (
-        basket_mod.ready_tickers_from_daily_report(daily_report)
+    ordered_candidates = (
+        basket_mod.ready_candidates_from_daily_report(daily_report)
         if daily_report
         else None
     )
+    eligible_tickers = [item["ticker"] for item in ordered_candidates] if ordered_candidates else None
 
     payload = basket_mod.run_daily_basket(
         slots=args.slots,
@@ -60,6 +61,7 @@ def run_basket_cli(args: object) -> int:
         evaluation=args.evaluation,
         output_csv=args.output,
         eligible_tickers=eligible_tickers,
+        ordered_candidates=ordered_candidates,
     )
 
     csv_path, json_path, txt_path = basket_mod.resolve_basket_paths(args.output)

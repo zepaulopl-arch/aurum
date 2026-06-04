@@ -10,6 +10,21 @@
     "vol_high": 10,
     "atr_high": 15
   },
+  "thresholds": {
+    "obs_ready": 70.0,
+    "watch": 55.0,
+    "weak": 45.0,
+    "trend_strong": 60.0,
+    "momentum_strong": 60.0,
+    "trend_watch": 50.0,
+    "momentum_watch": 50.0,
+    "vol_high": 55.0,
+    "atr_high": 70.0,
+    "vol_extreme": 85.0,
+    "atr_extreme": 85.0,
+    "vol_low": 35.0,
+    "atr_low": 35.0
+  },
   "show_when_no_actionable": true,
   "max_candidates": 10,
   "sector_summary": true,

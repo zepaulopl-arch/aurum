@@ -20,6 +20,21 @@ DEFAULT_OBSERVATION_CONFIG: dict[str, Any] = {
         "vol_high": 10,
         "atr_high": 15,
     },
+    "thresholds": {
+        "obs_ready": 70.0,
+        "watch": 55.0,
+        "weak": 45.0,
+        "trend_strong": 60.0,
+        "momentum_strong": 60.0,
+        "trend_watch": 50.0,
+        "momentum_watch": 50.0,
+        "vol_high": 55.0,
+        "atr_high": 70.0,
+        "vol_extreme": 85.0,
+        "atr_extreme": 85.0,
+        "vol_low": 35.0,
+        "atr_low": 35.0,
+    },
     "show_when_no_actionable": True,
     "max_candidates": 10,
     "sector_summary": True,
@@ -127,6 +142,17 @@ def _risk_penalty(config: dict[str, Any], key: str) -> float:
     return _to_float(raw.get(key, 0.0))
 
 
+def _thresholds(config: dict[str, Any]) -> dict[str, float]:
+    raw = config.get("thresholds", {})
+    if not isinstance(raw, dict):
+        raw = {}
+    defaults = DEFAULT_OBSERVATION_CONFIG["thresholds"]
+    return {
+        key: _to_float(raw.get(key), float(default))
+        for key, default in defaults.items()
+    }
+
+
 def _asset_class(
     *,
     obs_index: float,
@@ -138,22 +164,31 @@ def _asset_class(
     atr_extreme: bool,
     vol_low: bool,
     atr_low: bool,
+    thresholds: dict[str, float],
 ) -> str:
-    strong_opportunity = trend >= 60 and momentum >= 60
-    weak_opportunity = trend < 50 and momentum < 50
+    strong_opportunity = (
+        trend >= thresholds["trend_strong"]
+        and momentum >= thresholds["momentum_strong"]
+    )
+    weak_opportunity = (
+        trend < thresholds["trend_watch"]
+        and momentum < thresholds["momentum_watch"]
+    )
     extreme_risk = vol_extreme or atr_extreme
 
     if extreme_risk and weak_opportunity:
         return "DANGER"
     if strong_opportunity and (vol_high or atr_high):
         return "MOM_HIGH_RISK"
-    if obs_index >= 70 and strong_opportunity and not vol_high and not atr_high:
+    if obs_index >= thresholds["obs_ready"] and strong_opportunity and not vol_high and not atr_high:
         return "OBS_READY"
-    if obs_index >= 55 and (trend >= 50 or momentum >= 50):
+    if obs_index >= thresholds["watch"] and (
+        trend >= thresholds["trend_watch"] or momentum >= thresholds["momentum_watch"]
+    ):
         return "WATCH"
     if vol_low and atr_low and weak_opportunity:
         return "STABLE_WEAK"
-    if obs_index < 45:
+    if obs_index < thresholds["weak"]:
         return "WEAK"
     return "WATCH"
 
@@ -165,17 +200,18 @@ def _asset_read(
     momentum: float,
     vol_high: bool,
     atr_high: bool,
+    thresholds: dict[str, float],
 ) -> str:
     if klass == "MOM_HIGH_RISK":
-        if trend >= 60 and momentum >= 60:
+        if trend >= thresholds["trend_strong"] and momentum >= thresholds["momentum_strong"]:
             return "strong trend/mom, risk high"
         return "momentum with risk"
     if klass == "OBS_READY":
         return "relative observation only"
     if klass == "WATCH":
-        if momentum >= 60:
+        if momentum >= thresholds["momentum_strong"]:
             return "momentum watch"
-        if trend >= 60:
+        if trend >= thresholds["trend_strong"]:
             return "trend watch"
         return "selective watch"
     if klass == "STABLE_WEAK":
@@ -187,15 +223,15 @@ def _asset_read(
     return "no momentum"
 
 
-def _candidate_reason(row: dict[str, Any]) -> str:
+def _candidate_reason(row: dict[str, Any], thresholds: dict[str, float]) -> str:
     reasons: list[str] = []
-    if row["trend"] >= 60 and row["momentum"] >= 60:
+    if row["trend"] >= thresholds["trend_strong"] and row["momentum"] >= thresholds["momentum_strong"]:
         reasons.append("strong trend/mom")
-    elif row["momentum"] >= 60:
+    elif row["momentum"] >= thresholds["momentum_strong"]:
         reasons.append("strong momentum")
-    elif row["trend"] >= 60:
+    elif row["trend"] >= thresholds["trend_strong"]:
         reasons.append("strong trend")
-    elif row["trend"] < 50 and row["momentum"] < 50:
+    elif row["trend"] < thresholds["trend_watch"] and row["momentum"] < thresholds["momentum_watch"]:
         reasons.append("weak trend/mom")
     if row["vol_high"]:
         reasons.append("vol high")
@@ -211,6 +247,7 @@ def _observation_rows(
     vol_norm = _normalize_risk_values([asset.volatility_pct for asset in assets])
     atr_norm = _normalize_risk_values([asset.atr_pct for asset in assets])
     weights = _weights(config)
+    thresholds = _thresholds(config)
     rows: list[dict[str, Any]] = []
 
     for asset, normalized_vol, normalized_atr in zip(assets, vol_norm, atr_norm, strict=True):
@@ -218,12 +255,12 @@ def _observation_rows(
         momentum = _clamp(asset.momentum_score)
         volatility_safety = 100.0 - normalized_vol
         atr_safety = 100.0 - normalized_atr
-        vol_high = normalized_vol >= 55.0
-        atr_high = normalized_atr >= 70.0
-        vol_extreme = normalized_vol >= 85.0
-        atr_extreme = normalized_atr >= 85.0
-        vol_low = normalized_vol < 35.0
-        atr_low = normalized_atr < 35.0
+        vol_high = normalized_vol >= thresholds["vol_high"]
+        atr_high = normalized_atr >= thresholds["atr_high"]
+        vol_extreme = normalized_vol >= thresholds["vol_extreme"]
+        atr_extreme = normalized_atr >= thresholds["atr_extreme"]
+        vol_low = normalized_vol < thresholds["vol_low"]
+        atr_low = normalized_atr < thresholds["atr_low"]
 
         obs_index = (
             weights["trend"] * trend
@@ -247,6 +284,7 @@ def _observation_rows(
             atr_extreme=atr_extreme,
             vol_low=vol_low,
             atr_low=atr_low,
+            thresholds=thresholds,
         )
         row = {
             "ticker": asset.ticker,
@@ -273,8 +311,9 @@ def _observation_rows(
             momentum=momentum,
             vol_high=vol_high,
             atr_high=atr_high,
+            thresholds=thresholds,
         )
-        row["reason"] = _candidate_reason(row)
+        row["reason"] = _candidate_reason(row, thresholds)
         rows.append(row)
 
     return sorted(
@@ -350,6 +389,7 @@ def run_observation(
         "config": {
             "weights": config.get("weights", {}),
             "risk_penalty": config.get("risk_penalty", {}),
+            "thresholds": _thresholds(config),
             "show_when_no_actionable": bool(config.get("show_when_no_actionable", True)),
             "max_candidates": max_candidates,
             "sector_summary": bool(config.get("sector_summary", True)),
@@ -386,9 +426,74 @@ def observation_from_decisions(
             "max_candidates": max_candidates,
             "weights": config.get("weights", {}),
             "risk_penalty": config.get("risk_penalty", {}),
+            "thresholds": _thresholds(config),
             "unsupervised": config.get("unsupervised", {}),
         },
     }
+
+
+def _rounded_quantile(values: list[float], q: float, fallback: float) -> float:
+    if not values:
+        return fallback
+    return round(_quantile(values, q), 2)
+
+
+def calibrate_observation_thresholds(
+    *,
+    universe: str | Path = "data/universes/ibov_live.csv",
+    list_name: str = "IBOV",
+    config_path: str | Path = "config/observation.json",
+    output: str | Path | None = None,
+) -> dict[str, Any]:
+    config = load_observation_config(config_path)
+    assets = load_universe_csv(universe)
+    rows = _observation_rows(assets, config) if config.get("enabled", True) else []
+    defaults = _thresholds(config)
+    obs_values = [float(row["obs_index"]) for row in rows]
+    trend_values = [float(row["trend"]) for row in rows]
+    momentum_values = [float(row["momentum"]) for row in rows]
+    vol_values = [float(row["normalized_volatility"]) for row in rows]
+    atr_values = [float(row["normalized_atr"]) for row in rows]
+
+    thresholds = {
+        "obs_ready": max(60.0, _rounded_quantile(obs_values, 0.75, defaults["obs_ready"])),
+        "watch": max(45.0, _rounded_quantile(obs_values, 0.50, defaults["watch"])),
+        "weak": min(50.0, _rounded_quantile(obs_values, 0.25, defaults["weak"])),
+        "trend_strong": max(55.0, _rounded_quantile(trend_values, 0.60, defaults["trend_strong"])),
+        "momentum_strong": max(55.0, _rounded_quantile(momentum_values, 0.60, defaults["momentum_strong"])),
+        "trend_watch": max(45.0, _rounded_quantile(trend_values, 0.40, defaults["trend_watch"])),
+        "momentum_watch": max(45.0, _rounded_quantile(momentum_values, 0.40, defaults["momentum_watch"])),
+        "vol_high": max(50.0, _rounded_quantile(vol_values, 0.75, defaults["vol_high"])),
+        "atr_high": max(60.0, _rounded_quantile(atr_values, 0.75, defaults["atr_high"])),
+        "vol_extreme": max(75.0, _rounded_quantile(vol_values, 0.90, defaults["vol_extreme"])),
+        "atr_extreme": max(75.0, _rounded_quantile(atr_values, 0.90, defaults["atr_extreme"])),
+        "vol_low": min(45.0, _rounded_quantile(vol_values, 0.25, defaults["vol_low"])),
+        "atr_low": min(45.0, _rounded_quantile(atr_values, 0.25, defaults["atr_low"])),
+    }
+
+    payload = {
+        "command": "observe_calibrate",
+        "schema_version": "observation_calibration.v1",
+        "list": str(list_name).upper(),
+        "universe": str(universe),
+        "asset_count": len(rows),
+        "calibration_type": "historical_universe_percentiles",
+        "thresholds": thresholds,
+        "config_patch": {"thresholds": thresholds},
+        "notes": (
+            "OBS_INDEX remains an observation ranking only; "
+            "calibration does not create buy or short execution signals."
+        ),
+    }
+    if output:
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        payload["output"] = str(output_path)
+        output_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    return payload
 
 
 def render_observation_report(payload: dict[str, Any], *, limit: int | None = None) -> str:

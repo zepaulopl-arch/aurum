@@ -11,6 +11,7 @@ from pymercator.market_context import (
     write_market_context_template,
 )
 from pymercator.market_context_auto import write_auto_market_context
+from pymercator.market_context_auto import calibrate_market_context_thresholds
 
 
 def _split_tags(value: str) -> list[str]:
@@ -82,6 +83,7 @@ def run_context_command(args: Any) -> int:
         payload = write_auto_market_context(
             indices_dir=args.indices_dir,
             output=args.output,
+            thresholds_path=getattr(args, "thresholds", "config/market_context_thresholds.json"),
         )
 
         if getattr(args, "json", False):
@@ -100,6 +102,27 @@ def run_context_command(args: Any) -> int:
             print("-" * 100)
             for key, value in payload["metrics"].items():
                 print(f"{key:<42} {value}")
+
+        return 0
+
+    if args.context_command == "calibrate":
+        payload = calibrate_market_context_thresholds(
+            indices_dir=args.indices_dir,
+            output=getattr(args, "output", ""),
+        )
+
+        if getattr(args, "json", False):
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+        else:
+            print("PYMERCATOR MARKET CONTEXT CALIBRATION")
+            print("-" * 100)
+            print(f"{'INDICES DIR':<20} {payload['indices_dir']}")
+            print(f"{'OUTPUT':<20} {payload.get('output', '-')}")
+            print("")
+            print("THRESHOLDS")
+            print("-" * 100)
+            for key, value in payload["thresholds"].items():
+                print(f"{key:<42} {float(value):>7.2f}")
 
         return 0
 

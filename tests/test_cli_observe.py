@@ -114,3 +114,28 @@ def test_observe_cluster_option_does_not_run_by_default(tmp_path: Path, capsys) 
     payload = json.loads(capsys.readouterr().out)
     assert payload["cluster"]["requested"] is True
     assert payload["cluster"]["enabled"] is False
+
+
+def test_observe_calibrate_writes_threshold_payload(tmp_path: Path, capsys) -> None:
+    universe = tmp_path / "universe.csv"
+    output = tmp_path / "observation_calibration.json"
+    _write_observation_universe(universe)
+
+    exit_code = main(
+        [
+            "observe",
+            "calibrate",
+            "--universe",
+            str(universe),
+            "--output",
+            str(output),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["command"] == "observe_calibrate"
+    assert payload["asset_count"] == 4
+    assert payload["config_patch"]["thresholds"] == payload["thresholds"]
+    assert output.exists()

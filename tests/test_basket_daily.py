@@ -234,6 +234,110 @@ def test_ready_tickers_from_daily_report_ignores_blocked_assets(tmp_path: Path) 
     assert basket_mod.ready_tickers_from_daily_report(report) == ["READY3"]
 
 
+def test_ready_candidates_from_daily_report_preserves_rank_and_score(tmp_path: Path) -> None:
+    report = tmp_path / "report.json"
+    report.write_text(
+        json.dumps(
+            {
+                "decisions": [
+                    {
+                        "asset": {"ticker": "FIRST3"},
+                        "ranking": {"context_score": 88.4},
+                        "permission": {"status": "READY"},
+                    },
+                    {
+                        "asset": {"ticker": "BLOCK3"},
+                        "ranking": {"context_score": 99.9},
+                        "permission": {"status": "BLOCKED"},
+                    },
+                    {
+                        "asset": {"ticker": "SECOND3"},
+                        "ranking": {"context_score": 77.2},
+                        "permission": {"status": "READY"},
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    candidates = basket_mod.ready_candidates_from_daily_report(report)
+
+    assert candidates == [
+        {"ticker": "FIRST3", "rank": 1, "source": "daily_report", "score": 88.4},
+        {"ticker": "SECOND3", "rank": 3, "source": "daily_report", "score": 77.2},
+    ]
+
+
+def test_run_daily_basket_sizes_ordered_candidates_without_rescoring(tmp_path: Path) -> None:
+    prices_dir = tmp_path / "prices"
+    universe_path = tmp_path / "universe.csv"
+    matrix_path = tmp_path / "feature_matrix.csv"
+    evaluation_path = tmp_path / "evaluation.json"
+    output_csv = tmp_path / "basket.csv"
+
+    _write_csv_rows(
+        universe_path,
+        [
+            {"ticker": "LOW3", "sector": "Energy"},
+            {"ticker": "HIGH3", "sector": "Financial"},
+        ],
+    )
+    _write_csv_rows(
+        matrix_path,
+        [
+            {
+                "ticker": "LOW3",
+                "sector": "Energy",
+                "momentum_score": "0.1",
+                "trend_score": "0.1",
+                "news_score": "0.1",
+                "return_5d": "0.01",
+                "volatility_20d": "0.12",
+                "atr_pct": "1.5",
+            },
+            {
+                "ticker": "HIGH3",
+                "sector": "Financial",
+                "momentum_score": "0.99",
+                "trend_score": "0.99",
+                "news_score": "0.99",
+                "return_5d": "0.05",
+                "volatility_20d": "0.08",
+                "atr_pct": "1.5",
+            },
+        ],
+    )
+    evaluation_path.write_text(json.dumps({"summary": {"best_accuracy": 1.0}}), encoding="utf-8")
+    _write_daily_prices(prices_dir / "LOW3.SA.csv")
+    _write_daily_prices(prices_dir / "HIGH3.SA.csv")
+
+    payload = basket_mod.run_daily_basket(
+        slots=2,
+        min_sectors=2,
+        min_weight=0.10,
+        capital=100000.0,
+        risk_per_trade=0.005,
+        targets=2,
+        stop_mode="progressive",
+        prices_dir=str(prices_dir),
+        universe=str(universe_path),
+        matrix=str(matrix_path),
+        evaluation=str(evaluation_path),
+        output_csv=str(output_csv),
+        ordered_candidates=[
+            {"ticker": "LOW3", "rank": 1, "score": 82.0},
+            {"ticker": "HIGH3", "rank": 2, "score": 91.0},
+        ],
+    )
+
+    assert payload["status"] == "OK"
+    assert payload["sizing_source"] == "ordered_candidates"
+    assert payload["candidate_order_preserved"] is True
+    assert [row["ticker"] for row in payload["rows"]] == ["LOW3", "HIGH3"]
+    assert [row["score"] for row in payload["rows"]] == [82.0, 91.0]
+
+
 def test_basket_summary_uses_short_sector_labels() -> None:
     payload = {
         "status": "OK",

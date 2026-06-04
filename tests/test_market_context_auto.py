@@ -2,6 +2,7 @@
 
 from pymercator.market_context_auto import (
     build_auto_market_context,
+    calibrate_market_context_thresholds,
     write_auto_market_context,
 )
 
@@ -66,3 +67,54 @@ def test_write_auto_market_context_creates_json(tmp_path: Path):
     assert output.exists()
     assert payload["output"] == str(output)
     assert payload["market_trend"] in {"UP", "DOWN", "CHOPPY"}
+
+
+def test_auto_market_context_uses_threshold_file(tmp_path: Path):
+    indices = tmp_path / "indices"
+    thresholds = tmp_path / "thresholds.json"
+    indices.mkdir()
+    thresholds.write_text(
+        """
+{
+  "schema_version": "market_context_thresholds.v1",
+  "thresholds": {
+    "trend_up_return_20d_pct": 100.0,
+    "trend_up_sma_position_pct": 100.0,
+    "trend_down_return_20d_pct": -100.0,
+    "trend_down_sma_position_pct": -100.0,
+    "volatility_high_pct": 99.0,
+    "volatility_low_pct": 0.1,
+    "oil_stress_return_5d_pct": 99.0,
+    "oil_stress_return_20d_pct": 99.0,
+    "fx_stress_return_5d_pct": 99.0,
+    "fx_stress_return_20d_pct": 99.0
+  }
+}
+""",
+        encoding="utf-8",
+    )
+
+    _write_prices(indices / "^BVSP.csv", [100 + i for i in range(30)])
+    _write_prices(indices / "BZ=F.csv", [70.0 for _ in range(30)])
+    _write_prices(indices / "USDBRL=X.csv", [5.0 for _ in range(30)])
+
+    context = build_auto_market_context(indices, thresholds_path=thresholds)
+
+    assert context["market_trend"] == "CHOPPY"
+    assert "RISK_ON" not in context["headline_tags"]
+
+
+def test_calibrate_market_context_thresholds_writes_config_patch(tmp_path: Path):
+    indices = tmp_path / "indices"
+    output = tmp_path / "market_context_calibration.json"
+    indices.mkdir()
+
+    _write_prices(indices / "^BVSP.csv", [100 + i for i in range(40)])
+    _write_prices(indices / "BZ=F.csv", [70 + i * 0.1 for i in range(40)])
+    _write_prices(indices / "USDBRL=X.csv", [5 + i * 0.01 for i in range(40)])
+
+    payload = calibrate_market_context_thresholds(indices_dir=indices, output=output)
+
+    assert payload["command"] == "context_calibrate"
+    assert payload["config_patch"]["thresholds"] == payload["thresholds"]
+    assert output.exists()

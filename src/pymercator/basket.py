@@ -250,16 +250,115 @@ def _load_prediction_evaluation(evaluation_path: str | Path) -> dict[str, Any]:
 
 
 def ready_tickers_from_daily_report(report_path: str | Path) -> list[str]:
-    payload = json.loads(Path(report_path).read_text(encoding="utf-8-sig"))
-    tickers: list[str] = []
+    return [item["ticker"] for item in ready_candidates_from_daily_report(report_path)]
 
-    for item in payload.get("decisions", []):
-        status = str(item.get("permission", {}).get("status", "")).upper()
+
+def _decision_status(item: dict[str, Any]) -> str:
+    raw = item.get("permission", {}).get("status", "")
+    if isinstance(raw, dict):
+        raw = raw.get("value", "")
+    return str(raw).upper()
+
+
+def _decision_score(item: dict[str, Any]) -> float | None:
+    ranking = item.get("ranking", {})
+    candidates = [
+        ranking.get("context_score") if isinstance(ranking, dict) else None,
+        ranking.get("raw_score") if isinstance(ranking, dict) else None,
+        item.get("score"),
+    ]
+    for candidate in candidates:
+        try:
+            value = float(candidate)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(value):
+            return value
+    return None
+
+
+def ready_candidates_from_daily_report(report_path: str | Path) -> list[dict[str, Any]]:
+    payload = json.loads(Path(report_path).read_text(encoding="utf-8-sig"))
+    candidates: list[dict[str, Any]] = []
+
+    for rank, item in enumerate(payload.get("decisions", []), start=1):
+        if not isinstance(item, dict):
+            continue
+        status = _decision_status(item)
         ticker = _normalize_ticker(item.get("asset", {}).get("ticker", ""))
         if status == "READY" and ticker:
-            tickers.append(ticker)
+            candidate = {
+                "ticker": ticker,
+                "rank": rank,
+                "source": "daily_report",
+            }
+            score = _decision_score(item)
+            if score is not None:
+                candidate["score"] = score
+            candidates.append(candidate)
 
-    return tickers
+    return candidates
+
+
+def _ordered_candidates(
+    eligible_tickers: list[str] | tuple[str, ...] | set[str] | None,
+    candidates: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None,
+) -> list[dict[str, Any]] | None:
+    if candidates is not None:
+        result: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for index, item in enumerate(candidates, start=1):
+            ticker = _normalize_ticker(item.get("ticker") if isinstance(item, dict) else "")
+            if not ticker or ticker in seen:
+                continue
+            raw_score = item.get("score") if isinstance(item, dict) else None
+            result.append({
+                "ticker": ticker,
+                "rank": int(_safe_float(item.get("rank"), index)) if isinstance(item, dict) else index,
+                "score": raw_score,
+                "source": str(item.get("source", "ordered_candidates")) if isinstance(item, dict) else "ordered_candidates",
+            })
+            seen.add(ticker)
+        return result
+
+    if eligible_tickers is None:
+        return None
+
+    result = []
+    seen = set()
+    for index, ticker_value in enumerate(eligible_tickers, start=1):
+        ticker = _normalize_ticker(ticker_value)
+        if not ticker or ticker in seen:
+            continue
+        result.append({
+            "ticker": ticker,
+            "rank": index,
+            "score": float(len(eligible_tickers) - index + 1),
+            "source": "eligible_tickers",
+        })
+        seen.add(ticker)
+    return result
+
+
+def _apply_ordered_candidate_scores(
+    rows: list[dict[str, Any]],
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    order = {item["ticker"]: index for index, item in enumerate(candidates)}
+    meta = {item["ticker"]: item for item in candidates}
+    scored: list[dict[str, Any]] = []
+    fallback_score = float(len(candidates))
+    for row in rows:
+        ticker = _normalize_ticker(row.get("ticker"))
+        item = meta.get(ticker, {})
+        score = _safe_float(item.get("score"), fallback_score - order.get(ticker, 0))
+        scored_row = row.copy()
+        scored_row["score"] = score
+        scored_row["source_rank"] = int(_safe_float(item.get("rank"), order.get(ticker, 0) + 1))
+        scored_row["sizing_source"] = str(item.get("source", "ordered_candidates"))
+        scored.append(scored_row)
+    scored.sort(key=lambda item: order.get(_normalize_ticker(item.get("ticker")), len(order)))
+    return scored
 
 
 def _build_scores(rows: list[dict[str, Any]], evaluation: dict[str, Any]) -> list[dict[str, Any]]:
@@ -322,7 +421,12 @@ def _select_basket_candidates(
         if candidate:
             top_by_sector.append(candidate)
 
-    top_by_sector.sort(key=lambda row: row["score"], reverse=True)
+    def selection_key(row: dict[str, Any]) -> tuple[float, str]:
+        if "source_rank" in row:
+            return (_safe_float(row.get("source_rank"), float("inf")), str(row["ticker"]))
+        return (-_safe_float(row.get("score"), 0.0), str(row["ticker"]))
+
+    top_by_sector.sort(key=selection_key)
     for row in top_by_sector[:min_sectors]:
         selected.append(row)
         sector_count[row["sector"]] = sector_count.get(row["sector"], 0) + 1
@@ -508,15 +612,14 @@ def run_daily_basket(
     output_csv: str = "storage/baskets/latest_daily_basket.csv",
     lot_size: int = 100,
     eligible_tickers: list[str] | tuple[str, ...] | set[str] | None = None,
+    ordered_candidates: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
     blocked_reason: str = "no actionable assets",
 ) -> dict[str, Any]:
     output_json = str(Path(output_csv).with_suffix(".json"))
     output_txt = str(Path(output_csv).with_suffix(".txt"))
-    eligible_set = (
-        {_normalize_ticker(ticker) for ticker in eligible_tickers if _normalize_ticker(ticker)}
-        if eligible_tickers is not None
-        else None
-    )
+    candidate_rows = _ordered_candidates(eligible_tickers, ordered_candidates)
+    eligible_set = {item["ticker"] for item in candidate_rows} if candidate_rows is not None else None
+    sizing_source = "ordered_candidates" if candidate_rows is not None else "feature_rescore"
 
     def finish(status: str, rows: list[dict[str, Any]], warnings: list[str]) -> dict[str, Any]:
         reason = blocked_reason if status == "BLOCKED" else ""
@@ -539,6 +642,8 @@ def run_daily_basket(
             "rows": rows,
             "warnings": warnings,
             "evaluation": False,
+            "sizing_source": sizing_source,
+            "candidate_order_preserved": bool(candidate_rows is not None),
             "runtime": artifact_metadata(),
         }
         _write_csv(output_csv, rows)
@@ -546,7 +651,7 @@ def run_daily_basket(
         _write_txt(output_txt, payload)
         return payload
 
-    if eligible_set is not None and not eligible_set:
+    if candidate_rows is not None and not candidate_rows:
         return finish("BLOCKED", [], [])
 
     universe_map = _load_universe(universe)
@@ -581,7 +686,11 @@ def run_daily_basket(
     if eligible_set is not None and not filtered:
         return finish("FAILED", [], ["no basketable actionable assets"])
 
-    scored_rows = _build_scores(filtered, evaluation_payload)
+    scored_rows = (
+        _apply_ordered_candidate_scores(filtered, candidate_rows)
+        if candidate_rows is not None
+        else _build_scores(filtered, evaluation_payload)
+    )
     basket_rows = _select_basket_candidates(scored_rows, slots, min_sectors)
 
     effective_weight = max(min_weight, 1.0 / slots)
@@ -621,6 +730,8 @@ def run_daily_basket(
         "rows": rows_payload,
         "warnings": warnings,
         "evaluation": bool(evaluation_payload),
+        "sizing_source": sizing_source,
+        "candidate_order_preserved": bool(candidate_rows is not None),
         "runtime": artifact_metadata(),
     }
 

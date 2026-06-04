@@ -1,0 +1,15 @@
+{
+  "schema_version": "market_context_thresholds.v1",
+  "thresholds": {
+    "trend_up_return_20d_pct": 3.0,
+    "trend_up_sma_position_pct": 1.0,
+    "trend_down_return_20d_pct": -3.0,
+    "trend_down_sma_position_pct": -1.0,
+    "volatility_high_pct": 28.0,
+    "volatility_low_pct": 12.0,
+    "oil_stress_return_5d_pct": 5.0,
+    "oil_stress_return_20d_pct": 10.0,
+    "fx_stress_return_5d_pct": 3.0,
+    "fx_stress_return_20d_pct": 6.0
+  }
+}

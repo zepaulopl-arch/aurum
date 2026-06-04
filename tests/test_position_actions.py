@@ -239,6 +239,59 @@ def test_weak_asset_without_position_generates_short_blocked_not_sell() -> None:
     assert "SELL" not in json.dumps(payload)
 
 
+def test_weak_asset_with_acceptable_borrow_data_generates_short_candidate(
+    tmp_path: Path,
+) -> None:
+    borrow = tmp_path / "borrow.csv"
+    borrow.write_text(
+        (
+            "ticker,available,borrow_cost_pct,available_qty,liquidity_ok,squeeze_risk\n"
+            "WEAK3,true,2.5,100000,true,20\n"
+        ),
+        encoding="utf-8",
+    )
+    report = _report(
+        (_decision("WEAK3", trend=20.0, momentum=20.0, score=20.0),),
+        regime=MarketRegime.RISK_OFF,
+    )
+
+    payload = build_position_actions(
+        report,
+        {"combined_score": 42.0, "model_quality": {"status": "WEAK"}},
+        borrow_data_path=borrow,
+    )
+
+    assert payload["borrow_data"]["status"] == "OK"
+    assert payload["short_book"][0]["action"] == "SHORT_CANDIDATE"
+    assert payload["short_book"][0]["execution"] == "OBSERVATIONAL_ONLY"
+    assert payload["short_candidates"][0]["ticker"] == "WEAK3"
+
+
+def test_weak_asset_with_high_borrow_cost_stays_short_blocked(tmp_path: Path) -> None:
+    borrow = tmp_path / "borrow.csv"
+    borrow.write_text(
+        (
+            "ticker,available,borrow_cost_pct,available_qty,liquidity_ok,squeeze_risk\n"
+            "WEAK3,true,12.0,100000,true,20\n"
+        ),
+        encoding="utf-8",
+    )
+    report = _report(
+        (_decision("WEAK3", trend=20.0, momentum=20.0, score=20.0),),
+        regime=MarketRegime.RISK_OFF,
+    )
+
+    payload = build_position_actions(
+        report,
+        {"combined_score": 42.0, "model_quality": {"status": "WEAK"}},
+        borrow_data_path=borrow,
+    )
+
+    assert payload["short_book"][0]["action"] == "SHORT_BLOCKED"
+    assert payload["short_candidates"] == []
+    assert payload["short_book"][0]["reason"] == "borrow cost above limit"
+
+
 def test_position_import_and_show_round_trip(tmp_path: Path) -> None:
     source = tmp_path / "source.csv"
     output = tmp_path / "current_positions.csv"

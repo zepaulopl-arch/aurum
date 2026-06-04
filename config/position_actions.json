@@ -17,6 +17,10 @@
     "min_short_score": 65.0,
     "requires_borrow_data": true,
     "block_without_borrow_data": true,
+    "borrow_data_path": "storage/borrow/latest_borrow_data.csv",
+    "max_borrow_cost_pct": 5.0,
+    "min_available_qty": 1.0,
+    "max_squeeze_risk": 70.0,
     "max_volatility": 60.0,
     "max_atr": 7.0
   },

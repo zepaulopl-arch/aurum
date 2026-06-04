@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from pymercator.borrow_data import evaluate_borrow_record, load_borrow_data
 from pymercator.domain import AssetDecision, DailyReport, ExecutionStatus, MarketRegime
 from pymercator.explain import decision_codes
 from pymercator.position_actions_config import load_position_actions_config
@@ -461,6 +462,7 @@ def _short_action(
     report: DailyReport,
     prediction: dict[str, Any] | None,
     config: dict[str, Any],
+    borrow_record: dict[str, Any] | None,
 ) -> tuple[str, str]:
     asset = decision.asset
     short_config = config.get("short", {}) if isinstance(config, dict) else {}
@@ -487,7 +489,13 @@ def _short_action(
             bool(short_config.get("requires_borrow_data", True))
             and bool(short_config.get("block_without_borrow_data", True))
         ):
-            return "SHORT_BLOCKED", "borrow/cost data unavailable"
+            borrow_ok, borrow_reason = evaluate_borrow_record(
+                borrow_record,
+                short_config,
+            )
+            if not borrow_ok:
+                return "SHORT_BLOCKED", borrow_reason
+            return "SHORT_CANDIDATE", f"weak trend + weak mom + {borrow_reason}"
         return "SHORT_CANDIDATE", "weak trend + weak mom + risk off"
     if (
         bool(hedge_config.get("enabled", True))
@@ -506,8 +514,10 @@ def build_short_book(
     *,
     limit: int = 10,
     config: dict[str, Any] | None = None,
+    borrow_records: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     resolved_config = config or load_position_actions_config()
+    borrow_records = borrow_records or {}
     positioned = {_ticker(position.ticker) for position in positions if position.side == "LONG"}
     sector_scores = _sector_weakness(report)
     rows: list[dict[str, Any]] = []
@@ -515,20 +525,30 @@ def build_short_book(
         if _ticker(decision.asset.ticker) in positioned:
             continue
         score = _short_score(decision, report, prediction, sector_scores, resolved_config)
-        action, reason = _short_action(decision, score, report, prediction, resolved_config)
+        ticker = _ticker(decision.asset.ticker)
+        borrow_record = borrow_records.get(ticker)
+        action, reason = _short_action(
+            decision,
+            score,
+            report,
+            prediction,
+            resolved_config,
+            borrow_record,
+        )
         if not action:
             continue
-        rows.append(
-            {
-                "ticker": decision.asset.ticker,
-                "direction": "SHORT",
-                "trade_mode": DEFAULT_SHORT_TRADE_MODE,
-                "action": action,
-                "score": round(score, 2),
-                "reason": reason,
-                "execution": "OBSERVATIONAL_ONLY",
-            }
-        )
+        row = {
+            "ticker": decision.asset.ticker,
+            "direction": "SHORT",
+            "trade_mode": DEFAULT_SHORT_TRADE_MODE,
+            "action": action,
+            "score": round(score, 2),
+            "reason": reason,
+            "execution": "OBSERVATIONAL_ONLY",
+        }
+        if borrow_record:
+            row["borrow"] = dict(borrow_record)
+        rows.append(row)
 
     rows = sorted(rows, key=lambda item: (-float(item["score"]), str(item["ticker"])))
     rows = rows[: max(1, int(limit))]
@@ -551,8 +571,16 @@ def build_position_actions(
     long_limit: int = 10,
     short_limit: int = 10,
     config_path: str | Path = "config/position_actions.json",
+    borrow_data_path: str | Path | None = None,
 ) -> dict[str, Any]:
     config = load_position_actions_config(config_path)
+    short_config = config.get("short", {}) if isinstance(config, dict) else {}
+    resolved_borrow_path = (
+        borrow_data_path
+        if borrow_data_path is not None
+        else short_config.get("borrow_data_path", "")
+    )
+    borrow_status, borrow_records = load_borrow_data(resolved_borrow_path)
     source = Path(positions_path)
     positions = load_positions(source)
     loaded = source.exists() and len(positions) > 0
@@ -570,6 +598,7 @@ def build_position_actions(
         prediction,
         limit=short_limit,
         config=config,
+        borrow_records=borrow_records,
     )
     return {
         "schema_version": "position_actions.v1",
@@ -582,6 +611,7 @@ def build_position_actions(
         "positions_file": str(source),
         "positions_loaded": loaded,
         "positions": positions_to_dicts(positions),
+        "borrow_data": borrow_status,
         "long_book": build_long_book(report, limit=long_limit),
         "exit_book": exit_book,
         "short_book": short_book["rows"],

@@ -44,6 +44,25 @@ def _tickers_by_status(report: DailyReport, status: ExecutionStatus) -> list[str
     ]
 
 
+def _candidates_by_status(
+    report: DailyReport,
+    status: ExecutionStatus,
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for index, item in enumerate(report.decisions, start=1):
+        if item.permission.status != status:
+            continue
+        candidates.append(
+            {
+                "ticker": item.asset.ticker,
+                "score": item.ranking.context_score,
+                "rank": index,
+                "source": "daily_run",
+            }
+        )
+    return candidates
+
+
 STATUS_ONLY_CODES = {"OK", "CAUTION", "BLOCKED", "UNKNOWN"}
 GLOBAL_BLOCKER_PRIORITY = (
     "MODEL_WEAK",
@@ -440,6 +459,7 @@ def run_decision_flow(
     prices_dir: str = "data/prices",
     observation_config: str = "config/observation.json",
     positions: str = "storage/positions/current_positions.csv",
+    borrow_data: str = "storage/borrow/latest_borrow_data.csv",
     limit: int = 20,
     run_dir: str = "storage/runs/latest",
     report_output: str = "storage/reports/latest_daily_report.txt",
@@ -467,6 +487,7 @@ def run_decision_flow(
         "basket": basket_output,
         "update_status": str(_update_status_path_for_context(context)),
         "positions": positions,
+        "borrow_data": borrow_data,
     }
 
     try:
@@ -539,7 +560,8 @@ def run_decision_flow(
         report_path.write_text(rendered, encoding="utf-8")
         (run_path / "report.txt").write_text(rendered, encoding="utf-8")
 
-        ready_tickers = _tickers_by_status(report, ExecutionStatus.READY)
+        ready_candidates = _candidates_by_status(report, ExecutionStatus.READY)
+        ready_tickers = [item["ticker"] for item in ready_candidates]
         observation_payload = observation_from_decisions(
             report.decisions,
             config_path=observation_config,
@@ -555,6 +577,7 @@ def run_decision_flow(
             report,
             prediction_payload,
             positions_path=positions,
+            borrow_data_path=borrow_data,
             long_limit=min(10, max(1, limit)),
             short_limit=min(10, max(1, limit)),
         )
@@ -575,6 +598,7 @@ def run_decision_flow(
                 evaluation=evaluation,
                 output_csv=basket_output,
                 eligible_tickers=ready_tickers,
+                ordered_candidates=ready_candidates,
                 blocked_reason="no actionable assets",
             )
 
@@ -878,6 +902,7 @@ def run_run_command(args: Any) -> int:
         evaluation=args.evaluation,
         observation_config=args.observation_config,
         positions=args.positions,
+        borrow_data=getattr(args, "borrow_data", "storage/borrow/latest_borrow_data.csv"),
         prices_dir=args.prices_dir,
         limit=args.limit,
         run_dir=args.run_dir,

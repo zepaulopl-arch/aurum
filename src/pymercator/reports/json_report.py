@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +73,43 @@ def _prediction_for_decision(prediction: dict[str, Any] | None) -> dict[str, Any
     }
 
 
+def _generated_ts() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _reference_fields(ref_price: float, signal_ts: str) -> dict[str, Any]:
+    return {
+        "ref_price": round(float(ref_price), 4),
+        "ref_ts": signal_ts,
+        "ref_source": "daily_report.asset.last_close",
+    }
+
+
+def _attach_reference(
+    row: dict[str, Any],
+    reference_by_ticker: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    result = dict(row)
+    ticker = str(result.get("ticker", "")).upper().replace(".SA", "")
+    reference = reference_by_ticker.get(ticker)
+    if reference and result.get("ref_price") in (None, ""):
+        result.update(reference)
+    return result
+
+
+def _attach_references_to_rows(
+    rows: Any,
+    reference_by_ticker: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not isinstance(rows, list):
+        return []
+    return [
+        _attach_reference(row, reference_by_ticker)
+        for row in rows
+        if isinstance(row, dict)
+    ]
+
+
 def daily_report_to_dict(
     report: DailyReport,
     prediction: dict[str, Any] | None = None,
@@ -83,11 +121,21 @@ def daily_report_to_dict(
     position_actions: dict[str, Any] | None = None,
     market_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    signal_ts = _generated_ts()
     raw = _convert(asdict(report))
     raw["schema_version"] = "daily_report.v1"
     raw["runtime"] = artifact_metadata()
+    raw["runtime"]["generated_at"] = signal_ts
     global_prediction = _prediction_global(prediction)
     decision_prediction = _prediction_for_decision(prediction)
+    reference_by_ticker = {
+        decision.asset.ticker.upper().replace(".SA", ""): _reference_fields(
+            decision.asset.last_close,
+            signal_ts,
+        )
+        for decision in report.decisions
+        if decision.asset.last_close > 0
+    }
 
     if global_prediction:
         raw["prediction"] = global_prediction
@@ -141,13 +189,35 @@ def daily_report_to_dict(
         raw["basket"] = {}
 
     if observation_candidates is not None:
-        raw["observation_candidates"] = _convert(observation_candidates)
+        raw["observation_candidates"] = _attach_references_to_rows(
+            _convert(observation_candidates),
+            reference_by_ticker,
+        )
     else:
         raw["observation_candidates"] = []
 
     if position_actions is not None:
         converted_actions = _convert(position_actions)
         converted_actions.setdefault("schema_version", "position_actions.v1")
+        converted_actions["short_candidates"] = _attach_references_to_rows(
+            converted_actions.get("short_candidates", []),
+            reference_by_ticker,
+        )
+        converted_actions["short_observation_candidates"] = _attach_references_to_rows(
+            converted_actions.get("short_observation_candidates", []),
+            reference_by_ticker,
+        )
+        converted_actions["short_book"] = _attach_references_to_rows(
+            converted_actions.get("short_book", []),
+            reference_by_ticker,
+        )
+        defensive_book = converted_actions.get("defensive_book", {})
+        if isinstance(defensive_book, dict):
+            defensive_book["short_candidates"] = _attach_references_to_rows(
+                defensive_book.get("short_candidates", []),
+                reference_by_ticker,
+            )
+            converted_actions["defensive_book"] = defensive_book
         raw["position_actions"] = converted_actions
         raw["exit_book"] = converted_actions.get("exit_book", {})
         raw["defensive_book"] = converted_actions.get("defensive_book", {})
@@ -163,6 +233,7 @@ def daily_report_to_dict(
 
     for index, decision in enumerate(report.decisions):
         ticker = decision.asset.ticker
+        raw["decisions"][index].update(reference_by_ticker.get(ticker.upper().replace(".SA", ""), {}))
         raw["decisions"][index]["decision_codes"] = list(decision_codes(decision))
         raw["decisions"][index]["decision_label"] = decision_label(decision)
         raw["decisions"][index]["blocker_reasons"] = list(

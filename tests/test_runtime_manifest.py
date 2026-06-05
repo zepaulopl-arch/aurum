@@ -124,7 +124,15 @@ def test_ops_common_renders_daily_signal_screen(tmp_path: Path):
     run_log.write_text("run log\n", encoding="utf-8")
     observe_log.write_text("observe log\n", encoding="utf-8")
     update.write_text(
-        json.dumps({"status": "OK", "freshness": {"freshness_status": "OK"}}),
+        json.dumps(
+            {
+                "status": "OK",
+                "freshness": {
+                    "freshness_status": "WARNING",
+                    "data_quality_score": 77.0,
+                },
+            }
+        ),
         encoding="utf-8",
     )
     report.write_text(
@@ -136,6 +144,7 @@ def test_ops_common_renders_daily_signal_screen(tmp_path: Path):
                     "regime_summary": {
                         "market_regime": "RISK_OFF",
                         "market_trend": "DOWN",
+                        "context_score": 47.6,
                     }
                 },
                 "prediction": {
@@ -163,7 +172,13 @@ def test_ops_common_renders_daily_signal_screen(tmp_path: Path):
                         "short_permission": "SHORT_BLOCKED",
                     }
                 ],
-                "hedge_candidates": [{"target": "INDEX", "action": "HEDGE_WATCH"}],
+                "hedge_candidates": [
+                    {
+                        "target": "INDEX",
+                        "action": "HEDGE_WATCH",
+                        "reason": "risk-off + downtrend",
+                    }
+                ],
                 "observation_candidates": [
                     {
                         "ticker": "CCC3",
@@ -204,8 +219,24 @@ def test_ops_common_renders_daily_signal_screen(tmp_path: Path):
     assert result.returncode == 0, result.stderr + result.stdout
     output = result.stdout
     assert "PYMERCATOR SIGNALS" in output
+    assert "context_score" in output
+    assert "47.6" in output
+    assert "data_freshness" in output
+    assert "WARNING" in output
+    assert "data_quality" in output
+    assert "77.0" in output
+    assert "0 EXEC_READY | 1 DATA_BLOCKED" in output
     assert "BUY / LONG SIGNALS" in output
     assert "SELL-SHORT SIGNALS" in output
+    assert "EXECUTION" in output
+    assert "DATA_BLOCKED" in output
+    assert "PERMISSION" not in output
+    assert "BLOCKED/DATA" not in output
+    assert "HEDGE / DEFENSE" in output
+    assert "INDEX" in output
+    assert "risk-off + downtrend" in output
+    assert "CASH" in output
+    assert "PREFERRED" in output
     assert "OBSERVATION" in output
     assert "BASKET" in output
     assert "FINAL DECISION" in output

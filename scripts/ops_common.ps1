@@ -506,7 +506,7 @@ function Get-PyMercatorSignalColorCode {
     param([string]$Status)
 
     $key = "$Status".ToUpperInvariant()
-    if ($key -match "^(OK|PASS|STRONG|READY|RISK_ON|TREND_CONFIRM|ALIGNED_STRONG|REVIEW LONG BASKET|REVIEW BASKET)$") {
+    if ($key -match "^(OK|PASS|STRONG|READY|EXEC_READY|RISK_ON|TREND_CONFIRM|ALIGNED_STRONG|REVIEW LONG BASKET|REVIEW BASKET)$") {
         return "32"
     }
     if ($key -match "^(WARNING|PARTIAL|WATCH|MANUAL_ONLY|MANUAL REVIEW|CHOPPY)$") {
@@ -515,7 +515,7 @@ function Get-PyMercatorSignalColorCode {
     if ($key -match "^(FAIL|WEAK|DEGENERATE|BLOCKED|SHORT_BLOCKED|RISK_OFF|AVOID|NO LONG TRADE)$") {
         return "31"
     }
-    if ($key -match "^(DATA_MISSING|UNKNOWN|BORROW_DATA_MISSING|EVENT_UNKNOWN)$") {
+    if ($key -match "^(DATA_MISSING|DATA_BLOCKED|UNKNOWN|BORROW_DATA_MISSING|EVENT_UNKNOWN)$") {
         return "90"
     }
     if ($key -match "^(CASH|WAIT|HOLD_CASH|PREFERRED|DEFENSIVE MODE ACTIVE)$") {
@@ -642,8 +642,10 @@ function Get-PyMercatorShortSignalRows {
     foreach ($item in @($Candidates | Select-Object -First $Limit)) {
         $borrow = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $item -Name "borrow_status" -Default "-")
         $permission = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $item -Name "short_permission" -Default (Get-PyMercatorDailyObjectValue -Object $item -Name "permission" -Default "-"))
+        $execution = $permission
         $action = "review"
         if ($borrow -eq "DATA_MISSING") {
+            $execution = "DATA_BLOCKED"
             $action = "check borrow"
         } elseif ($permission -eq "READY") {
             $action = "review short"
@@ -655,7 +657,7 @@ function Get-PyMercatorShortSignalRows {
             Score = Get-PyMercatorDailyObjectValue -Object $item -Name "short_score" -Default (Get-PyMercatorDailyObjectValue -Object $item -Name "score" -Default "-")
             Setup = Get-PyMercatorDailyObjectValue -Object $item -Name "short_setup_status" -Default "SHORT_SETUP"
             Borrow = $borrow
-            Permission = $permission
+            Execution = $execution
             Action = $action
         }
     }
@@ -724,6 +726,20 @@ function Show-PyMercatorSignals {
     $profile = Get-PyMercatorDailyObjectValue -Object $payload -Name "profile" -Default "CON"
     $market = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "market_regime" -Default (Get-PyMercatorDailyObjectValue -Object $marketRegime -Name "regime" -Default "-")
     $trend = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "market_trend" -Default (Get-PyMercatorDailyObjectValue -Object $marketContext -Name "market_trend" -Default "-")
+    $contextScore = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "context_score" -Default "-"
+    $dataFreshness = "-"
+    $dataQuality = "-"
+    if ($UpdateStatusFile -and (Test-Path -LiteralPath $UpdateStatusFile)) {
+        try {
+            $updateStatus = Get-Content -LiteralPath $UpdateStatusFile -Raw | ConvertFrom-Json
+            $freshness = Get-PyMercatorDailyObjectValue -Object $updateStatus -Name "freshness" -Default $null
+            $dataFreshness = Get-PyMercatorDailyObjectValue -Object $freshness -Name "freshness_status" -Default "-"
+            $dataQuality = Get-PyMercatorDailyObjectValue -Object $freshness -Name "data_quality_score" -Default "-"
+        } catch {
+            $dataFreshness = "UNKNOWN"
+            $dataQuality = "-"
+        }
+    }
     $behavior = Get-PyMercatorDailyObjectValue -Object $prediction -Name "behavior" -Default "-"
     $longBasket = Get-PyMercatorDailyObjectValue -Object $basket -Name "status" -Default "-"
     $defensiveMode = Get-PyMercatorDailyObjectValue -Object $defensiveBook -Name "defensive_mode" -Default "inactive"
@@ -735,14 +751,17 @@ function Show-PyMercatorSignals {
     $blocked = [int](Get-PyMercatorDailyObjectValue -Object $decision -Name "blocked" -Default 0)
     $shortPermission = Get-PyMercatorShortPermissionSummary -Candidates $shortCandidates
     $shortReady = 0
+    $shortDataBlocked = 0
     foreach ($candidate in $shortCandidates) {
         $permission = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $candidate -Name "short_permission" -Default (Get-PyMercatorDailyObjectValue -Object $candidate -Name "permission" -Default "-"))
         $borrow = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $candidate -Name "borrow_status" -Default "-")
         if ($permission -eq "READY" -and $borrow -ne "DATA_MISSING") {
             $shortReady += 1
         }
+        if ($borrow -eq "DATA_MISSING") {
+            $shortDataBlocked += 1
+        }
     }
-    $shortBlocked = [Math]::Max(0, $shortCandidates.Count - $shortReady)
     $hedgeStatus = if ($hedgeCandidates.Count -gt 0) { "WATCH" } else { "NONE" }
     $cashStatus = if ("$defensiveMode".ToLowerInvariant() -eq "active" -or $longBasket -eq "BLOCKED") { "PREFERRED" } else { "NEUTRAL" }
 
@@ -750,6 +769,9 @@ function Show-PyMercatorSignals {
     Write-PyMercatorSummaryValue -Label "profile" -Value $profile
     Write-PyMercatorSummaryValue -Label "market" -Value $market -Status $market
     Write-PyMercatorSummaryValue -Label "trend" -Value $trend -Status $trend
+    Write-PyMercatorSummaryValue -Label "context_score" -Value (Format-PyMercatorSignalNumber -Value $contextScore -Decimals 1)
+    Write-PyMercatorSummaryValue -Label "data_freshness" -Value $dataFreshness -Status $dataFreshness
+    Write-PyMercatorSummaryValue -Label "data_quality" -Value (Format-PyMercatorSignalNumber -Value $dataQuality -Decimals 1)
     Write-PyMercatorSummaryValue -Label "model_quality" -Value $modelQuality -Status $modelQuality
     Write-PyMercatorSummaryValue -Label "behavior" -Value $behavior -Status $behavior
     Write-PyMercatorSummaryValue -Label "long_basket" -Value $longBasket -Status $longBasket
@@ -759,7 +781,7 @@ function Show-PyMercatorSignals {
     Write-Host "SIGNAL SUMMARY"
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ("{0,-18} {1} READY | {2} WATCH | {3} BLOCKED" -f "LONG/BUY", $actionable, $watch, $blocked)
-    Write-Host ("{0,-18} {1} SETUPS | {2} READY | {3} BLOCKED/DATA" -f "SELL-SHORT", $shortCandidates.Count, $shortReady, $shortBlocked)
+    Write-Host ("{0,-18} {1} SETUPS | {2} EXEC_READY | {3} DATA_BLOCKED" -f "SELL-SHORT", $shortCandidates.Count, $shortReady, $shortDataBlocked)
     Write-Host ("{0,-18} {1}" -f "HEDGE", (Format-PyMercatorSignalText -Text $hedgeStatus -Status $hedgeStatus))
     Write-Host ("{0,-18} {1}" -f "CASH", (Format-PyMercatorSignalText -Text $cashStatus -Status $cashStatus))
 
@@ -791,7 +813,7 @@ function Show-PyMercatorSignals {
     Write-Host ""
     Write-Host "SELL-SHORT SIGNALS"
     Write-Host "--------------------------------------------------------------------------------"
-    Write-Host ("{0,2}  {1,-8} {2,11}  {3,-12} {4,-12} {5,-12} {6}" -f "#", "TICKER", "SETUP_SCORE", "SETUP", "BORROW", "PERMISSION", "ACTION")
+    Write-Host ("{0,2}  {1,-8} {2,11}  {3,-12} {4,-12} {5,-12} {6}" -f "#", "TICKER", "SETUP_SCORE", "SETUP", "BORROW", "EXECUTION", "ACTION")
     $shortRows = @(Get-PyMercatorShortSignalRows -Candidates $shortCandidates -Limit $ShortLimit)
     if ($shortRows.Count -eq 0) {
         Write-Host "No short setup candidates."
@@ -805,10 +827,41 @@ function Show-PyMercatorSignals {
                 (Format-PyMercatorSignalNumber -Value $row.Score -Decimals 1),
                 $row.Setup,
                 (Format-PyMercatorSignalCell -Text $row.Borrow -Width 12 -Status $row.Borrow),
-                (Format-PyMercatorSignalCell -Text $row.Permission -Width 12 -Status $row.Permission),
+                (Format-PyMercatorSignalCell -Text $row.Execution -Width 12 -Status $row.Execution),
                 $row.Action
             )
             $index += 1
+        }
+    }
+
+    Write-Host ""
+    Write-Host "HEDGE / DEFENSE"
+    Write-Host "--------------------------------------------------------------------------------"
+    Write-Host ("{0,-10}  {1,-9}  {2}" -f "TARGET", "STATUS", "REASON")
+    if ($hedgeCandidates.Count -eq 0 -and $cashStatus -ne "PREFERRED") {
+        Write-Host "No hedge or cash defense candidates."
+    } else {
+        foreach ($row in @($hedgeCandidates | Select-Object -First 5)) {
+            $target = Get-PyMercatorDailyObjectValue -Object $row -Name "target" -Default "-"
+            $status = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $row -Name "status" -Default (Get-PyMercatorDailyObjectValue -Object $row -Name "action" -Default "WATCH"))
+            if ($status -eq "HEDGE_WATCH") {
+                $status = "WATCH"
+            }
+            $reason = Get-PyMercatorDailyObjectValue -Object $row -Name "reason" -Default "-"
+            Write-Host (
+                "{0,-10}  {1}  {2}" -f
+                $target,
+                (Format-PyMercatorSignalCell -Text $status -Width 9 -Status $status),
+                $reason
+            )
+        }
+        if ($cashStatus -eq "PREFERRED") {
+            Write-Host (
+                "{0,-10}  {1}  {2}" -f
+                "CASH",
+                (Format-PyMercatorSignalCell -Text "PREFERRED" -Width 9 -Status "PREFERRED"),
+                "no long basket allowed"
+            )
         }
     }
 

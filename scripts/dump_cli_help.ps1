@@ -38,21 +38,13 @@ $commands = @(
     @{ Label = "python -m pymercator prices --help"; Args = @("prices", "--help") },
     @{ Label = "python -m pymercator lab --help"; Args = @("lab", "--help") },
     @{ Label = "python -m pymercator cfg --help"; Args = @("cfg", "--help") },
-    @{ Label = "python -m pymercator board --help"; Args = @("board", "--help") },
     @{ Label = "python -m pymercator open --help"; Args = @("open", "--help") },
     @{ Label = "python -m pymercator daily --help"; Args = @("daily", "--help") },
-    @{ Label = "python -m pymercator daily-real --help"; Args = @("daily-real", "--help") },
-    @{ Label = "python -m pymercator real-pack --help"; Args = @("real-pack", "--help") },
-    @{ Label = "python -m pymercator scenario-pack --help"; Args = @("scenario-pack", "--help") },
-    @{ Label = "python -m pymercator daily-auto --help"; Args = @("daily-auto", "--help") },
     @{ Label = "python -m pymercator execution --help"; Args = @("execution", "--help") },
     @{ Label = "python -m pymercator indices --help"; Args = @("indices", "--help") },
     @{ Label = "python -m pymercator sentiment --help"; Args = @("sentiment", "--help") },
     @{ Label = "python -m pymercator predict --help"; Args = @("predict", "--help") },
-    @{ Label = "python -m pymercator features --help"; Args = @("features", "--help") },
-    @{ Label = "python -m pymercator confirm --help"; Args = @("confirm", "--help") },
-    @{ Label = "python -m pymercator legacy --help"; Args = @("legacy", "--help") },
-    @{ Label = "python -m pymercator packs --help"; Args = @("packs", "--help") }
+    @{ Label = "python -m pymercator features --help"; Args = @("features", "--help") }
 )
 
 $lines = [System.Collections.Generic.List[string]]::new()

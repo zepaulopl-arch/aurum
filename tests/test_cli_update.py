@@ -85,20 +85,6 @@ def _patch_update_ok(monkeypatch):
     )
     monkeypatch.setattr(
         update_mod,
-        "validate_features_catalog",
-        lambda path: {"valid": True, "file": str(path), "errors": []},
-    )
-    monkeypatch.setattr(
-        update_mod,
-        "write_feature_matrix",
-        lambda **kwargs: {
-            "rows": 1,
-            "assets": 1,
-            "output": kwargs["output"],
-        },
-    )
-    monkeypatch.setattr(
-        update_mod,
         "write_features_v2",
         lambda **kwargs: {
             "status": "OK",

@@ -7,10 +7,6 @@ from pymercator.features_catalog import (
     render_features_catalog,
     validate_features_catalog,
 )
-from pymercator.features_matrix import (
-    render_feature_matrix_summary,
-    write_feature_matrix,
-)
 from pymercator.features_v2 import (
     load_latest_feature_audit,
     render_feature_audit,
@@ -28,22 +24,6 @@ def run_features_command(args: Any) -> int:
             print(render_features_catalog(payload))
 
         return 0 if payload["valid"] else 1
-
-    if args.features_command == "matrix":
-        payload = write_feature_matrix(
-            universe=args.universe,
-            prices_dir=args.prices_dir,
-            context=args.context,
-            features=args.features,
-            output=args.output,
-        )
-
-        if getattr(args, "json", False):
-            print(json.dumps(payload, ensure_ascii=False, indent=2))
-        else:
-            print(render_feature_matrix_summary(payload))
-
-        return 0
 
     if args.features_command == "build":
         payload = write_features_v2(

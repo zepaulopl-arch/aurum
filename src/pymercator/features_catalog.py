@@ -201,36 +201,6 @@ def write_features_catalog(
     return validate_features_catalog(output_path)
 
 
-def migrate_legacy_features_catalog(
-    *,
-    legacy_path: str | Path,
-    output: str | Path,
-) -> dict[str, Any]:
-    legacy = Path(legacy_path)
-    candidates = [
-        legacy / "config" / "features.yaml",
-        legacy / "config" / "features.json",
-    ]
-
-    found = next((path for path in candidates if path.exists()), None)
-
-    # v1 deliberately creates a clean pyMercator catalog.
-    # Later phases may parse the legacy YAML in detail.
-    result = write_features_catalog(output=output)
-
-    return {
-        "legacy_path": str(legacy),
-        "source_file": str(found) if found else "",
-        "output": str(output),
-        "valid": result["valid"],
-        "features": result["features"],
-        "enabled": result["enabled"],
-        "required": result["required"],
-        "groups": result["groups"],
-        "errors": result["errors"],
-    }
-
-
 def render_features_catalog(payload: dict[str, Any]) -> str:
     line = "-" * 100
     lines = [

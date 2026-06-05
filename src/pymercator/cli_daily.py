@@ -1,12 +1,26 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from pymercator.pipeline import run_daily_pipeline
 from pymercator.reports.json_report import write_daily_report_json
 from pymercator.reports.terminal import render_daily_report
-from pymercator.scenario_pack import make_timestamped_run_dir
+
+
+def make_timestamped_run_dir(base_dir: str | Path) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_path = Path(base_dir)
+    candidate = base_path / stamp
+    suffix = 1
+
+    while candidate.exists():
+        candidate = base_path / f"{stamp}_{suffix:02d}"
+        suffix += 1
+
+    candidate.mkdir(parents=True, exist_ok=False)
+    return candidate
 
 
 def run_daily_command(

@@ -1,7 +1,6 @@
 ﻿from __future__ import annotations
 
 import csv
-import shutil
 from pathlib import Path
 from typing import Any
 
@@ -171,50 +170,6 @@ def check_sentiment_dir(sentiment_dir: str | Path) -> dict[str, Any]:
         "invalid_files": invalid_files,
         "tickers": tickers,
         "results": results,
-    }
-
-
-def migrate_legacy_sentiment(
-    *,
-    legacy_path: str | Path,
-    output: str | Path,
-    source_dir: str = "data/sentiment",
-) -> dict[str, Any]:
-    root = Path(legacy_path)
-    source = root / source_dir
-    target = Path(output)
-
-    if not source.exists():
-        raise FileNotFoundError(f"Legacy sentiment directory not found: {source}")
-
-    target.mkdir(parents=True, exist_ok=True)
-
-    copied: list[dict[str, str]] = []
-
-    for source_file in sorted(source.glob("*.csv")):
-        target_file = target / source_file.name
-        shutil.copy2(source_file, target_file)
-
-        copied.append(
-            {
-                "source": str(source_file),
-                "target": str(target_file),
-                "ticker": _ticker_from_sentiment_file(target_file),
-            }
-        )
-
-    check = check_sentiment_dir(target)
-
-    return {
-        "legacy_path": str(root),
-        "source_dir": str(source),
-        "output": str(target),
-        "copied": len(copied),
-        "valid_files": check["valid_files"],
-        "invalid_files": check["invalid_files"],
-        "tickers": check["tickers"],
-        "files": copied,
-        "check": check,
     }
 
 

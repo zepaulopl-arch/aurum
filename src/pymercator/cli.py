@@ -81,12 +81,6 @@ def _run_execution_command(args: argparse.Namespace) -> int:
     return run_execution_command(args)
 
 
-def _run_confirm_command(args: argparse.Namespace) -> int:
-    from pymercator.cli_confirm import run_confirm_command
-
-    return run_confirm_command(args)
-
-
 def _run_context_command(args: argparse.Namespace) -> int:
     from pymercator.cli_context import run_context_command
 
@@ -103,12 +97,6 @@ def _run_db_command(args: argparse.Namespace) -> int:
     from pymercator.cli_db import run_db_command
 
     return run_db_command(args)
-
-
-def _run_legacy_command(args: argparse.Namespace) -> int:
-    from pymercator.cli_legacy import run_legacy_command
-
-    return run_legacy_command(args)
 
 
 def _run_update_command(args: argparse.Namespace) -> int:
@@ -310,44 +298,12 @@ def _run_cfg_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def _run_short_board_command(args: argparse.Namespace) -> int:
-    profile = presets_mod.resolve_profile(args.profile if getattr(args, "profile", None) else None)
-    paths = profile.get("paths", {})
-
-    run_dir = paths.get("scenario_runs")
-    manifest_path = None
-
-    try:
-        from pathlib import Path
-
-        base = Path(run_dir)
-        if base.exists() and base.is_dir():
-            candidates = [p for p in base.iterdir() if p.is_dir()]
-            candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-            if candidates:
-                manifest = candidates[0] / "00_manifest.json"
-                if manifest.exists():
-                    manifest_path = manifest
-
-        print("PYMERCATOR BOARD")
-        print(ui.line(profile.get("ui", {}).get("width", 120)))
-        print(ui.kv("PACK", str(manifest_path or "(not found)")))
-        print(ui.kv("FEATURE MATRIX", paths.get("feature_matrix")))
-        print(ui.kv("PREDICTION", paths.get("prediction_evaluation")))
-
-    except Exception:
-        print("Unable to render board")
-
-    return 0
-
-
 def _run_short_open_command(args: argparse.Namespace) -> int:
     profile = presets_mod.resolve_profile(args.profile if getattr(args, "profile", None) else None)
     paths = profile.get("paths", {})
     artifact = getattr(args, "artifact", "eval")
 
     mapping = {
-        "manifest": None,
         "eval": paths.get("prediction_evaluation"),
         "matrix": paths.get("feature_matrix"),
         "dataset": paths.get("prediction_dataset"),
@@ -502,19 +458,6 @@ def _run_basket_command(args: argparse.Namespace) -> int:
     return run_basket_cli(args)
 
 
-def _run_daily_auto_command(args: argparse.Namespace) -> int:
-    from pymercator.cli_daily_auto import run_daily_auto_command
-
-    return run_daily_auto_command(args)
-
-
-def _run_real_pack_command(args: argparse.Namespace) -> int:
-    from pymercator.cli_real_pack import run_real_pack_command
-
-    args.context_values = resolve_market_context_args(args)
-    return run_real_pack_command(args)
-
-
 def _run_daily_command(args: argparse.Namespace) -> int:
     resolved_output, json_output, resolved_run_dir = _resolve_output_paths(
         output=args.output,
@@ -533,13 +476,6 @@ def _run_daily_command(args: argparse.Namespace) -> int:
         resolved_run_dir=resolved_run_dir,
         context_values=context_values,
     )
-
-
-def _run_scenario_pack_command(args: argparse.Namespace) -> int:
-    from pymercator.cli_scenario_pack import run_scenario_pack_command
-
-    args.context_values = resolve_market_context_args(args)
-    return run_scenario_pack_command(args)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -631,7 +567,6 @@ def build_parser() -> argparse.ArgumentParser:
             default="config/market_context_thresholds.json",
         )
         update_parser.add_argument("--universe-output", default="data/universes/ibov_live.csv")
-        update_parser.add_argument("--features-catalog", default="config/features_catalog.json")
         update_parser.add_argument("--features-config", default="config/features.json")
         update_parser.add_argument(
             "--matrix-output",
@@ -819,14 +754,9 @@ def build_parser() -> argparse.ArgumentParser:
         cfg_short.add_argument("--profile", default="")
         cfg_short.add_argument("--json", action="store_true")
 
-        board_short = subparsers.add_parser("board", help="Show last pack dashboard")
-        board_short.set_defaults(command="board")
-        board_short.add_argument("--profile", default="")
-        board_short.add_argument("--json", action="store_true")
-
         open_short = subparsers.add_parser(
             "open",
-            help="Open recent artifact (manifest|eval|matrix|dataset)",
+            help="Open recent artifact (eval|matrix|dataset)",
         )
         open_short.set_defaults(command="open")
         open_short.add_argument("artifact", nargs="?", default="eval")
@@ -857,67 +787,6 @@ def build_parser() -> argparse.ArgumentParser:
         daily_parser.add_argument("--headline-tags", default="")
         daily_parser.add_argument("--market-trend", default="CHOPPY")
         daily_parser.add_argument("--market-volatility", default="NORMAL")
-
-        real_pack_parser = subparsers.add_parser("daily-real", help="Run real pack")
-        real_pack_parser.set_defaults(command="daily-real")
-        real_pack_parser.add_argument("--execution-policy", default="config/execution_policy.json")
-        real_pack_parser.add_argument("--tickers-file", required=True)
-        real_pack_parser.add_argument("--features-file", default="config/features_catalog.json")
-        real_pack_parser.add_argument("--start", default="")
-        real_pack_parser.add_argument("--end", default="")
-        real_pack_parser.add_argument("--prices-dir", required=True)
-        real_pack_parser.add_argument("--universe-output", required=True)
-        real_pack_parser.add_argument("--run-dir", default="storage/scenario_runs")
-        real_pack_parser.add_argument("--universe-name", default="IBOV")
-        real_pack_parser.add_argument("--policy", default="config/policy.json")
-        real_pack_parser.add_argument("--limit", type=int, default=0)
-        real_pack_parser.add_argument("--skip-fetch", action="store_true")
-        real_pack_parser.add_argument("--json", action="store_true")
-        real_pack_parser.add_argument("--context", default="")
-        real_pack_parser.add_argument("--context-preset", default="")
-        real_pack_parser.add_argument("--headline-tags", default="")
-        real_pack_parser.add_argument("--market-trend", default="CHOPPY")
-        real_pack_parser.add_argument("--market-volatility", default="NORMAL")
-
-        real_pack_alias_parser = subparsers.add_parser("real-pack", help="Run real pack")
-        real_pack_alias_parser.set_defaults(command="real-pack")
-        real_pack_alias_parser.add_argument(
-            "--execution-policy",
-            default="config/execution_policy.json",
-        )
-        real_pack_alias_parser.add_argument("--tickers-file", required=True)
-        real_pack_alias_parser.add_argument(
-            "--features-file",
-            default="config/features_catalog.json",
-        )
-        real_pack_alias_parser.add_argument("--start", default="")
-        real_pack_alias_parser.add_argument("--end", default="")
-        real_pack_alias_parser.add_argument("--prices-dir", required=True)
-        real_pack_alias_parser.add_argument("--universe-output", required=True)
-        real_pack_alias_parser.add_argument("--run-dir", default="storage/scenario_runs")
-        real_pack_alias_parser.add_argument("--universe-name", default="IBOV")
-        real_pack_alias_parser.add_argument("--policy", default="config/policy.json")
-        real_pack_alias_parser.add_argument("--limit", type=int, default=0)
-        real_pack_alias_parser.add_argument("--skip-fetch", action="store_true")
-        real_pack_alias_parser.add_argument("--json", action="store_true")
-        real_pack_alias_parser.add_argument("--context", default="")
-        real_pack_alias_parser.add_argument("--context-preset", default="")
-        real_pack_alias_parser.add_argument("--headline-tags", default="")
-        real_pack_alias_parser.add_argument("--market-trend", default="CHOPPY")
-        real_pack_alias_parser.add_argument("--market-volatility", default="NORMAL")
-
-        scenario_pack_parser = subparsers.add_parser("scenario-pack", help="Create a scenario pack")
-        scenario_pack_parser.set_defaults(command="scenario-pack")
-        scenario_pack_parser.add_argument("--universe", required=True)
-        scenario_pack_parser.add_argument("--universe-name", default="IBOV")
-        scenario_pack_parser.add_argument("--policy", default="config/policy.json")
-        scenario_pack_parser.add_argument("--run-dir", default="storage/scenario_runs")
-        scenario_pack_parser.add_argument("--limit", type=int, default=0)
-        scenario_pack_parser.add_argument("--context", default="")
-        scenario_pack_parser.add_argument("--context-preset", default="")
-        scenario_pack_parser.add_argument("--headline-tags", default="")
-        scenario_pack_parser.add_argument("--market-trend", default="CHOPPY")
-        scenario_pack_parser.add_argument("--market-volatility", default="NORMAL")
 
         scenario_parser = subparsers.add_parser("scenario", help="Scenario utilities")
         scenario_parser.set_defaults(command="scenario")
@@ -952,49 +821,6 @@ def build_parser() -> argparse.ArgumentParser:
         scenario_run_parser.add_argument("--capital", type=float, default=100000.0)
         scenario_run_parser.add_argument("--risk-per-trade", type=float, default=0.005)
         scenario_run_parser.add_argument("--json", action="store_true")
-
-        daily_auto_parser = subparsers.add_parser("daily-auto", help="Run daily auto workflow")
-        daily_auto_parser.set_defaults(command="daily-auto")
-        daily_auto_parser.add_argument("--execution-policy", default="config/execution_policy.json")
-        daily_auto_parser.add_argument("--indices-catalog", default="config/indices_catalog.json")
-        daily_auto_parser.add_argument("--indices-start", default="2000-01-01")
-        daily_auto_parser.add_argument("--indices-dir", default="data/indices")
-        daily_auto_parser.add_argument(
-            "--context-output",
-            default="config/market_context_auto.json",
-        )
-        daily_auto_parser.add_argument("--features-file", default="config/features_catalog.json")
-        daily_auto_parser.add_argument(
-            "--feature-matrix-output",
-            default="storage/features/latest_feature_matrix.csv",
-        )
-        daily_auto_parser.add_argument(
-            "--prediction-dataset-output",
-            default="storage/prediction/latest_prediction_dataset.csv",
-        )
-        daily_auto_parser.add_argument(
-            "--prediction-evaluation-output",
-            default="storage/prediction/latest_evaluation.json",
-        )
-        daily_auto_parser.add_argument("--prediction-horizon", type=int, default=5)
-        daily_auto_parser.add_argument("--prediction-min-history", type=int, default=20)
-        daily_auto_parser.add_argument("--prediction-min-train-rows", type=int, default=100)
-        daily_auto_parser.add_argument("--prediction-engines", default="", help=engines_help)
-        daily_auto_parser.add_argument("--prediction-n-jobs", type=int, default=4)
-        daily_auto_parser.add_argument("--prediction-autotune", action="store_true")
-        daily_auto_parser.add_argument("--prediction-autotune-iter", type=int, default=15)
-        daily_auto_parser.add_argument("--prediction-autotune-cv", type=int, default=3)
-        daily_auto_parser.add_argument("--tickers-file", default="data/universes/ibov_tickers.csv")
-        daily_auto_parser.add_argument("--sentiment-dir", default="data/sentiment")
-        daily_auto_parser.add_argument("--prices-start", default="2000-01-01")
-        daily_auto_parser.add_argument("--prices-dir", default="data/prices")
-        daily_auto_parser.add_argument("--universe-output", default="data/universes/ibov_live.csv")
-        daily_auto_parser.add_argument("--run-dir", default="storage/scenario_runs")
-        daily_auto_parser.add_argument("--universe-name", default="IBOV")
-        daily_auto_parser.add_argument("--policy", default="config/policy.json")
-        daily_auto_parser.add_argument("--skip-asset-fetch", action="store_true")
-        daily_auto_parser.add_argument("--skip-indices-fetch", action="store_true")
-        daily_auto_parser.add_argument("--json", action="store_true")
 
         add_context_parser(subparsers)
 
@@ -1136,16 +962,6 @@ def build_parser() -> argparse.ArgumentParser:
         )
         features_catalog_parser.set_defaults(features_command="catalog")
         features_catalog_parser.add_argument("--file", required=True)
-        features_matrix_parser = features_subparsers.add_parser(
-            "matrix",
-            help="Write feature matrix",
-        )
-        features_matrix_parser.set_defaults(features_command="matrix")
-        features_matrix_parser.add_argument("--universe", required=True)
-        features_matrix_parser.add_argument("--prices-dir", required=True)
-        features_matrix_parser.add_argument("--context", required=True)
-        features_matrix_parser.add_argument("--features", required=True)
-        features_matrix_parser.add_argument("--output", required=True)
         features_build_parser = features_subparsers.add_parser(
             "build",
             help="Build Feature Factory v2 matrix",
@@ -1185,79 +1001,6 @@ def build_parser() -> argparse.ArgumentParser:
             "--audit",
             default="storage/features/latest_feature_audit.json",
         )
-
-        confirm_parser = subparsers.add_parser("confirm", help="Register human confirmation")
-        confirm_parser.set_defaults(command="confirm")
-        confirm_parser.add_argument("--pack", required=True)
-        confirm_parser.add_argument("--ticker", required=True)
-        confirm_parser.add_argument("--decision", required=True)
-        confirm_parser.add_argument("--notes", default="")
-        confirm_parser.add_argument("--operator", default="")
-        confirm_parser.add_argument("--execution-policy", default="config/execution_policy.json")
-        confirm_parser.add_argument("--json", action="store_true")
-
-        legacy_parser = subparsers.add_parser("legacy", help="Legacy data migration tools")
-        legacy_parser.set_defaults(command="legacy")
-        legacy_parser.add_argument("--json", action="store_true")
-        legacy_subparsers = legacy_parser.add_subparsers(dest="legacy_command")
-        legacy_classify_parser = legacy_subparsers.add_parser(
-            "classify",
-            help="Classify legacy inventory",
-        )
-        legacy_classify_parser.set_defaults(legacy_command="classify")
-        legacy_classify_parser.add_argument("--inventory", required=True)
-        legacy_classify_parser.add_argument("--output", required=True)
-        legacy_migrate_sentiment_parser = legacy_subparsers.add_parser(
-            "migrate-sentiment",
-            help="Migrate legacy sentiment",
-        )
-        legacy_migrate_sentiment_parser.set_defaults(legacy_command="migrate-sentiment")
-        legacy_migrate_sentiment_parser.add_argument("--legacy-path", required=True)
-        legacy_migrate_sentiment_parser.add_argument("--source-dir", default="data/sentiment")
-        legacy_migrate_sentiment_parser.add_argument("--output", required=True)
-        legacy_migrate_features_parser = legacy_subparsers.add_parser(
-            "migrate-features",
-            help="Migrate legacy features",
-        )
-        legacy_migrate_features_parser.set_defaults(legacy_command="migrate-features")
-        legacy_migrate_features_parser.add_argument("--legacy-path", required=True)
-        legacy_migrate_features_parser.add_argument("--output", required=True)
-        legacy_migrate_indices_parser = legacy_subparsers.add_parser(
-            "migrate-indices",
-            help="Migrate legacy indices",
-        )
-        legacy_migrate_indices_parser.set_defaults(legacy_command="migrate-indices")
-        legacy_migrate_indices_parser.add_argument("--legacy-path", required=True)
-        legacy_migrate_indices_parser.add_argument(
-            "--catalog-file",
-            default="config/indices/catalog.yaml",
-        )
-        legacy_migrate_indices_parser.add_argument("--output", required=True)
-        legacy_migrate_universe_parser = legacy_subparsers.add_parser(
-            "migrate-universe",
-            help="Migrate legacy universe",
-        )
-        legacy_migrate_universe_parser.set_defaults(legacy_command="migrate-universe")
-        legacy_migrate_universe_parser.add_argument("--legacy-path", required=True)
-        legacy_migrate_universe_parser.add_argument(
-            "--assets-file",
-            default="config/assets/ibov_assets.yaml",
-        )
-        legacy_migrate_universe_parser.add_argument(
-            "--universe-file",
-            default="config/universes/ibov.yaml",
-        )
-        legacy_migrate_universe_parser.add_argument("--output", required=True)
-        legacy_scan_parser = legacy_subparsers.add_parser("scan", help="Scan legacy inventory")
-        legacy_scan_parser.set_defaults(legacy_command="scan")
-        legacy_scan_parser.add_argument("--path", required=True)
-        legacy_scan_parser.add_argument("--output", required=True)
-
-        packs_parser = subparsers.add_parser("packs", help="List generated packs")
-        packs_parser.set_defaults(command="packs")
-        packs_parser.add_argument("--run-dir", required=True)
-        packs_parser.add_argument("--limit", type=int, default=10)
-        packs_parser.add_argument("--json", action="store_true")
 
         prices_parser = subparsers.add_parser("prices", help="Manage prices data")
         prices_parser.set_defaults(command="prices")
@@ -1353,20 +1096,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "daily":
             return _run_daily_command(args)
 
-        if args.command == "scenario-pack":
-            return _run_scenario_pack_command(args)
-
         if args.command == "scenario":
             return _run_scenario_command(args)
-
-        if args.command == "packs":
-            return _run_packs_command(args)
-
-        if args.command == "daily-real":
-            return _run_real_pack_command(args)
-
-        if args.command == "daily-auto":
-            return _run_daily_auto_command(args)
 
         if args.command == "update":
             return _run_update_command(args)
@@ -1395,9 +1126,6 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "cfg":
             return _run_cfg_command(args)
 
-        if args.command == "board":
-            return _run_short_board_command(args)
-
         if args.command == "open":
             return _run_short_open_command(args)
 
@@ -1425,23 +1153,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "features":
             return _run_features_command(args)
 
-        if args.command == "confirm":
-            return _run_confirm_command(args)
-
-        if args.command == "legacy":
-            return _run_legacy_command(args)
-
-        if args.command == "real-pack":
-            return _run_real_pack_command(args)
-
         if args.command == "prices":
             return _run_prices_command(args)
-
-        if args.command == "packs":
-            return _run_packs_command(args)
-
-        if args.command == "daily-real":
-            return _run_real_pack_command(args)
 
         if args.command == "universe":
             return _run_universe_command(args)
@@ -1452,12 +1165,6 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
-
-
-def _run_packs_command(args: argparse.Namespace) -> int:
-    from pymercator.cli_packs import run_packs_command
-
-    return run_packs_command(args)
 
 
 def _run_prices_command(args: argparse.Namespace) -> int:

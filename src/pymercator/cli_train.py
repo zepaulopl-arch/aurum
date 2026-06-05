@@ -16,10 +16,7 @@ from pymercator.horizon_observer import (
     horizon_spread,
 )
 from pymercator.legacy_prediction_engines import (
-    CATBOOST_AVAILABLE,
-    LIGHTGBM_AVAILABLE,
     SKLEARN_AVAILABLE,
-    XGBOOST_AVAILABLE,
 )
 from pymercator.prediction_config import effective_prediction_config, horizon_key
 from pymercator.prediction_lab import run_prediction_lab
@@ -65,9 +62,6 @@ OPERATIONAL_ENGINE_REASON = (
 def engine_availability() -> dict[str, bool]:
     return {
         "sklearn_available": bool(SKLEARN_AVAILABLE),
-        "xgboost_available": bool(XGBOOST_AVAILABLE),
-        "catboost_available": bool(CATBOOST_AVAILABLE),
-        "lightgbm_available": bool(LIGHTGBM_AVAILABLE),
     }
 
 

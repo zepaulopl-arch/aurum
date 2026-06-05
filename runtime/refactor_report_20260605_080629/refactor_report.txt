@@ -1,0 +1,84 @@
+PYMERCATOR REFACTOR REPORT
+--------------------------------------------------------------------------------
+
+SUMMARY
+--------------------------------------------------------------------------------
+timestamp                 20260605_080629
+lines_before              44170
+lines_after               44041
+lines_reduced             129
+reduction_pct             0.29%
+nonempty_before           38087
+nonempty_after            37976
+nonempty_reduced          111
+nonempty_reduction_pct    0.29%
+
+FILES MOVED TO LEGACY
+--------------------------------------------------------------------------------
+none in this pass; scripts/legacy was already in desired shape.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+runtime/code_audit_20260605_075503/code_audit.txt
+runtime/code_audit_20260605_075503/code_audit.json
+runtime/cli_help_20260605_080035/help_index.txt
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+scripts/dump_cli_help.ps1
+docs/COMMANDS.md
+docs/OPERATING.md
+config/pymercator_presets.json
+src/pymercator/cli.py
+src/pymercator/cli_train.py
+src/pymercator/legacy_prediction_engines.py
+tests/test_cli_diag.py
+tests/test_cli_train.py
+
+FUNCTIONS / LEGACY BRANCHES REMOVED
+--------------------------------------------------------------------------------
+xgb/catboost/lightgbm optional backend import probes
+xgb/catboost/lightgbm engine default branches
+xgb/catboost/lightgbm model/classifier factory branches
+xgb/catboost/lightgbm autotune spaces
+stale preset references to momentum_rule/xgb/catboost/ridge_arbiter
+
+DUPLICATIONS / LEGACY CONSOLIDATED
+--------------------------------------------------------------------------------
+Engine benchmark list now matches supported sklearn engines only.
+Preset prediction engines now point to valid current engine names.
+CLI help dump now covers db commands and subcommands.
+COMMANDS/OPERATING docs now include SQLite db commands and modern sklearn engines.
+
+RISKS
+--------------------------------------------------------------------------------
+Line reduction is intentionally small; larger cuts require extracting cli_train/report code in a separate pass.
+Removed optional xgboost/catboost/lightgbm hooks were not valid current engines.
+Runtime reports are generated locally under ignored runtime/ and are not operational artifacts.
+
+TESTS EXECUTED
+--------------------------------------------------------------------------------
+python -m pytest tests -q -> 296 passed, 1 skipped
+.\scripts\dump_cli_help.ps1 -> runtime\cli_help_20260605_080035\help_index.txt
+python -m compileall -q src\pymercator\legacy_prediction_engines.py src\pymercator\cli_train.py src\pymercator\cli.py -> PASS
+
+PYTEST RESULT
+--------------------------------------------------------------------------------
+PASS - 296 passed, 1 skipped
+
+WHAT WAS NOT CHANGED FOR SAFETY
+--------------------------------------------------------------------------------
+D5/D20/D60 architecture
+multi_horizon_ridge and ridge observer math
+model_quality guard
+behavior guard
+basket analysis-only behavior
+scenario positive logic
+three main PowerShell operational scripts
+
+NEXT SAFE REDUCTION PATH
+--------------------------------------------------------------------------------
+Extract train detail rendering from cli_train.py into a dedicated module.
+Move benchmark rendering/running into train_engine_benchmark.py with dependency injection for tests.
+Centralize CSV/price readers shared by basket/features_v2/prediction_lab.
+Review legacy_inventory/legacy_classification after one more stable cycle.

@@ -20,12 +20,7 @@
     "min_train_rows": 100,
     "n_jobs": 4,
     "engines": [
-      "rolling_majority",
-      "momentum_rule",
-      "xgb",
-      "catboost",
-      "extratrees",
-      "ridge_arbiter"
+      "ridge_ensemble"
     ],
     "autotune": false,
     "autotune_iter": 15,
@@ -44,8 +39,7 @@
       "skip_indices_fetch": true,
       "skip_asset_fetch": true,
       "prediction_engines": [
-        "rolling_majority",
-        "momentum_rule"
+        "rolling_majority"
       ]
     },
     "lab": {

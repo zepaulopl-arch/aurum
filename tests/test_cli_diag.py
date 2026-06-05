@@ -5,8 +5,6 @@ def test_cli_diag_shows_operational_prediction_stack(monkeypatch, capsys):
     import pymercator.legacy_prediction_engines as engines_mod
 
     monkeypatch.setattr(engines_mod, "SKLEARN_AVAILABLE", True)
-    monkeypatch.setattr(engines_mod, "XGBOOST_AVAILABLE", False)
-    monkeypatch.setattr(engines_mod, "CATBOOST_AVAILABLE", False)
 
     exit_code = main(["diag"])
 
@@ -41,8 +39,6 @@ def test_cli_diag_verbose_shows_technical_libraries_and_engines(monkeypatch, cap
     import pymercator.legacy_prediction_engines as engines_mod
 
     monkeypatch.setattr(engines_mod, "SKLEARN_AVAILABLE", True)
-    monkeypatch.setattr(engines_mod, "XGBOOST_AVAILABLE", False)
-    monkeypatch.setattr(engines_mod, "CATBOOST_AVAILABLE", False)
 
     exit_code = main(["diag", "--verbose"])
 

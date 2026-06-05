@@ -1,0 +1,77 @@
+{
+  "schema_version": "refactor_report.v1",
+  "timestamp": "20260605_080629",
+  "before": {
+    "lines": 44170,
+    "nonempty_lines": 38087
+  },
+  "after": {
+    "lines": 44041,
+    "nonempty_lines": 37976
+  },
+  "reduction": {
+    "lines": 129,
+    "percent": 0.2921,
+    "nonempty_lines": 111,
+    "nonempty_percent": 0.2914
+  },
+  "files_moved_to_legacy": [],
+  "files_created": [
+    "runtime/code_audit_20260605_075503/code_audit.txt",
+    "runtime/code_audit_20260605_075503/code_audit.json",
+    "runtime/cli_help_20260605_080035/help_index.txt"
+  ],
+  "files_changed": [
+    "scripts/dump_cli_help.ps1",
+    "docs/COMMANDS.md",
+    "docs/OPERATING.md",
+    "config/pymercator_presets.json",
+    "src/pymercator/cli.py",
+    "src/pymercator/cli_train.py",
+    "src/pymercator/legacy_prediction_engines.py",
+    "tests/test_cli_diag.py",
+    "tests/test_cli_train.py"
+  ],
+  "functions_removed": [
+    "xgb/catboost/lightgbm optional backend import probes",
+    "xgb/catboost/lightgbm engine default branches",
+    "xgb/catboost/lightgbm model/classifier factory branches",
+    "xgb/catboost/lightgbm autotune spaces",
+    "stale preset references to momentum_rule/xgb/catboost/ridge_arbiter"
+  ],
+  "duplications_consolidated": [
+    "Engine benchmark list now matches supported sklearn engines only.",
+    "Preset prediction engines now point to valid current engine names.",
+    "CLI help dump now covers db commands and subcommands.",
+    "COMMANDS/OPERATING docs now include SQLite db commands and modern sklearn engines."
+  ],
+  "risks": [
+    "Line reduction is intentionally small; larger cuts require extracting cli_train/report code in a separate pass.",
+    "Removed optional xgboost/catboost/lightgbm hooks were not valid current engines.",
+    "Runtime reports are generated locally under ignored runtime/ and are not operational artifacts."
+  ],
+  "tests": [
+    "python -m pytest tests -q -> 296 passed, 1 skipped",
+    ".\\scripts\\dump_cli_help.ps1 -> runtime\\cli_help_20260605_080035\\help_index.txt",
+    "python -m compileall -q src\\pymercator\\legacy_prediction_engines.py src\\pymercator\\cli_train.py src\\pymercator\\cli.py -> PASS"
+  ],
+  "pytest": {
+    "status": "PASS",
+    "result": "296 passed, 1 skipped"
+  },
+  "what_was_not_changed": [
+    "D5/D20/D60 architecture",
+    "multi_horizon_ridge and ridge observer math",
+    "model_quality guard",
+    "behavior guard",
+    "basket analysis-only behavior",
+    "scenario positive logic",
+    "three main PowerShell operational scripts"
+  ],
+  "next_safe_reduction_path": [
+    "Extract train detail rendering from cli_train.py into a dedicated module.",
+    "Move benchmark rendering/running into train_engine_benchmark.py with dependency injection for tests.",
+    "Centralize CSV/price readers shared by basket/features_v2/prediction_lab.",
+    "Review legacy_inventory/legacy_classification after one more stable cycle."
+  ]
+}

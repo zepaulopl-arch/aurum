@@ -1,0 +1,1099 @@
+{
+  "schema_version": "code_audit.v1",
+  "timestamp": "20260605_075503",
+  "totals": {
+    "files": 224,
+    "lines": 44170,
+    "nonempty_lines": 38087
+  },
+  "top_files_by_lines": [
+    {
+      "path": "src\\pymercator\\cli_train.py",
+      "lines": 2988,
+      "nonempty_lines": 2704,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\legacy_prediction_engines.py",
+      "lines": 2361,
+      "nonempty_lines": 2048,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_train.py",
+      "lines": 1593,
+      "nonempty_lines": 1425,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli.py",
+      "lines": 1492,
+      "nonempty_lines": 1292,
+      "suffix": ".py"
+    },
+    {
+      "path": "scripts\\ops_common.ps1",
+      "lines": 1343,
+      "nonempty_lines": 1206,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "tests\\test_cli_run_simplified.py",
+      "lines": 1179,
+      "nonempty_lines": 1065,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\features_v2.py",
+      "lines": 1089,
+      "nonempty_lines": 1007,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\prediction_lab.py",
+      "lines": 1044,
+      "nonempty_lines": 848,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\position_actions.py",
+      "lines": 970,
+      "nonempty_lines": 868,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_run.py",
+      "lines": 833,
+      "nonempty_lines": 763,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_update.py",
+      "lines": 788,
+      "nonempty_lines": 728,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\basket.py",
+      "lines": 761,
+      "nonempty_lines": 634,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\observation.py",
+      "lines": 550,
+      "nonempty_lines": 491,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\market_context_sources.py",
+      "lines": 531,
+      "nonempty_lines": 480,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_basket_daily.py",
+      "lines": 515,
+      "nonempty_lines": 462,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\real_run.py",
+      "lines": 514,
+      "nonempty_lines": 466,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\scenario_pack.py",
+      "lines": 498,
+      "nonempty_lines": 423,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\market_context_consolidator.py",
+      "lines": 493,
+      "nonempty_lines": 444,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_update.py",
+      "lines": 480,
+      "nonempty_lines": 414,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_position_actions.py",
+      "lines": 472,
+      "nonempty_lines": 420,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\borrow_data.py",
+      "lines": 469,
+      "nonempty_lines": 418,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\storage\\repositories.py",
+      "lines": 459,
+      "nonempty_lines": 411,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_scenario.py",
+      "lines": 455,
+      "nonempty_lines": 428,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_prediction_lab.py",
+      "lines": 453,
+      "nonempty_lines": 363,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_prediction_lab.py",
+      "lines": 417,
+      "nonempty_lines": 359,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\ui\\colors.py",
+      "lines": 392,
+      "nonempty_lines": 344,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_terminal_output.py",
+      "lines": 382,
+      "nonempty_lines": 333,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\legacy_inventory.py",
+      "lines": 381,
+      "nonempty_lines": 315,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\market_context_auto.py",
+      "lines": 374,
+      "nonempty_lines": 305,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\data\\universe_builder.py",
+      "lines": 374,
+      "nonempty_lines": 284,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\indices_prices.py",
+      "lines": 366,
+      "nonempty_lines": 307,
+      "suffix": ".py"
+    },
+    {
+      "path": "scripts\\legacy\\run_absolute_tests.ps1",
+      "lines": 363,
+      "nonempty_lines": 306,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_daily_profiles.ps1",
+      "lines": 363,
+      "nonempty_lines": 310,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "tests\\test_prediction_calibration.py",
+      "lines": 355,
+      "nonempty_lines": 308,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_universe.py",
+      "lines": 350,
+      "nonempty_lines": 295,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\sentiment_store.py",
+      "lines": 349,
+      "nonempty_lines": 285,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_parsers.py",
+      "lines": 347,
+      "nonempty_lines": 314,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\legacy_classification.py",
+      "lines": 297,
+      "nonempty_lines": 248,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_context.py",
+      "lines": 295,
+      "nonempty_lines": 246,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_indices_prices.py",
+      "lines": 290,
+      "nonempty_lines": 244,
+      "suffix": ".py"
+    }
+  ],
+  "top_files_by_nonempty_lines": [
+    {
+      "path": "src\\pymercator\\cli_train.py",
+      "lines": 2988,
+      "nonempty_lines": 2704,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\legacy_prediction_engines.py",
+      "lines": 2361,
+      "nonempty_lines": 2048,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_train.py",
+      "lines": 1593,
+      "nonempty_lines": 1425,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli.py",
+      "lines": 1492,
+      "nonempty_lines": 1292,
+      "suffix": ".py"
+    },
+    {
+      "path": "scripts\\ops_common.ps1",
+      "lines": 1343,
+      "nonempty_lines": 1206,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "tests\\test_cli_run_simplified.py",
+      "lines": 1179,
+      "nonempty_lines": 1065,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\features_v2.py",
+      "lines": 1089,
+      "nonempty_lines": 1007,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\position_actions.py",
+      "lines": 970,
+      "nonempty_lines": 868,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\prediction_lab.py",
+      "lines": 1044,
+      "nonempty_lines": 848,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_run.py",
+      "lines": 833,
+      "nonempty_lines": 763,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_update.py",
+      "lines": 788,
+      "nonempty_lines": 728,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\basket.py",
+      "lines": 761,
+      "nonempty_lines": 634,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\observation.py",
+      "lines": 550,
+      "nonempty_lines": 491,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\market_context_sources.py",
+      "lines": 531,
+      "nonempty_lines": 480,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\real_run.py",
+      "lines": 514,
+      "nonempty_lines": 466,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_basket_daily.py",
+      "lines": 515,
+      "nonempty_lines": 462,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\market_context_consolidator.py",
+      "lines": 493,
+      "nonempty_lines": 444,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_scenario.py",
+      "lines": 455,
+      "nonempty_lines": 428,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\scenario_pack.py",
+      "lines": 498,
+      "nonempty_lines": 423,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_position_actions.py",
+      "lines": 472,
+      "nonempty_lines": 420,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\borrow_data.py",
+      "lines": 469,
+      "nonempty_lines": 418,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_update.py",
+      "lines": 480,
+      "nonempty_lines": 414,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\storage\\repositories.py",
+      "lines": 459,
+      "nonempty_lines": 411,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_prediction_lab.py",
+      "lines": 453,
+      "nonempty_lines": 363,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_prediction_lab.py",
+      "lines": 417,
+      "nonempty_lines": 359,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\ui\\colors.py",
+      "lines": 392,
+      "nonempty_lines": 344,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_terminal_output.py",
+      "lines": 382,
+      "nonempty_lines": 333,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\legacy_inventory.py",
+      "lines": 381,
+      "nonempty_lines": 315,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_parsers.py",
+      "lines": 347,
+      "nonempty_lines": 314,
+      "suffix": ".py"
+    },
+    {
+      "path": "scripts\\legacy\\run_daily_profiles.ps1",
+      "lines": 363,
+      "nonempty_lines": 310,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "tests\\test_prediction_calibration.py",
+      "lines": 355,
+      "nonempty_lines": 308,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\indices_prices.py",
+      "lines": 366,
+      "nonempty_lines": 307,
+      "suffix": ".py"
+    },
+    {
+      "path": "scripts\\legacy\\run_absolute_tests.ps1",
+      "lines": 363,
+      "nonempty_lines": 306,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "src\\pymercator\\market_context_auto.py",
+      "lines": 374,
+      "nonempty_lines": 305,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_universe.py",
+      "lines": 350,
+      "nonempty_lines": 295,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\sentiment_store.py",
+      "lines": 349,
+      "nonempty_lines": 285,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\data\\universe_builder.py",
+      "lines": 374,
+      "nonempty_lines": 284,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_runtime_manifest.py",
+      "lines": 288,
+      "nonempty_lines": 266,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\daily_auto.py",
+      "lines": 288,
+      "nonempty_lines": 256,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\data\\universe_diagnostics.py",
+      "lines": 289,
+      "nonempty_lines": 252,
+      "suffix": ".py"
+    }
+  ],
+  "large_cli_files": [
+    {
+      "path": "src\\pymercator\\cli_train.py",
+      "lines": 2988,
+      "nonempty_lines": 2704,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_train.py",
+      "lines": 1593,
+      "nonempty_lines": 1425,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli.py",
+      "lines": 1492,
+      "nonempty_lines": 1292,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_run_simplified.py",
+      "lines": 1179,
+      "nonempty_lines": 1065,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_run.py",
+      "lines": 833,
+      "nonempty_lines": 763,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_update.py",
+      "lines": 788,
+      "nonempty_lines": 728,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_update.py",
+      "lines": 480,
+      "nonempty_lines": 414,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_scenario.py",
+      "lines": 455,
+      "nonempty_lines": 428,
+      "suffix": ".py"
+    },
+    {
+      "path": "tests\\test_cli_prediction_lab.py",
+      "lines": 417,
+      "nonempty_lines": 359,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_universe.py",
+      "lines": 350,
+      "nonempty_lines": 295,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_parsers.py",
+      "lines": 347,
+      "nonempty_lines": 314,
+      "suffix": ".py"
+    },
+    {
+      "path": "src\\pymercator\\cli_context.py",
+      "lines": 295,
+      "nonempty_lines": 246,
+      "suffix": ".py"
+    }
+  ],
+  "powershell_scripts": [
+    {
+      "path": "scripts\\dump_cli_help.ps1",
+      "lines": 90,
+      "nonempty_lines": 79,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_absolute_tests.ps1",
+      "lines": 363,
+      "nonempty_lines": 306,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_daily_operation.ps1",
+      "lines": 46,
+      "nonempty_lines": 37,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_daily_profiles.ps1",
+      "lines": 363,
+      "nonempty_lines": 310,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_initial_full_check.ps1",
+      "lines": 260,
+      "nonempty_lines": 207,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_operational_tests.ps1",
+      "lines": 67,
+      "nonempty_lines": 54,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_weekly_training.ps1",
+      "lines": 107,
+      "nonempty_lines": 84,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\ops_common.ps1",
+      "lines": 1343,
+      "nonempty_lines": 1206,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\run_daily_signal.ps1",
+      "lines": 102,
+      "nonempty_lines": 90,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\run_daily_train.ps1",
+      "lines": 132,
+      "nonempty_lines": 117,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\run_weekend_full.ps1",
+      "lines": 181,
+      "nonempty_lines": 162,
+      "suffix": ".ps1"
+    }
+  ],
+  "possible_legacy_scripts": [
+    {
+      "path": "scripts\\legacy\\run_absolute_tests.ps1",
+      "lines": 363,
+      "nonempty_lines": 306,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_daily_operation.ps1",
+      "lines": 46,
+      "nonempty_lines": 37,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_daily_profiles.ps1",
+      "lines": 363,
+      "nonempty_lines": 310,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_initial_full_check.ps1",
+      "lines": 260,
+      "nonempty_lines": 207,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_operational_tests.ps1",
+      "lines": 67,
+      "nonempty_lines": 54,
+      "suffix": ".ps1"
+    },
+    {
+      "path": "scripts\\legacy\\run_weekly_training.ps1",
+      "lines": 107,
+      "nonempty_lines": 84,
+      "suffix": ".ps1"
+    }
+  ],
+  "duplicate_functions_by_name": [
+    {
+      "name": "_write_price_file",
+      "count": 17,
+      "files": [
+        "tests\\test_cli_context_presets.py",
+        "tests\\test_cli_daily_real.py",
+        "tests\\test_cli_features_matrix.py",
+        "tests\\test_cli_packs_real.py",
+        "tests\\test_cli_prediction_lab.py",
+        "tests\\test_cli_real_pack.py",
+        "tests\\test_cli_universe_build.py",
+        "tests\\test_cli_universe_build_tickers_file.py",
+        "tests\\test_context_provenance.py",
+        "tests\\test_context_snapshot_manifest.py",
+        "tests\\test_features_matrix.py",
+        "tests\\test_features_v2.py",
+        "tests\\test_prediction_lab.py",
+        "tests\\test_real_pack_manifest.py",
+        "tests\\test_real_run.py",
+        "tests\\test_universe_builder.py",
+        "tests\\test_universe_builder_sector_source.py"
+      ]
+    },
+    {
+      "name": "_to_float",
+      "count": 9,
+      "files": [
+        "src\\pymercator\\borrow_data.py",
+        "src\\pymercator\\data\\universe_builder.py",
+        "src\\pymercator\\features_matrix.py",
+        "src\\pymercator\\features_v2.py",
+        "src\\pymercator\\legacy_prediction_engines.py",
+        "src\\pymercator\\observation.py",
+        "src\\pymercator\\position_actions.py",
+        "src\\pymercator\\prediction_lab.py",
+        "src\\pymercator\\ui\\colors.py"
+      ]
+    },
+    {
+      "name": "fit",
+      "count": 8,
+      "files": [
+        "src\\pymercator\\legacy_prediction_engines.py",
+        "tests\\test_cli_prediction_lab.py",
+        "tests\\test_prediction_calibration.py",
+        "tests\\test_prediction_lab.py"
+      ]
+    },
+    {
+      "name": "__init__",
+      "count": 7,
+      "files": [
+        "src\\pymercator\\cli.py",
+        "src\\pymercator\\legacy_prediction_engines.py",
+        "tests\\test_cli_prediction_lab.py",
+        "tests\\test_prediction_calibration.py",
+        "tests\\test_prediction_lab.py"
+      ]
+    },
+    {
+      "name": "predict",
+      "count": 6,
+      "files": [
+        "src\\pymercator\\legacy_prediction_engines.py",
+        "tests\\test_cli_prediction_lab.py",
+        "tests\\test_prediction_lab.py"
+      ]
+    },
+    {
+      "name": "_price_file_for_ticker",
+      "count": 4,
+      "files": [
+        "src\\pymercator\\basket.py",
+        "src\\pymercator\\features_matrix.py",
+        "src\\pymercator\\features_v2.py",
+        "src\\pymercator\\prediction_lab.py"
+      ]
+    },
+    {
+      "name": "fake_download",
+      "count": 4,
+      "files": [
+        "tests\\test_daily_auto.py",
+        "tests\\test_indices_prices.py"
+      ]
+    },
+    {
+      "name": "_clamp",
+      "count": 3,
+      "files": [
+        "src\\pymercator\\engines\\ranking.py",
+        "src\\pymercator\\observation.py",
+        "src\\pymercator\\position_actions.py"
+      ]
+    },
+    {
+      "name": "_load_json",
+      "count": 3,
+      "files": [
+        "src\\pymercator\\cli_scenario.py",
+        "src\\pymercator\\human_confirmation.py",
+        "src\\pymercator\\short_policy.py"
+      ]
+    },
+    {
+      "name": "_parse_date",
+      "count": 3,
+      "files": [
+        "src\\pymercator\\borrow_data.py",
+        "src\\pymercator\\data\\prices_csv.py",
+        "src\\pymercator\\update_freshness.py"
+      ]
+    },
+    {
+      "name": "_quantile",
+      "count": 3,
+      "files": [
+        "src\\pymercator\\legacy_prediction_engines.py",
+        "src\\pymercator\\market_context_auto.py",
+        "src\\pymercator\\observation.py"
+      ]
+    },
+    {
+      "name": "_read_csv",
+      "count": 3,
+      "files": [
+        "src\\pymercator\\basket.py",
+        "src\\pymercator\\features_v2.py",
+        "src\\pymercator\\prediction_lab.py"
+      ]
+    },
+    {
+      "name": "_read_price_rows",
+      "count": 3,
+      "files": [
+        "src\\pymercator\\basket.py",
+        "src\\pymercator\\features_v2.py",
+        "src\\pymercator\\prediction_lab.py"
+      ]
+    },
+    {
+      "name": "_write_csv",
+      "count": 3,
+      "files": [
+        "src\\pymercator\\basket.py",
+        "src\\pymercator\\cli_scenario.py",
+        "src\\pymercator\\features_v2.py"
+      ]
+    },
+    {
+      "name": "_write_prices",
+      "count": 3,
+      "files": [
+        "src\\pymercator\\cli_scenario.py",
+        "tests\\test_cli_context_auto.py",
+        "tests\\test_market_context_auto.py"
+      ]
+    },
+    {
+      "name": "predict_proba",
+      "count": 3,
+      "files": [
+        "src\\pymercator\\legacy_prediction_engines.py",
+        "tests\\test_prediction_calibration.py"
+      ]
+    },
+    {
+      "name": "_as_bool",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\features_catalog.py",
+        "src\\pymercator\\indices_catalog.py"
+      ]
+    },
+    {
+      "name": "_base_ticker",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\data\\universe_builder.py",
+        "src\\pymercator\\legacy_universe.py"
+      ]
+    },
+    {
+      "name": "_confusion_counts",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\cli_train.py",
+        "src\\pymercator\\legacy_prediction_engines.py"
+      ]
+    },
+    {
+      "name": "_feature_value",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\legacy_prediction_engines.py",
+        "src\\pymercator\\prediction_lab.py"
+      ]
+    },
+    {
+      "name": "_feature_vector",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\legacy_prediction_engines.py",
+        "src\\pymercator\\prediction_lab.py"
+      ]
+    },
+    {
+      "name": "_float",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\data\\universe_csv.py",
+        "src\\pymercator\\market_context_consolidator.py"
+      ]
+    },
+    {
+      "name": "_float_or_none",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\data\\universe_csv.py",
+        "src\\pymercator\\storage\\repositories.py"
+      ]
+    },
+    {
+      "name": "_horizon_sort_key",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\cli_run.py",
+        "src\\pymercator\\cli_train.py"
+      ]
+    },
+    {
+      "name": "_load_yaml",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\legacy_indices.py",
+        "src\\pymercator\\legacy_universe.py"
+      ]
+    },
+    {
+      "name": "_metrics",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\prediction_lab.py",
+        "tests\\test_train_detail_report_module.py"
+      ]
+    },
+    {
+      "name": "_normalize_ticker",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\basket.py",
+        "src\\pymercator\\cli_train.py"
+      ]
+    },
+    {
+      "name": "_positions",
+      "count": 2,
+      "files": [
+        "tests\\test_position_actions_direction.py",
+        "tests\\test_position_actions_stop_loss.py"
+      ]
+    },
+    {
+      "name": "_return_pct",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\features_matrix.py",
+        "src\\pymercator\\prediction_lab.py"
+      ]
+    },
+    {
+      "name": "_sample_payload",
+      "count": 2,
+      "files": [
+        "tests\\test_cli_db.py",
+        "tests\\test_storage_db.py"
+      ]
+    },
+    {
+      "name": "_split_tags",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\cli_context.py",
+        "src\\pymercator\\cli_prices.py"
+      ]
+    },
+    {
+      "name": "_ticker",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\borrow_data.py",
+        "src\\pymercator\\position_actions.py"
+      ]
+    },
+    {
+      "name": "_write_asset_price_file",
+      "count": 2,
+      "files": [
+        "tests\\test_cli_daily_auto.py",
+        "tests\\test_daily_auto.py"
+      ]
+    },
+    {
+      "name": "_write_json",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\features_v2.py",
+        "src\\pymercator\\human_confirmation.py"
+      ]
+    },
+    {
+      "name": "_write_matrix",
+      "count": 2,
+      "files": [
+        "tests\\test_cli_prediction_lab.py",
+        "tests\\test_prediction_lab.py"
+      ]
+    },
+    {
+      "name": "_write_pack",
+      "count": 2,
+      "files": [
+        "tests\\test_cli_confirm.py",
+        "tests\\test_human_confirmation.py"
+      ]
+    },
+    {
+      "name": "load_market_context_thresholds",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\market_context_auto.py",
+        "src\\pymercator\\market_context_consolidator.py"
+      ]
+    },
+    {
+      "name": "load_universe_csv",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\data\\universe_csv.py",
+        "src\\pymercator\\loaders.py"
+      ]
+    },
+    {
+      "name": "render_position_books",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\position_actions.py",
+        "src\\pymercator\\short_render.py"
+      ]
+    },
+    {
+      "name": "render_table",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\terminal_render.py",
+        "src\\pymercator\\terminal_ui.py"
+      ]
+    },
+    {
+      "name": "render_train_detail_report",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\cli_train.py",
+        "src\\pymercator\\train_detail_report.py"
+      ]
+    },
+    {
+      "name": "write_json",
+      "count": 2,
+      "files": [
+        "src\\pymercator\\manifest.py",
+        "src\\pymercator\\scenario_pack.py"
+      ]
+    }
+  ],
+  "rendering_pattern_counts": {
+    "format_kv_section(": 26,
+    "lines.append(": 354,
+    "lines.extend([": 20,
+    "muted_line()": 30,
+    "print(render_": 21,
+    "format_table(": 3
+  },
+  "possibly_unused_configs": [],
+  "possibly_unimported_modules": [
+    {
+      "module": "pymercator.data.__init__",
+      "path": "src\\pymercator\\data\\__init__.py"
+    },
+    {
+      "module": "pymercator.engines.__init__",
+      "path": "src\\pymercator\\engines\\__init__.py"
+    },
+    {
+      "module": "pymercator.model_governance",
+      "path": "src\\pymercator\\model_governance.py"
+    },
+    {
+      "module": "pymercator.presets",
+      "path": "src\\pymercator\\presets.py"
+    },
+    {
+      "module": "pymercator.reports.__init__",
+      "path": "src\\pymercator\\reports\\__init__.py"
+    },
+    {
+      "module": "pymercator.storage.__init__",
+      "path": "src\\pymercator\\storage\\__init__.py"
+    },
+    {
+      "module": "pymercator.storage.models",
+      "path": "src\\pymercator\\storage\\models.py"
+    },
+    {
+      "module": "pymercator.ui.__init__",
+      "path": "src\\pymercator\\ui\\__init__.py"
+    }
+  ],
+  "safe_cut_suggestions": [
+    "Move only proven operationally replaced PowerShell scripts to scripts/legacy; current root already contains only the three main routines plus ops_common.",
+    "Extract repeated CLI table/key-value rendering into terminal_render incrementally, starting with cli_train detail sections and cli_run summaries.",
+    "Keep prediction logic untouched while moving pure report assembly helpers from cli_train.py into train_detail_report.py or train_report_render.py.",
+    "Split legacy_prediction_engines.py only around factories/metrics after engine tests are stable; avoid changing ridge/observer math.",
+    "Prefer deleting duplicate format helpers only after tests prove identical output on PowerShell."
+  ]
+}

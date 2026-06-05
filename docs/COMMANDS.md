@@ -98,6 +98,12 @@ Comandos DESENVOLVIMENTO/LEGADO/REMOVER sao avancados: existem por compatibilida
 | `python -m pymercator update` | ESSENCIAL | pymercator update |
 | `python -m pymercator train` | ESSENCIAL | Train multi-horizon prediction ensemble. Profile-independent. |
 | `python -m pymercator run` | ESSENCIAL | Run daily decision using an operational profile. |
+| `python -m pymercator db` | ÚTIL | Query local SQLite operational history. |
+| `python -m pymercator db status` | ÚTIL | DB STATUS |
+| `python -m pymercator db last-run` | ÚTIL | DB LAST RUN |
+| `python -m pymercator db signal <TICKER>` | ÚTIL | DB SIGNAL |
+| `python -m pymercator db rank-last` | ÚTIL | DB RANK LAST |
+| `python -m pymercator db sim-last` | ÚTIL | DB SIM LAST |
 | `python -m pymercator observe` | ÚTIL | Rank assets for observation without generating trade signals. |
 | `python -m pymercator observe calibrate` | ÚTIL | pymercator observe calibrate |
 | `python -m pymercator pos` | ÚTIL | pymercator pos |
@@ -287,6 +293,7 @@ Exemplos:
 | `--targets` | `targets` | `2` | no | `-` | - |
 | `--stop` | `stop` | `'progressive'` | no | `progressive` | - |
 | `--basket-output` | `basket_output` | `'storage/baskets/latest_daily_basket.csv'` | no | `-` | - |
+| `--db` | `db` | `'data/aurum.db'` | no | `-` | SQLite operational history database. Default: data/aurum.db |
 | `--allow-experimental-model` | `allow_experimental_model` | `False` | no | `-` | - |
 | `--json` | `json` | `False` | no | `-` | - |
 
@@ -294,6 +301,29 @@ Exemplos:
 - `python -m pymercator run --help`
 - `python -m pymercator run`
 - `python -m pymercator run --no-basket`
+
+### `python -m pymercator db`
+
+- Classificacao: **ÚTIL**
+- Sintaxe: `python -m pymercator db <status|last-run|signal|rank-last|sim-last> [opcoes]`
+- Quando usar: Consultar historico operacional persistido em SQLite sem abrir arquivos runtime manualmente.
+- Quando nao usar: Nao use o banco como fonte de decisao; ele e historico/auditoria, nao substitui reports JSON/TXT.
+- Arquivos lidos/gerados: `data/aurum.db` por padrao; criado automaticamente se nao existir.
+- Subcomandos reais: `status`, `last-run`, `signal`, `rank-last`, `sim-last`.
+
+| Opcao/posicional | Destino | Default | Obrigatorio | Choices | Help |
+| --- | --- | --- | --- | --- | --- |
+| `--db` | `db` | `'data/aurum.db'` | no | `-` | SQLite operational history database. Default: data/aurum.db |
+| `--json` | `json` | `False` | no | `-` | Emitir JSON para automacao |
+| `ticker` | `ticker` | `-` | sim em `signal` | `-` | Ticker consultado |
+| `--limit` | `limit` | `20` | no em `signal` | `-` | Numero maximo de sinais |
+
+Exemplos:
+- `python -m pymercator db status`
+- `python -m pymercator db last-run`
+- `python -m pymercator db signal PETR4`
+- `python -m pymercator db rank-last`
+- `python -m pymercator db sim-last`
 
 ### `python -m pymercator observe`
 
@@ -472,7 +502,7 @@ Exemplos:
 | Opcao/posicional | Destino | Default | Obrigatorio | Choices | Help |
 | --- | --- | --- | --- | --- | --- |
 | `--fast` | `fast` | `False` | no | `-` | - |
-| `--engines` | `engines` | `''` | no | `-` | Prediction engines to run. Valid engines: rolling_majority, extratrees, randomforest, gradientboosting, histgradientboosting, lightgbm, ridge_ensemble |
+| `--engines` | `engines` | `''` | no | `-` | Prediction engines to run. Valid engines: rolling_majority, extratrees, randomforest, gradientboosting, histgradientboosting, logistic_elasticnet, sgd_logloss_calibrated, adaboost, ridge_ensemble |
 | `--autotune` | `autotune` | `False` | no | `-` | - |
 | `--jobs` | `jobs` | `0` | no | `-` | Number of jobs (alias for n-jobs) |
 | `--horizon` | `horizon` | `0` | no | `-` | - |
@@ -803,7 +833,7 @@ Exemplos:
 | `--prediction-horizon` | `prediction_horizon` | `5` | no | `-` | - |
 | `--prediction-min-history` | `prediction_min_history` | `20` | no | `-` | - |
 | `--prediction-min-train-rows` | `prediction_min_train_rows` | `100` | no | `-` | - |
-| `--prediction-engines` | `prediction_engines` | `''` | no | `-` | Prediction engines to run. Valid engines: rolling_majority, extratrees, randomforest, gradientboosting, histgradientboosting, lightgbm, ridge_ensemble |
+| `--prediction-engines` | `prediction_engines` | `''` | no | `-` | Prediction engines to run. Valid engines: rolling_majority, extratrees, randomforest, gradientboosting, histgradientboosting, logistic_elasticnet, sgd_logloss_calibrated, adaboost, ridge_ensemble |
 | `--prediction-n-jobs` | `prediction_n_jobs` | `4` | no | `-` | - |
 | `--prediction-autotune` | `prediction_autotune` | `False` | no | `-` | - |
 | `--prediction-autotune-iter` | `prediction_autotune_iter` | `15` | no | `-` | - |
@@ -1200,7 +1230,7 @@ Exemplos:
 | `--output` | `output` | `None` | yes | `-` | - |
 | `--horizon` | `horizon` | `5` | no | `-` | - |
 | `--min-train-rows` | `min_train_rows` | `100` | no | `-` | - |
-| `--engines` | `engines` | `''` | no | `-` | Prediction engines to run. Valid engines: rolling_majority, extratrees, randomforest, gradientboosting, histgradientboosting, lightgbm, ridge_ensemble |
+| `--engines` | `engines` | `''` | no | `-` | Prediction engines to run. Valid engines: rolling_majority, extratrees, randomforest, gradientboosting, histgradientboosting, logistic_elasticnet, sgd_logloss_calibrated, adaboost, ridge_ensemble |
 | `--n-jobs` | `n_jobs` | `1` | no | `-` | - |
 | `--autotune` | `autotune` | `False` | no | `-` | - |
 | `--autotune-iter` | `autotune_iter` | `0` | no | `-` | - |
@@ -1227,7 +1257,7 @@ Exemplos:
 | `--horizon` | `horizon` | `5` | no | `-` | Prediction horizon in trading days. Default: 5 |
 | `--min-history` | `min_history` | `20` | no | `-` | Minimum price history. Default: 20 |
 | `--min-train-rows` | `min_train_rows` | `100` | no | `-` | Minimum training rows. Default: 100 |
-| `--engines` | `engines` | `''` | no | `-` | Prediction engines to run. Valid engines: rolling_majority, extratrees, randomforest, gradientboosting, histgradientboosting, lightgbm, ridge_ensemble |
+| `--engines` | `engines` | `''` | no | `-` | Prediction engines to run. Valid engines: rolling_majority, extratrees, randomforest, gradientboosting, histgradientboosting, logistic_elasticnet, sgd_logloss_calibrated, adaboost, ridge_ensemble |
 | `--n-jobs` | `n_jobs` | `4` | no | `-` | Parallel workers. Default: 4 |
 | `--autotune` | `autotune` | `False` | no | `-` | - |
 | `--autotune-iter` | `autotune_iter` | `0` | no | `-` | - |

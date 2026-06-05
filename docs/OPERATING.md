@@ -25,6 +25,8 @@ Fim de semana:
 ```powershell
 python -m pymercator diag
 python -m pymercator context sources
+python -m pymercator db status
+python -m pymercator db last-run
 python -m pytest tests -q
 ```
 

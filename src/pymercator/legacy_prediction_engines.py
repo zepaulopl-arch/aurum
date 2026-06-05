@@ -46,32 +46,6 @@ except Exception:
     mean_absolute_error = None
     SKLEARN_AVAILABLE = False
 
-try:
-    from xgboost import XGBRegressor
-
-    XGBOOST_AVAILABLE = True
-except Exception:
-    XGBRegressor = None
-    XGBOOST_AVAILABLE = False
-
-try:
-    from catboost import CatBoostRegressor
-
-    CATBOOST_AVAILABLE = True
-except Exception:
-    CatBoostRegressor = None
-    CATBOOST_AVAILABLE = False
-
-try:
-    from lightgbm import LGBMClassifier, LGBMRegressor
-
-    LIGHTGBM_AVAILABLE = True
-except Exception:
-    LGBMClassifier = None
-    LGBMRegressor = None
-    LIGHTGBM_AVAILABLE = False
-
-
 BASELINE_ENGINES = ["rolling_majority"]
 LEGACY_BASE_ENGINES = ["extratrees", "randomforest", "gradientboosting"]
 EXPERIMENTAL_BASE_ENGINES = [
@@ -79,7 +53,6 @@ EXPERIMENTAL_BASE_ENGINES = [
     "logistic_elasticnet",
     "sgd_logloss_calibrated",
     "adaboost",
-    "lightgbm",
 ]
 SKLEARN_MODERN_ENGINES = [
     "histgradientboosting",
@@ -126,19 +99,6 @@ _ACTIVE_FEATURE_COLUMNS = FEATURE_COLUMNS.copy()
 FEATURE_METADATA_COLUMNS = {"date", "ticker", "sector", "_close", "feature_set"}
 
 AUTOTUNE_SPACES: dict[str, dict[str, list[Any]]] = {
-    "xgb": {
-        "n_estimators": [60, 120, 180, 240, 300],
-        "max_depth": [2, 3, 4, 6, 9],
-        "learning_rate": [0.005, 0.02, 0.05, 0.1, 0.2],
-        "subsample": [0.7, 0.8, 0.9, 1.0],
-        "colsample_bytree": [0.7, 0.8, 0.9, 1.0],
-    },
-    "catboost": {
-        "iterations": [80, 140, 220, 300, 400],
-        "depth": [2, 3, 4, 6, 8, 10],
-        "learning_rate": [0.005, 0.02, 0.04, 0.08, 0.2],
-        "l2_leaf_reg": [1, 3, 5, 7, 9],
-    },
     "extratrees": {
         "n_estimators": [24, 40, 60, 100],
         "max_depth": [3, 6, 10, 16, 25, None],
@@ -162,12 +122,6 @@ AUTOTUNE_SPACES: dict[str, dict[str, list[Any]]] = {
         "max_leaf_nodes": [15, 31, 63],
         "learning_rate": [0.03, 0.06, 0.1],
         "l2_regularization": [0.0, 0.1, 1.0],
-    },
-    "lightgbm": {
-        "n_estimators": [40, 80, 120],
-        "num_leaves": [15, 31, 63],
-        "learning_rate": [0.03, 0.06, 0.1],
-        "min_child_samples": [10, 20, 40],
     },
 }
 
@@ -776,23 +730,6 @@ def _sklearn_pipeline(model: Any) -> Any:
 
 
 def _engine_defaults(engine: str) -> dict[str, Any]:
-    if engine == "xgb":
-        return {
-            "n_estimators": 140,
-            "max_depth": 3,
-            "learning_rate": 0.05,
-            "subsample": 0.9,
-            "colsample_bytree": 0.9,
-        }
-
-    if engine == "catboost":
-        return {
-            "iterations": 220,
-            "depth": 4,
-            "learning_rate": 0.04,
-            "loss_function": "MAE",
-        }
-
     if engine == "extratrees":
         return {
             "n_estimators": 24,
@@ -856,15 +793,6 @@ def _engine_defaults(engine: str) -> dict[str, Any]:
             "random_state": 42,
         }
 
-    if engine == "lightgbm":
-        return {
-            "n_estimators": 80,
-            "num_leaves": 31,
-            "learning_rate": 0.06,
-            "min_child_samples": 20,
-            "verbosity": -1,
-        }
-
     raise ValueError(f"Unknown legacy engine: {engine}")
 
 
@@ -893,28 +821,6 @@ def _make_model(
     *,
     n_jobs: int = 4,
 ) -> Any:
-    if engine == "xgb":
-        if not XGBOOST_AVAILABLE or XGBRegressor is None:
-            return None
-
-        return XGBRegressor(
-            **params,
-            objective="reg:squarederror",
-            random_state=42,
-            n_jobs=n_jobs,
-        )
-
-    if engine == "catboost":
-        if not CATBOOST_AVAILABLE or CatBoostRegressor is None:
-            return None
-
-        return CatBoostRegressor(
-            **params,
-            random_seed=42,
-            thread_count=n_jobs,
-            verbose=False,
-        )
-
     if engine == "extratrees":
         if not SKLEARN_AVAILABLE or ExtraTreesRegressor is None:
             return None
@@ -959,16 +865,6 @@ def _make_model(
             calibrated=engine == "sgd_logloss_calibrated",
             method="sigmoid",
             cv=3,
-        )
-
-    if engine == "lightgbm":
-        if not LIGHTGBM_AVAILABLE or LGBMRegressor is None:
-            return None
-
-        return LGBMRegressor(
-            **params,
-            random_state=42,
-            n_jobs=n_jobs,
         )
 
     raise ValueError(f"Unknown legacy engine: {engine}")
@@ -1017,16 +913,6 @@ def _make_classifier(
 
     if engine in {"logistic_elasticnet", "sgd_logloss_calibrated", "adaboost"}:
         return _make_modern_classifier(engine, params)
-
-    if engine == "lightgbm":
-        if not LIGHTGBM_AVAILABLE or LGBMClassifier is None:
-            return None
-
-        return LGBMClassifier(
-            **params,
-            random_state=42,
-            n_jobs=n_jobs,
-        )
 
     return None
 

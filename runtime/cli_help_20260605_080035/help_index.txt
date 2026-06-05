@@ -1,0 +1,961 @@
+﻿PYMERCATOR CLI HELP
+Generated at: 2026-06-05T11:00:35.9592842Z
+Python: C:\Users\zepau\anaconda3\python.exe
+
+================================================================================
+python -m pymercator --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator [-h] [--color {auto,always,never}] [--no-color]
+                  [--palette PALETTE] [--ui-config UI_CONFIG]
+                  {update,train,run,db,observe,pos,borrow,lab,cfg,board,open,diag,basket,daily,daily-real,real-pack,scenario-pack,scenario,daily-auto,context,execution,indices,sentiment,predict,features,confirm,legacy,packs,prices,universe} ...
+
+pyMercator command line interface
+
+positional arguments:
+  {update,train,run,db,observe,pos,borrow,lab,cfg,board,open,diag,basket,daily,daily-real,real-pack,scenario-pack,scenario,daily-auto,context,execution,indices,sentiment,predict,features,confirm,legacy,packs,prices,universe}
+    update              Update operational data
+    train               Train multi-horizon prediction ensemble. Profile-
+                        independent.
+    run                 Run daily decision using an operational profile.
+    db                  Query local SQLite operational history.
+    observe             Rank assets for observation without generating trade
+                        signals.
+    pos                 Position file utilities
+    borrow              Borrow data utilities
+    lab                 Run prediction lab (shortcut)
+    cfg                 Show effective configuration
+    board               Show last pack dashboard
+    open                Open recent artifact (manifest|eval|matrix|dataset)
+    diag                Quick diagnostics
+    basket              Basket utilities
+    daily               Run daily report
+    daily-real          Run real pack
+    real-pack           Run real pack
+    scenario-pack       Create a scenario pack
+    scenario            Scenario utilities
+    daily-auto          Run daily auto workflow
+    context             Manage market context
+    execution           Execution policy utilities
+    indices             Indices utilities
+    sentiment           Sentiment utilities
+    predict             Prediction utilities
+    features            Features utilities
+    confirm             Register human confirmation
+    legacy              Legacy data migration tools
+    packs               List generated packs
+    prices              Manage prices data
+    universe            Universe utilities
+
+options:
+  -h, --help            show this help message and exit
+  --color {auto,always,never}
+                        Terminal colors: auto, always, never. Default: auto
+  --no-color            Disable terminal colors.
+  --palette PALETTE     Terminal palette from config/ui.json. Default:
+                        configured default.
+  --ui-config UI_CONFIG
+                        Terminal UI config file. Default: config/ui.json
+
+================================================================================
+python -m pymercator update --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator update [-h] [--list LIST] [--start START] [--end END]
+                         [--no-cache] [--tickers-file TICKERS_FILE]
+                         [--prices-dir PRICES_DIR]
+                         [--indices-catalog INDICES_CATALOG]
+                         [--indices-dir INDICES_DIR]
+                         [--context-output CONTEXT_OUTPUT]
+                         [--context-config CONTEXT_CONFIG]
+                         [--context-thresholds CONTEXT_THRESHOLDS]
+                         [--universe-output UNIVERSE_OUTPUT]
+                         [--features-catalog FEATURES_CATALOG]
+                         [--features-config FEATURES_CONFIG]
+                         [--matrix-output MATRIX_OUTPUT] [--json]
+
+options:
+  -h, --help            show this help message and exit
+  --list LIST
+  --start START
+  --end END
+  --no-cache
+  --tickers-file TICKERS_FILE
+  --prices-dir PRICES_DIR
+  --indices-catalog INDICES_CATALOG
+  --indices-dir INDICES_DIR
+  --context-output CONTEXT_OUTPUT
+  --context-config CONTEXT_CONFIG
+  --context-thresholds CONTEXT_THRESHOLDS
+  --universe-output UNIVERSE_OUTPUT
+  --features-catalog FEATURES_CATALOG
+  --features-config FEATURES_CONFIG
+  --matrix-output MATRIX_OUTPUT
+  --json
+
+================================================================================
+python -m pymercator diag --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator diag [-h] [--profile PROFILE] [--verbose]
+
+options:
+  -h, --help         show this help message and exit
+  --profile PROFILE
+  --verbose
+
+================================================================================
+python -m pymercator train --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator train [-h] [--details] [--prob-dist] [--full]
+                        [--output OUTPUT] [--config CONFIG]
+                        [--horizons HORIZONS] [--matrix MATRIX]
+                        [--universe UNIVERSE] [--prices-dir PRICES_DIR]
+                        [--dataset-output DATASET_OUTPUT]
+                        [--evaluation-output EVALUATION_OUTPUT]
+                        [--min-history MIN_HISTORY]
+                        [--min-train-rows MIN_TRAIN_ROWS]
+                        [--engines [ENGINES]] [--meta META]
+                        [--observer OBSERVER] [--weights WEIGHTS]
+                        [--independent-horizons] [--combined-horizons]
+                        [--n-jobs N_JOBS] [--autotune]
+                        [--autotune-iter AUTOTUNE_ITER]
+                        [--autotune-cv AUTOTUNE_CV]
+                        [--calibration-method {sigmoid,isotonic}]
+                        [--calibration-cv CALIBRATION_CV]
+                        [--threshold-metric {balanced_accuracy,accuracy,f1,youden}]
+                        [--disable-calibration] [--experimental]
+                        [--allow-small-universe]
+                        [--benchmark-output BENCHMARK_OUTPUT] [--json]
+                        [{benchmark-engines}]
+
+Train multi-horizon prediction ensemble. Profile-independent.
+
+positional arguments:
+  {benchmark-engines}   Advanced train action. Use benchmark-engines to
+                        compare engines.
+
+options:
+  -h, --help            show this help message and exit
+  --details             Print operational training detail report.
+  --prob-dist           Include probability distribution buckets in --details.
+  --full                Include all detail report sections.
+  --output OUTPUT       Write detailed training report TXT. Used with
+                        --details.
+  --config CONFIG       Prediction config file. Default:
+                        config/prediction.json
+  --horizons HORIZONS   Prediction horizons in trading days. Default: 5,20,60
+  --matrix MATRIX
+  --universe UNIVERSE
+  --prices-dir PRICES_DIR
+  --dataset-output DATASET_OUTPUT
+  --evaluation-output EVALUATION_OUTPUT
+  --min-history MIN_HISTORY
+                        Minimum price history. Default: 120
+  --min-train-rows MIN_TRAIN_ROWS
+                        Minimum training rows. Default: 100
+  --engines [ENGINES]   Base engines for multi_horizon_ridge. Valid:
+                        extratrees, randomforest, gradientboosting,
+                        histgradientboosting, logistic_elasticnet,
+                        sgd_logloss_calibrated, adaboost. Baseline:
+                        rolling_majority With --details, a bare --engines
+                        includes complete base engine metrics.
+  --meta META           Meta model. Default: ridge
+  --observer OBSERVER   Horizon observer mode. Default: weighted
+  --weights WEIGHTS     Horizon weights, e.g. D5=0.25,D20=0.35,D60=0.4
+  --independent-horizons
+  --combined-horizons
+  --n-jobs N_JOBS       Parallel workers. Default: 4
+  --autotune
+  --autotune-iter AUTOTUNE_ITER
+                        Autotune iterations. Default: 20
+  --autotune-cv AUTOTUNE_CV
+                        Autotune CV folds. Default: 3
+  --calibration-method {sigmoid,isotonic}
+                        Probability calibration method. Valid: sigmoid,
+                        isotonic. Default: sigmoid
+  --calibration-cv CALIBRATION_CV
+                        Probability calibration CV folds. Default: 3
+  --threshold-metric {balanced_accuracy,accuracy,f1,youden}
+                        Threshold tuning metric. Valid: balanced_accuracy,
+                        accuracy, f1, youden. Default: balanced_accuracy
+  --disable-calibration
+                        Disable probability calibration for base engines.
+  --experimental        Allow non-operational train settings and mark the
+                        evaluation experimental.
+  --allow-small-universe
+                        Allow assets below operational min_assets; requires
+                        --experimental.
+  --benchmark-output BENCHMARK_OUTPUT
+                        Engine benchmark JSON output.
+  --json
+
+================================================================================
+python -m pymercator train benchmark-engines --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator train [-h] [--details] [--prob-dist] [--full]
+                        [--output OUTPUT] [--config CONFIG]
+                        [--horizons HORIZONS] [--matrix MATRIX]
+                        [--universe UNIVERSE] [--prices-dir PRICES_DIR]
+                        [--dataset-output DATASET_OUTPUT]
+                        [--evaluation-output EVALUATION_OUTPUT]
+                        [--min-history MIN_HISTORY]
+                        [--min-train-rows MIN_TRAIN_ROWS]
+                        [--engines [ENGINES]] [--meta META]
+                        [--observer OBSERVER] [--weights WEIGHTS]
+                        [--independent-horizons] [--combined-horizons]
+                        [--n-jobs N_JOBS] [--autotune]
+                        [--autotune-iter AUTOTUNE_ITER]
+                        [--autotune-cv AUTOTUNE_CV]
+                        [--calibration-method {sigmoid,isotonic}]
+                        [--calibration-cv CALIBRATION_CV]
+                        [--threshold-metric {balanced_accuracy,accuracy,f1,youden}]
+                        [--disable-calibration] [--experimental]
+                        [--allow-small-universe]
+                        [--benchmark-output BENCHMARK_OUTPUT] [--json]
+                        [{benchmark-engines}]
+
+Train multi-horizon prediction ensemble. Profile-independent.
+
+positional arguments:
+  {benchmark-engines}   Advanced train action. Use benchmark-engines to
+                        compare engines.
+
+options:
+  -h, --help            show this help message and exit
+  --details             Print operational training detail report.
+  --prob-dist           Include probability distribution buckets in --details.
+  --full                Include all detail report sections.
+  --output OUTPUT       Write detailed training report TXT. Used with
+                        --details.
+  --config CONFIG       Prediction config file. Default:
+                        config/prediction.json
+  --horizons HORIZONS   Prediction horizons in trading days. Default: 5,20,60
+  --matrix MATRIX
+  --universe UNIVERSE
+  --prices-dir PRICES_DIR
+  --dataset-output DATASET_OUTPUT
+  --evaluation-output EVALUATION_OUTPUT
+  --min-history MIN_HISTORY
+                        Minimum price history. Default: 120
+  --min-train-rows MIN_TRAIN_ROWS
+                        Minimum training rows. Default: 100
+  --engines [ENGINES]   Base engines for multi_horizon_ridge. Valid:
+                        extratrees, randomforest, gradientboosting,
+                        histgradientboosting, logistic_elasticnet,
+                        sgd_logloss_calibrated, adaboost. Baseline:
+                        rolling_majority With --details, a bare --engines
+                        includes complete base engine metrics.
+  --meta META           Meta model. Default: ridge
+  --observer OBSERVER   Horizon observer mode. Default: weighted
+  --weights WEIGHTS     Horizon weights, e.g. D5=0.25,D20=0.35,D60=0.4
+  --independent-horizons
+  --combined-horizons
+  --n-jobs N_JOBS       Parallel workers. Default: 4
+  --autotune
+  --autotune-iter AUTOTUNE_ITER
+                        Autotune iterations. Default: 20
+  --autotune-cv AUTOTUNE_CV
+                        Autotune CV folds. Default: 3
+  --calibration-method {sigmoid,isotonic}
+                        Probability calibration method. Valid: sigmoid,
+                        isotonic. Default: sigmoid
+  --calibration-cv CALIBRATION_CV
+                        Probability calibration CV folds. Default: 3
+  --threshold-metric {balanced_accuracy,accuracy,f1,youden}
+                        Threshold tuning metric. Valid: balanced_accuracy,
+                        accuracy, f1, youden. Default: balanced_accuracy
+  --disable-calibration
+                        Disable probability calibration for base engines.
+  --experimental        Allow non-operational train settings and mark the
+                        evaluation experimental.
+  --allow-small-universe
+                        Allow assets below operational min_assets; requires
+                        --experimental.
+  --benchmark-output BENCHMARK_OUTPUT
+                        Engine benchmark JSON output.
+  --json
+
+================================================================================
+python -m pymercator run --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator run [-h] [--profile PROFILE] [--list LIST] [--policy POLICY]
+                      [--universe UNIVERSE] [--context CONTEXT]
+                      [--matrix MATRIX] [--evaluation EVALUATION]
+                      [--observation-config OBSERVATION_CONFIG]
+                      [--positions POSITIONS] [--borrow-data BORROW_DATA]
+                      [--prices-dir PRICES_DIR] [--limit LIMIT]
+                      [--run-dir RUN_DIR] [--report-output REPORT_OUTPUT]
+                      [--json-output JSON_OUTPUT] [--basket | --no-basket]
+                      [--slots SLOTS] [--min-sectors MIN_SECTORS]
+                      [--min-weight MIN_WEIGHT] [--capital CAPITAL]
+                      [--risk-per-trade RISK_PER_TRADE] [--targets TARGETS]
+                      [--stop {progressive}] [--basket-output BASKET_OUTPUT]
+                      [--db DB] [--allow-experimental-model] [--json]
+
+Run daily decision using an operational profile.
+
+options:
+  -h, --help            show this help message and exit
+  --profile PROFILE
+  --list LIST
+  --policy POLICY
+  --universe UNIVERSE
+  --context CONTEXT
+  --matrix MATRIX
+  --evaluation EVALUATION
+  --observation-config OBSERVATION_CONFIG
+  --positions POSITIONS
+  --borrow-data BORROW_DATA
+  --prices-dir PRICES_DIR
+  --limit LIMIT
+  --run-dir RUN_DIR
+  --report-output REPORT_OUTPUT
+  --json-output JSON_OUTPUT
+  --basket, --no-basket
+                        Generate basket output. Default: enabled. Use --no-
+                        basket to disable.
+  --slots SLOTS
+  --min-sectors MIN_SECTORS
+  --min-weight MIN_WEIGHT
+  --capital CAPITAL
+  --risk-per-trade RISK_PER_TRADE
+  --targets TARGETS
+  --stop {progressive}
+  --basket-output BASKET_OUTPUT
+  --db DB               SQLite operational history database. Default:
+                        data/aurum.db
+  --allow-experimental-model
+  --json
+
+================================================================================
+python -m pymercator db --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator db [-h] [--db DB] [--json]
+                     {status,last-run,signal,rank-last,sim-last} ...
+
+Query local SQLite operational history.
+
+positional arguments:
+  {status,last-run,signal,rank-last,sim-last}
+    status              Show DB STATUS
+    last-run            Show DB LAST RUN
+    signal              Show DB SIGNAL <TICKER>
+    rank-last           Show DB RANK LAST
+    sim-last            Show DB SIM LAST
+
+options:
+  -h, --help            show this help message and exit
+  --db DB               SQLite operational history database. Default:
+                        data/aurum.db
+  --json
+
+================================================================================
+python -m pymercator db status --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator db status [-h] [--db DB] [--json]
+
+options:
+  -h, --help  show this help message and exit
+  --db DB     SQLite operational history database. Default: data/aurum.db
+  --json
+
+================================================================================
+python -m pymercator db last-run --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator db last-run [-h] [--db DB] [--json]
+
+options:
+  -h, --help  show this help message and exit
+  --db DB     SQLite operational history database. Default: data/aurum.db
+  --json
+
+================================================================================
+python -m pymercator db signal --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator db signal [-h] [--limit LIMIT] [--db DB] [--json] ticker
+
+positional arguments:
+  ticker
+
+options:
+  -h, --help     show this help message and exit
+  --limit LIMIT
+  --db DB        SQLite operational history database. Default: data/aurum.db
+  --json
+
+================================================================================
+python -m pymercator db rank-last --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator db rank-last [-h] [--db DB] [--json]
+
+options:
+  -h, --help  show this help message and exit
+  --db DB     SQLite operational history database. Default: data/aurum.db
+  --json
+
+================================================================================
+python -m pymercator db sim-last --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator db sim-last [-h] [--db DB] [--json]
+
+options:
+  -h, --help  show this help message and exit
+  --db DB     SQLite operational history database. Default: data/aurum.db
+  --json
+
+================================================================================
+python -m pymercator observe --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator observe [-h] [--list LIST] [--universe UNIVERSE]
+                          [--config CONFIG] [--limit LIMIT] [--cluster]
+                          [--json]
+                          {calibrate} ...
+
+Rank assets for observation without generating trade signals.
+
+positional arguments:
+  {calibrate}
+    calibrate          Calibrate observation thresholds from the current
+                       universe.
+
+options:
+  -h, --help           show this help message and exit
+  --list LIST
+  --universe UNIVERSE
+  --config CONFIG
+  --limit LIMIT
+  --cluster
+  --json
+
+================================================================================
+python -m pymercator basket --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator basket [-h] [--profile PROFILE] [--json] {daily,show} ...
+
+positional arguments:
+  {daily,show}
+    daily            Create daily basket
+    show             Show latest basket
+
+options:
+  -h, --help         show this help message and exit
+  --profile PROFILE
+  --json
+
+================================================================================
+python -m pymercator universe --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator universe [-h] [--json]
+                           {check,summary,template,build,diagnose} ...
+
+positional arguments:
+  {check,summary,template,build,diagnose}
+    check               Check universe file
+    summary             Summarize universe file
+    template            Write universe template
+    build               Build universe from prices
+    diagnose            Diagnose universe file
+
+options:
+  -h, --help            show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator scenario --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator scenario [-h] {run} ...
+
+positional arguments:
+  {run}
+    run       Run a synthetic operational scenario
+
+options:
+  -h, --help  show this help message and exit
+
+================================================================================
+python -m pymercator context --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator context [-h] [--json] [--context CONTEXT]
+                          [--context-preset CONTEXT_PRESET]
+                          [--headline-tags HEADLINE_TAGS]
+                          [--market-trend MARKET_TREND]
+                          [--market-volatility MARKET_VOLATILITY]
+                          {auto,calibrate,template,presets,check,sources,show,refresh} ...
+
+positional arguments:
+  {auto,calibrate,template,presets,check,sources,show,refresh}
+    auto                Auto generate market context
+    calibrate           Calibrate market context thresholds from index
+                        history.
+    template            Write market context template
+    presets             List available market context presets
+    check               Validate a market context file
+    sources             Show market context source diagnostics
+    show                Show consolidated market context
+    refresh             Refresh market context source diagnostics
+
+options:
+  -h, --help            show this help message and exit
+  --json
+  --context CONTEXT
+  --context-preset CONTEXT_PRESET
+  --headline-tags HEADLINE_TAGS
+  --market-trend MARKET_TREND
+  --market-volatility MARKET_VOLATILITY
+
+================================================================================
+python -m pymercator borrow --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator borrow [-h] [--json] {show,import,diagnose} ...
+
+positional arguments:
+  {show,import,diagnose}
+    show                Show borrow data
+    import              Import borrow CSV
+    diagnose            Diagnose borrow data
+
+options:
+  -h, --help            show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator pos --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator pos [-h] [--json] {show,import} ...
+
+positional arguments:
+  {show,import}
+    show         Show current positions
+    import       Import positions CSV
+
+options:
+  -h, --help     show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator prices --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator prices [-h] [--json]
+                         {fetch,fetch-list,tickers-template,tickers-check,check} ...
+
+positional arguments:
+  {fetch,fetch-list,tickers-template,tickers-check,check}
+    fetch               Fetch prices
+    fetch-list          Fetch prices list
+    tickers-template    Write tickers template
+    tickers-check       Check tickers list
+    check               Check prices directory
+
+options:
+  -h, --help            show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator lab --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator lab [-h] [--fast] [--engines ENGINES] [--autotune]
+                      [--jobs JOBS] [--horizon HORIZON] [--profile PROFILE]
+                      [--json]
+
+options:
+  -h, --help         show this help message and exit
+  --fast
+  --engines ENGINES  Prediction engines to run. Valid engines:
+                     rolling_majority, extratrees, randomforest,
+                     gradientboosting, histgradientboosting,
+                     logistic_elasticnet, sgd_logloss_calibrated, adaboost,
+                     ridge_ensemble
+  --autotune
+  --jobs JOBS        Number of jobs (alias for n-jobs)
+  --horizon HORIZON
+  --profile PROFILE
+  --json
+
+================================================================================
+python -m pymercator cfg --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator cfg [-h] [--profile PROFILE] [--json]
+
+options:
+  -h, --help         show this help message and exit
+  --profile PROFILE
+  --json
+
+================================================================================
+python -m pymercator board --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator board [-h] [--profile PROFILE] [--json]
+
+options:
+  -h, --help         show this help message and exit
+  --profile PROFILE
+  --json
+
+================================================================================
+python -m pymercator open --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator open [-h] [--raw] [--profile PROFILE] [artifact]
+
+positional arguments:
+  artifact
+
+options:
+  -h, --help         show this help message and exit
+  --raw
+  --profile PROFILE
+
+================================================================================
+python -m pymercator daily --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator daily [-h] --universe UNIVERSE
+                        [--universe-name UNIVERSE_NAME] [--profile PROFILE]
+                        [--headline-risk HEADLINE_RISK] [--policy POLICY]
+                        [--limit LIMIT] [--output OUTPUT]
+                        [--json-output JSON_OUTPUT] [--run-dir RUN_DIR]
+                        [--context CONTEXT] [--context-preset CONTEXT_PRESET]
+                        [--headline-tags HEADLINE_TAGS]
+                        [--market-trend MARKET_TREND]
+                        [--market-volatility MARKET_VOLATILITY]
+
+options:
+  -h, --help            show this help message and exit
+  --universe UNIVERSE
+  --universe-name UNIVERSE_NAME
+  --profile PROFILE
+  --headline-risk HEADLINE_RISK
+  --policy POLICY
+  --limit LIMIT
+  --output OUTPUT
+  --json-output JSON_OUTPUT
+  --run-dir RUN_DIR
+  --context CONTEXT
+  --context-preset CONTEXT_PRESET
+  --headline-tags HEADLINE_TAGS
+  --market-trend MARKET_TREND
+  --market-volatility MARKET_VOLATILITY
+
+================================================================================
+python -m pymercator daily-real --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator daily-real [-h] [--execution-policy EXECUTION_POLICY]
+                             --tickers-file TICKERS_FILE
+                             [--features-file FEATURES_FILE] [--start START]
+                             [--end END] --prices-dir PRICES_DIR
+                             --universe-output UNIVERSE_OUTPUT
+                             [--run-dir RUN_DIR]
+                             [--universe-name UNIVERSE_NAME] [--policy POLICY]
+                             [--limit LIMIT] [--skip-fetch] [--json]
+                             [--context CONTEXT]
+                             [--context-preset CONTEXT_PRESET]
+                             [--headline-tags HEADLINE_TAGS]
+                             [--market-trend MARKET_TREND]
+                             [--market-volatility MARKET_VOLATILITY]
+
+options:
+  -h, --help            show this help message and exit
+  --execution-policy EXECUTION_POLICY
+  --tickers-file TICKERS_FILE
+  --features-file FEATURES_FILE
+  --start START
+  --end END
+  --prices-dir PRICES_DIR
+  --universe-output UNIVERSE_OUTPUT
+  --run-dir RUN_DIR
+  --universe-name UNIVERSE_NAME
+  --policy POLICY
+  --limit LIMIT
+  --skip-fetch
+  --json
+  --context CONTEXT
+  --context-preset CONTEXT_PRESET
+  --headline-tags HEADLINE_TAGS
+  --market-trend MARKET_TREND
+  --market-volatility MARKET_VOLATILITY
+
+================================================================================
+python -m pymercator real-pack --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator real-pack [-h] [--execution-policy EXECUTION_POLICY]
+                            --tickers-file TICKERS_FILE
+                            [--features-file FEATURES_FILE] [--start START]
+                            [--end END] --prices-dir PRICES_DIR
+                            --universe-output UNIVERSE_OUTPUT
+                            [--run-dir RUN_DIR]
+                            [--universe-name UNIVERSE_NAME] [--policy POLICY]
+                            [--limit LIMIT] [--skip-fetch] [--json]
+                            [--context CONTEXT]
+                            [--context-preset CONTEXT_PRESET]
+                            [--headline-tags HEADLINE_TAGS]
+                            [--market-trend MARKET_TREND]
+                            [--market-volatility MARKET_VOLATILITY]
+
+options:
+  -h, --help            show this help message and exit
+  --execution-policy EXECUTION_POLICY
+  --tickers-file TICKERS_FILE
+  --features-file FEATURES_FILE
+  --start START
+  --end END
+  --prices-dir PRICES_DIR
+  --universe-output UNIVERSE_OUTPUT
+  --run-dir RUN_DIR
+  --universe-name UNIVERSE_NAME
+  --policy POLICY
+  --limit LIMIT
+  --skip-fetch
+  --json
+  --context CONTEXT
+  --context-preset CONTEXT_PRESET
+  --headline-tags HEADLINE_TAGS
+  --market-trend MARKET_TREND
+  --market-volatility MARKET_VOLATILITY
+
+================================================================================
+python -m pymercator scenario-pack --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator scenario-pack [-h] --universe UNIVERSE
+                                [--universe-name UNIVERSE_NAME]
+                                [--policy POLICY] [--run-dir RUN_DIR]
+                                [--limit LIMIT] [--context CONTEXT]
+                                [--context-preset CONTEXT_PRESET]
+                                [--headline-tags HEADLINE_TAGS]
+                                [--market-trend MARKET_TREND]
+                                [--market-volatility MARKET_VOLATILITY]
+
+options:
+  -h, --help            show this help message and exit
+  --universe UNIVERSE
+  --universe-name UNIVERSE_NAME
+  --policy POLICY
+  --run-dir RUN_DIR
+  --limit LIMIT
+  --context CONTEXT
+  --context-preset CONTEXT_PRESET
+  --headline-tags HEADLINE_TAGS
+  --market-trend MARKET_TREND
+  --market-volatility MARKET_VOLATILITY
+
+================================================================================
+python -m pymercator daily-auto --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator daily-auto [-h] [--execution-policy EXECUTION_POLICY]
+                             [--indices-catalog INDICES_CATALOG]
+                             [--indices-start INDICES_START]
+                             [--indices-dir INDICES_DIR]
+                             [--context-output CONTEXT_OUTPUT]
+                             [--features-file FEATURES_FILE]
+                             [--feature-matrix-output FEATURE_MATRIX_OUTPUT]
+                             [--prediction-dataset-output PREDICTION_DATASET_OUTPUT]
+                             [--prediction-evaluation-output PREDICTION_EVALUATION_OUTPUT]
+                             [--prediction-horizon PREDICTION_HORIZON]
+                             [--prediction-min-history PREDICTION_MIN_HISTORY]
+                             [--prediction-min-train-rows PREDICTION_MIN_TRAIN_ROWS]
+                             [--prediction-engines PREDICTION_ENGINES]
+                             [--prediction-n-jobs PREDICTION_N_JOBS]
+                             [--prediction-autotune]
+                             [--prediction-autotune-iter PREDICTION_AUTOTUNE_ITER]
+                             [--prediction-autotune-cv PREDICTION_AUTOTUNE_CV]
+                             [--tickers-file TICKERS_FILE]
+                             [--sentiment-dir SENTIMENT_DIR]
+                             [--prices-start PRICES_START]
+                             [--prices-dir PRICES_DIR]
+                             [--universe-output UNIVERSE_OUTPUT]
+                             [--run-dir RUN_DIR]
+                             [--universe-name UNIVERSE_NAME] [--policy POLICY]
+                             [--skip-asset-fetch] [--skip-indices-fetch]
+                             [--json]
+
+options:
+  -h, --help            show this help message and exit
+  --execution-policy EXECUTION_POLICY
+  --indices-catalog INDICES_CATALOG
+  --indices-start INDICES_START
+  --indices-dir INDICES_DIR
+  --context-output CONTEXT_OUTPUT
+  --features-file FEATURES_FILE
+  --feature-matrix-output FEATURE_MATRIX_OUTPUT
+  --prediction-dataset-output PREDICTION_DATASET_OUTPUT
+  --prediction-evaluation-output PREDICTION_EVALUATION_OUTPUT
+  --prediction-horizon PREDICTION_HORIZON
+  --prediction-min-history PREDICTION_MIN_HISTORY
+  --prediction-min-train-rows PREDICTION_MIN_TRAIN_ROWS
+  --prediction-engines PREDICTION_ENGINES
+                        Prediction engines to run. Valid engines:
+                        rolling_majority, extratrees, randomforest,
+                        gradientboosting, histgradientboosting,
+                        logistic_elasticnet, sgd_logloss_calibrated, adaboost,
+                        ridge_ensemble
+  --prediction-n-jobs PREDICTION_N_JOBS
+  --prediction-autotune
+  --prediction-autotune-iter PREDICTION_AUTOTUNE_ITER
+  --prediction-autotune-cv PREDICTION_AUTOTUNE_CV
+  --tickers-file TICKERS_FILE
+  --sentiment-dir SENTIMENT_DIR
+  --prices-start PRICES_START
+  --prices-dir PRICES_DIR
+  --universe-output UNIVERSE_OUTPUT
+  --run-dir RUN_DIR
+  --universe-name UNIVERSE_NAME
+  --policy POLICY
+  --skip-asset-fetch
+  --skip-indices-fetch
+  --json
+
+================================================================================
+python -m pymercator execution --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator execution [-h] [--json] {template,check} ...
+
+positional arguments:
+  {template,check}
+    template        Write execution policy template
+    check           Validate execution policy
+
+options:
+  -h, --help        show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator indices --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator indices [-h] [--json] {fetch,prices-check,catalog,check} ...
+
+positional arguments:
+  {fetch,prices-check,catalog,check}
+    fetch               Fetch indices prices
+    prices-check        Check indices prices
+    catalog             Validate indices catalog
+    check               Check indices catalog
+
+options:
+  -h, --help            show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator sentiment --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator sentiment [-h] [--json] {check} ...
+
+positional arguments:
+  {check}
+    check     Check sentiment directory
+
+options:
+  -h, --help  show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator predict --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator predict [-h] [--json] {dataset,evaluate,lab} ...
+
+positional arguments:
+  {dataset,evaluate,lab}
+    dataset             Write prediction dataset
+    evaluate            Write evaluation report
+    lab                 Run prediction lab
+
+options:
+  -h, --help            show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator features --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator features [-h] [--json]
+                           {check,catalog,matrix,build,audit} ...
+
+positional arguments:
+  {check,catalog,matrix,build,audit}
+    check               Validate features catalog
+    catalog             Render features catalog
+    matrix              Write feature matrix
+    build               Build Feature Factory v2 matrix
+    audit               Render latest Feature Factory v2 audit
+
+options:
+  -h, --help            show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator confirm --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator confirm [-h] --pack PACK --ticker TICKER --decision DECISION
+                          [--notes NOTES] [--operator OPERATOR]
+                          [--execution-policy EXECUTION_POLICY] [--json]
+
+options:
+  -h, --help            show this help message and exit
+  --pack PACK
+  --ticker TICKER
+  --decision DECISION
+  --notes NOTES
+  --operator OPERATOR
+  --execution-policy EXECUTION_POLICY
+  --json
+
+================================================================================
+python -m pymercator legacy --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator legacy [-h] [--json]
+                         {classify,migrate-sentiment,migrate-features,migrate-indices,migrate-universe,scan} ...
+
+positional arguments:
+  {classify,migrate-sentiment,migrate-features,migrate-indices,migrate-universe,scan}
+    classify            Classify legacy inventory
+    migrate-sentiment   Migrate legacy sentiment
+    migrate-features    Migrate legacy features
+    migrate-indices     Migrate legacy indices
+    migrate-universe    Migrate legacy universe
+    scan                Scan legacy inventory
+
+options:
+  -h, --help            show this help message and exit
+  --json
+
+================================================================================
+python -m pymercator packs --help
+--------------------------------------------------------------------------------
+STATUS: OK
+usage: pymercator packs [-h] --run-dir RUN_DIR [--limit LIMIT] [--json]
+
+options:
+  -h, --help         show this help message and exit
+  --run-dir RUN_DIR
+  --limit LIMIT
+  --json
+

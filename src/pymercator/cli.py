@@ -386,9 +386,7 @@ def _run_short_diag_command(args: argparse.Namespace) -> int:
     profile = presets_mod.resolve_profile(args.profile if getattr(args, "profile", None) else None)
     paths = profile.get("paths", {})
     from pymercator.legacy_prediction_engines import (
-        CATBOOST_AVAILABLE,
         SKLEARN_AVAILABLE,
-        XGBOOST_AVAILABLE,
     )
     from pymercator.prediction_config import effective_prediction_config
 
@@ -469,8 +467,6 @@ def _run_short_diag_command(args: argparse.Namespace) -> int:
             "LIBRARIES",
             [
                 ("sklearn available", bool(SKLEARN_AVAILABLE), bool(SKLEARN_AVAILABLE)),
-                ("xgboost available", bool(XGBOOST_AVAILABLE), bool(XGBOOST_AVAILABLE)),
-                ("catboost available", bool(CATBOOST_AVAILABLE), bool(CATBOOST_AVAILABLE)),
             ],
             label_width=22,
         )

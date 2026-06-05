@@ -1198,7 +1198,6 @@ def test_cli_train_benchmark_engines_writes_json_without_changing_config(
     before_config = Path("config/prediction.json").read_text(encoding="utf-8")
     calls: list[dict] = []
     monkeypatch.setattr(train_mod, "run_prediction_lab", _fake_lab_factory(calls))
-    monkeypatch.setattr(train_mod, "LIGHTGBM_AVAILABLE", False)
 
     exit_code = main(
         [

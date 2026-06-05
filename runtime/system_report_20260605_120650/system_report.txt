@@ -1,0 +1,301 @@
+PYMERCATOR SYSTEM REPORT
+Generated: 2026-06-05 12:06:50 America/Sao_Paulo
+Repository: C:\Users\zepau\ML\projetos\pyMercator
+Branch: main
+Head: a3c0be3
+
+SUMMARY
+--------------------------------------------------------------------------------
+The requested roadmap was executed in the order requested:
+1. Feature Factory v2.
+2. SQLite operational persistence.
+3. Modern sklearn engines and engine benchmark.
+4. General recoding, documentation, legacy cleanup, and operational validation.
+
+The core trading architecture was preserved:
+- D5, D20, D60 horizons preserved.
+- base engines + per-horizon ridge ensemble preserved.
+- observer weighted preserved.
+- model_quality guard preserved.
+- behavior guard preserved.
+- basket remains analysis-only.
+- run, observation, short permission, scenario positive, and defensive behavior kept.
+
+COMMITS PUSHED
+--------------------------------------------------------------------------------
+3ec6d40  Add Feature Factory v2
+535aa9b  Add SQLite operational history
+3e6205c  Add modern sklearn engine support
+ebc7049  Prune legacy engine hooks and refresh docs
+3590427  Polish signal summary rendering
+a3c0be3  Cap feature history and autotune sampling
+
+FEATURE FACTORY V2
+--------------------------------------------------------------------------------
+Status: implemented and validated.
+
+Files:
+- config/features.json
+- src/pymercator/features_v2.py
+- src/pymercator/cli_features.py
+
+Commands:
+- python -m pymercator features build --list IBOV
+- python -m pymercator features audit
+
+Current feature audit:
+- feature_set: core_v2
+- features_total: 109
+- features_selected: 90
+- assets: 78
+- feature history rows: 28080
+- train evaluation rows: 49530
+
+Important performance correction:
+- Initial feature history used 1500 rows per asset and produced about 114k rows.
+- That made weekend autotune exceed 60 minutes.
+- The default was reduced to 360 recent rows per asset.
+- Autotune now samples recent rows for parameter search.
+- Final models still train on the full generated training dataset.
+
+SQLITE OPERATIONAL STORAGE
+--------------------------------------------------------------------------------
+Status: implemented and validated.
+
+Default DB:
+- data/aurum.db
+
+Tables:
+- daily_runs
+- signals
+- signal_reasons
+- rankings
+- simulations
+- simulation_trades
+
+CLI:
+- python -m pymercator db status
+- python -m pymercator db last-run
+- python -m pymercator db signal <TICKER>
+- python -m pymercator db rank-last
+- python -m pymercator db sim-last
+
+Current DB status at validation:
+- daily_runs: 90
+- signals: 2281
+- signal_reasons: 14157
+- rankings: 230
+- simulations: 0
+- simulation_trades: 0
+
+Note:
+- Simulation tables and repositories exist.
+- No active SIM CLI flow was found to wire without inventing behavior.
+- DB errors are best-effort warnings and do not block signal generation.
+
+MODERN SKLEARN ENGINES
+--------------------------------------------------------------------------------
+Status: implemented and validated.
+
+Available engines added:
+- histgradientboosting
+- logistic_elasticnet
+- sgd_logloss_calibrated
+- adaboost
+
+Operational default was not changed:
+- extratrees
+- randomforest
+- gradientboosting
+
+Benchmark command:
+- python -m pymercator train benchmark-engines
+
+Benchmark output:
+- storage/prediction/latest_engine_benchmark.json
+
+Rules preserved:
+- New engines do not become default automatically.
+- logistic_elasticnet uses StandardScaler.
+- sgd_logloss_calibrated uses StandardScaler and CalibratedClassifierCV.
+- Engine failure marks FAIL and benchmark continues.
+
+OPERATIONAL UX
+--------------------------------------------------------------------------------
+Status: implemented and validated.
+
+Daily signal now shows:
+- PYMERCATOR SIGNALS
+- SIGNAL SUMMARY
+- BUY / LONG SIGNALS
+- SELL-SHORT SIGNALS
+- HEDGE / DEFENSE
+- LONG OBSERVATION
+- SHORT OBSERVATION
+- BASKET
+- FINAL DECISION
+- KEY FILES
+
+Observation ambiguity was fixed:
+- Long observation and short observation are separated.
+- OBS_READY was replaced by OBS_FAVORABLE.
+- STABLE_WEAK was replaced by LOW_RISK_WEAK.
+- observation candidates are not executable.
+
+Color behavior:
+- Without -Color: scripts pass --no-color and terminal/logs stay clean.
+- With -Color: scripts pass --color always and terminal output contains ANSI.
+- Runtime log/json/csv/txt/manifest files were scanned and stayed ANSI-free.
+
+Zero ghost fix:
+- No isolated "0" lines were found in validated daily_signal, daily_train, or weekend_full output.
+- A final PowerShell rendering issue in Write-PyMercatorSummaryValue was fixed.
+
+REFRACTOR AND DOCUMENTATION
+--------------------------------------------------------------------------------
+Status: partial.
+
+Reports generated:
+- runtime/code_audit_20260605_075503/code_audit.txt
+- runtime/code_audit_20260605_075503/code_audit.json
+- runtime/refactor_report_20260605_080629/refactor_report.txt
+- runtime/refactor_report_20260605_080629/refactor_report.json
+- runtime/cli_help_20260605_080035/help_index.txt
+- runtime/system_report_20260605_120650/system_report.txt
+
+Docs:
+- docs/COMMANDS.md
+- docs/OPERATING.md
+
+Script inventory helper:
+- scripts/dump_cli_help.ps1
+
+Legacy movement:
+- scripts/legacy/README.md documents legacy script policy.
+- No risky deletion was performed.
+
+Reduction result:
+- The original refactor-only report measured 129 total lines removed, about 0.29%.
+- The 10%-20% reduction target was not reached.
+- After features, DB, engines, and docs, current tracked code/docs/config/test lines are:
+  - files: 228
+  - total lines: 46012
+  - nonempty lines: 39566
+
+Reason:
+- This round added significant new capability.
+- Larger cuts would require extracting cli_train.py, cli_run.py, and PowerShell rendering more aggressively.
+- That is safe future work, but it should not be mixed with new model/features/storage work.
+
+VALIDATION
+--------------------------------------------------------------------------------
+pytest:
+- 297 passed, 1 skipped
+
+Main scripts:
+- .\scripts\run_daily_signal.ps1
+  - PASS
+  - runtime: runtime\daily_signal_20260605_111522
+  - no ghost zero
+  - no ANSI in default terminal capture
+
+- .\scripts\run_daily_train.ps1
+  - PASS
+  - runtime: runtime\daily_train_20260605_112344
+  - no ghost zero
+  - no ANSI in default terminal capture
+  - train --details did not print BASE ENGINE METRICS
+
+- .\scripts\run_weekend_full.ps1
+  - PASS
+  - runtime: runtime\weekend_full_20260605_113139
+  - scenario_positive: PASS
+  - pytest: PASS
+  - tests: 297 passed, 1 skipped
+  - no ghost zero
+  - no ANSI in default terminal capture
+
+Color validation:
+- .\scripts\run_daily_signal.ps1 -Color
+  - PASS
+  - runtime: runtime\daily_signal_20260605_120031
+  - commands used --color always
+  - terminal capture contained ANSI
+  - runtime logs/json/csv/txt/manifest had no ANSI
+
+FAILURES FOUND DURING WORK
+--------------------------------------------------------------------------------
+1. daily_signal first validation timed out because update took longer than the
+   command timeout. The orphan process was inspected and later handled.
+
+2. A formatting bug produced an isolated "0" for basket assets in captured
+   PowerShell output. Fixed in scripts/ops_common.ps1.
+
+3. HEDGE / DEFENSE could duplicate CASH. Fixed by avoiding an extra CASH row
+   when the defensive candidates already include CASH.
+
+4. weekend_full initially exceeded 60 minutes in train --autotune --details.
+   Root cause: Feature Factory v2 generated too much history for the current
+   sklearn autotune path. Fixed by capping feature history and sampling autotune.
+
+5. The local PowerShell profile prints a Set-Location warning for a missing
+   TradeChat path on every shell invocation. This is external to pyMercator.
+
+KNOWN LIMITS
+--------------------------------------------------------------------------------
+1. SQLite simulation persistence is ready at repository/model level, but no
+   active SIM command was found to connect without inventing a flow.
+
+2. Refactor reduction target was not achieved. The system is more capable and
+   validated, but not 10%-20% smaller.
+
+3. Autotune is still the heaviest operational step. It now completes, but it is
+   not a daily command.
+
+4. Some report/log validation was performed with captured PowerShell output;
+   actual terminal rendering may vary slightly by host, but ANSI is emitted
+   when -Color is active.
+
+RECOMMENDED FUTURE
+--------------------------------------------------------------------------------
+1. Split cli_train.py into:
+   - train_runner.py
+   - train_detail_report.py
+   - train_metrics.py
+   - train_config.py
+
+2. Split cli_run.py into:
+   - run_service.py
+   - report_builder.py
+   - books.py
+   - basket_service.py
+
+3. Move more PowerShell rendering to a smaller module or data-driven formatter.
+
+4. Add a formal autotune profile:
+   - fast
+   - standard
+   - exhaustive
+
+5. Add DB-backed history views:
+   - last N daily runs
+   - signal evolution by ticker
+   - blocker evolution by profile
+
+6. Add implemented connectors for BCB, B3, and CVM only when real source access
+   is available. Until then, NOT_IMPLEMENTED is better than UNKNOWN.
+
+7. Continue code reduction only after freezing behavior with script snapshots
+   and CLI golden-output tests.
+
+FINAL VERDICT
+--------------------------------------------------------------------------------
+The roadmap is implemented and pushed.
+The operational system is running.
+Features v2, SQLite persistence, modern engines, command docs, simplified ops,
+defensive/short/observation reporting, color mode, no-ANSI artifacts, and script
+closures are all validated.
+
+The main caveat is refactor reduction: capability increased, but the codebase did
+not shrink by the requested 10%-20%. A safe reduction phase remains possible and
+should be done separately from model/feature/storage work.

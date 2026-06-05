@@ -9,7 +9,7 @@ Python diretos sao para diagnostico, desenvolvimento ou execucao pontual.
 ## Comandos que o operador precisa decorar
 
 1. `.\scripts\run_daily_signal.ps1`
-2. `.\scripts\review.ps1 --capital 10000`
+2. `.\scripts\review.ps1`
 3. `.\scripts\run_daily_train.ps1`
 4. `.\scripts\run_weekend_full.ps1`
 5. `python -m pymercator diag`
@@ -19,7 +19,7 @@ Python diretos sao para diagnostico, desenvolvimento ou execucao pontual.
 | Rotina | Comando | Classe |
 |---|---|---|
 | Dia normal | `.\scripts\run_daily_signal.ps1` | ESSENCIAL |
-| Fim da tarde | `.\scripts\review.ps1 --capital 10000` | UTIL |
+| Fim da tarde | `.\scripts\review.ps1` | UTIL |
 | Treino eventual | `.\scripts\run_daily_train.ps1` | ESSENCIAL |
 | Fim de semana | `.\scripts\run_weekend_full.ps1` | ESSENCIAL |
 | Diagnostico rapido | `python -m pymercator diag` | DIAGNOSTICO |
@@ -98,7 +98,7 @@ Outputs principais:
 Exemplos:
 
 ```powershell
-.\scripts\review.ps1 --capital 10000
+.\scripts\review.ps1
 .\scripts\review.ps1 -RunDir runtime\daily_signal_20260605_160559 -Capital 10000
 .\scripts\review.ps1 -SkipUpdate
 ```
@@ -353,7 +353,7 @@ Defaults importantes:
 | `--relevance-pct` | `0.5` |
 
 Quando usar: no fim da tarde, de preferencia via
-`.\scripts\review.ps1 --capital 10000`.
+`.\scripts\review.ps1`.
 
 Quando nao usar: como entrada de execucao automatica. P&L de observacao e
 hipotetico; bloqueio operacional mantem `real_pnl = 0`.

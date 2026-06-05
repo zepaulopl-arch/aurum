@@ -11,7 +11,7 @@ Dia normal:
 Fim da tarde:
 
 ```powershell
-.\scripts\review.ps1 --capital 10000
+.\scripts\review.ps1
 ```
 
 Treino eventual:

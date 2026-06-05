@@ -67,15 +67,25 @@ if (-not (Test-Path -LiteralPath $reportJson)) {
 Write-PyMercatorRuntimeHeader -Title "PYMERCATOR DAILY REVIEW"
 
 if (-not $SkipUpdate) {
-    $updateCode = Invoke-PyMercatorStep `
+    $updateResult = Invoke-PyMercatorStep `
         -Python $PY `
         -Name "Refresh $listName prices for review" `
         -PyArgs @("update", "--list", $listName) `
         -LogFile $updateLog `
         -Critical $false
-    if ([int]$updateCode -ne 0) {
+
+    $updateCode = [int](@($updateResult) | Select-Object -Last 1)
+    if ($updateCode -ne 0) {
         Write-Host ""
-        Write-Host "WARNING: price refresh failed; review will use local prices already available." -ForegroundColor Yellow
+        Write-Host "FAILED: price refresh for review." -ForegroundColor Red
+        Write-Host "LOG   : $updateLog"
+        $null = Write-RunManifest -Status "FAIL" -Outputs @{
+            report_json = $reportJson
+            update_log = $updateLog
+            manifest = $reviewManifest
+        }
+        Show-PyMercatorLogTail -LogFile $updateLog -Lines 80
+        exit $updateCode
     }
 }
 

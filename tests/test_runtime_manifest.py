@@ -70,10 +70,12 @@ def test_ops_common_creates_runtime_manifest():
             ),
             "$dir = New-PyMercatorLogDir -Prefix 'pytest_manifest' -ScriptName 'test_runtime.ps1'",
             (
-                "Run-Step -Name 'Python version' "
-                "-Command @($py, '--version') "
-                "-LogFile (Join-Path $dir 'python_version.log') | Out-Null"
+                "$code = Run-Step -Name 'Python version' "
+                "-Command @($py, '-c', 'print(123)') "
+                "-LogFile (Join-Path $dir 'python_version.log')"
             ),
+            "if ($code -is [array]) { throw 'Run-Step returned array output' }",
+            "if ([int]$code -ne 0) { throw \"Run-Step failed with code $code\" }",
             (
                 "Write-RunManifest -Status 'OK' "
                 "-Outputs @{ report_json = 'report.json'; update_status = 'latest_update_status.json' }"

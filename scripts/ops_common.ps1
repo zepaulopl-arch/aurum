@@ -1327,10 +1327,13 @@ function Run-Step {
     $previousPreference = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     try {
-        & $exe @exeArgs 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $LogFile
-        $code = $LASTEXITCODE
+        & $exe @exeArgs 2>&1 |
+            ForEach-Object { "$_" } |
+            Tee-Object -FilePath $LogFile |
+            Out-Null
+        $code = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
     } catch {
-        "$_" | Tee-Object -FilePath $LogFile -Append
+        "$_" | Tee-Object -FilePath $LogFile -Append | Out-Null
         $code = 1
     } finally {
         $ErrorActionPreference = $previousPreference
@@ -1352,7 +1355,7 @@ function Run-Step {
         }
     }
 
-    return $code
+    return [int]$code
 }
 
 function Invoke-NativeStep {

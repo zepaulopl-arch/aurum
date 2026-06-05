@@ -1027,6 +1027,7 @@ def run_train_flow(
     dataset_assets_by_horizon: dict[str, set[str]] = {}
     total_rows = 0
     assets = 0
+    feature_metadata: dict[str, Any] = {}
 
     for selected_horizon in selected_horizons:
         key = horizon_key(selected_horizon)
@@ -1052,6 +1053,20 @@ def run_train_flow(
             continue
 
         evaluation_payload = payload.get("evaluation", {})
+        dataset_payload = payload.get("dataset", {})
+        if not feature_metadata and dataset_payload.get("feature_set"):
+            feature_metadata = {
+                "feature_set": dataset_payload.get("feature_set", ""),
+                "features_total": dataset_payload.get("features_total", 0),
+                "features_used": dataset_payload.get("features_used", 0),
+                "feature_groups": dataset_payload.get("feature_groups", {}),
+                "feature_selection_summary": dataset_payload.get(
+                    "feature_selection_summary",
+                    {},
+                ),
+                "feature_columns": dataset_payload.get("feature_columns", []),
+                "feature_audit": dataset_payload.get("feature_audit", ""),
+            }
         dataset_rows = int(payload.get("dataset", {}).get("rows", 0))
         row_count_by_horizon[key] = dataset_rows
         total_rows += dataset_rows
@@ -1240,6 +1255,13 @@ def run_train_flow(
         "diagnostic": diagnostic,
         "autotune": autotune_payload,
         "autotune_summary": autotune_payload,
+        "feature_set": feature_metadata.get("feature_set", ""),
+        "features_total": feature_metadata.get("features_total", 0),
+        "features_used": feature_metadata.get("features_used", 0),
+        "feature_groups": feature_metadata.get("feature_groups", {}),
+        "feature_selection_summary": feature_metadata.get("feature_selection_summary", {}),
+        "feature_columns": feature_metadata.get("feature_columns", []),
+        "feature_audit": feature_metadata.get("feature_audit", ""),
         "rows": total_rows,
         "assets": assets,
         "trained_at": trained_at,

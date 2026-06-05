@@ -100,6 +100,8 @@ FEATURE_COLUMNS = [
     "market_trend",
     "market_volatility",
 ]
+_ACTIVE_FEATURE_COLUMNS = FEATURE_COLUMNS.copy()
+FEATURE_METADATA_COLUMNS = {"date", "ticker", "sector", "_close", "feature_set"}
 
 AUTOTUNE_SPACES: dict[str, dict[str, list[Any]]] = {
     "xgb": {
@@ -201,7 +203,30 @@ def _feature_value(row: dict[str, Any], feature: str) -> float:
 
 
 def _feature_vector(row: dict[str, Any]) -> list[float]:
-    return [_feature_value(row, feature) for feature in FEATURE_COLUMNS]
+    return [_feature_value(row, feature) for feature in _ACTIVE_FEATURE_COLUMNS]
+
+
+def _infer_feature_columns(rows: list[dict[str, Any]], horizon: int) -> list[str]:
+    target_return = f"target_return_{horizon}d"
+    target_up = f"target_up_{horizon}d"
+    inferred: list[str] = []
+    for row in rows[:200]:
+        for key, value in row.items():
+            if key in FEATURE_METADATA_COLUMNS or key in {target_return, target_up}:
+                continue
+            if key.startswith("target_"):
+                continue
+            if key in inferred:
+                continue
+            if key in {"market_trend", "market_volatility"}:
+                inferred.append(key)
+                continue
+            try:
+                float(str(value).replace(",", "."))
+            except (TypeError, ValueError):
+                continue
+            inferred.append(key)
+    return inferred or FEATURE_COLUMNS.copy()
 
 
 def _feature_matrix(rows: list[dict[str, Any]]) -> list[list[float]]:
@@ -1808,6 +1833,7 @@ def evaluate_legacy_walk_forward(
     autotune_cv: int = 3,
     calibration: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    global _ACTIVE_FEATURE_COLUMNS
     selected = parse_legacy_engines(engines)
     uses_ridge_ensemble = "ridge_ensemble" in selected
     base_engine_list = _normalize_base_engines(base_engines)
@@ -1815,9 +1841,10 @@ def evaluate_legacy_walk_forward(
         rows,
         key=lambda row: (str(row.get("date", "")), str(row.get("ticker", ""))),
     )
+    _ACTIVE_FEATURE_COLUMNS = _infer_feature_columns(rows, horizon)
 
     if uses_ridge_ensemble:
-        return _evaluate_ridge_ensemble_temporal(
+        payload = _evaluate_ridge_ensemble_temporal(
             rows=rows,
             selected=selected,
             dataset=dataset,
@@ -1830,6 +1857,9 @@ def evaluate_legacy_walk_forward(
             autotune_cv=autotune_cv,
             calibration=calibration,
         )
+        payload["feature_columns"] = list(_ACTIVE_FEATURE_COLUMNS)
+        payload["features_used"] = len(_ACTIVE_FEATURE_COLUMNS)
+        return payload
 
     target_return_column = f"target_return_{horizon}d"
     target_up_column = f"target_up_{horizon}d"
@@ -2068,6 +2098,8 @@ def evaluate_legacy_walk_forward(
         "base_metrics": base_metrics,
         "ensemble_metrics": ensemble_metrics,
         "ridge_coefficients": final_ridge_coefficients if uses_ridge_ensemble else {},
+        "feature_columns": list(_ACTIVE_FEATURE_COLUMNS),
+        "features_used": len(_ACTIVE_FEATURE_COLUMNS),
         "rows": len(rows),
         "evaluated_rows": len(evaluation_rows),
         "models": models,

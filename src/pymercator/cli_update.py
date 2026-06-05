@@ -12,6 +12,7 @@ from pymercator.data.universe_builder import build_universe_csv_from_prices
 from pymercator.data.universe_csv import validate_universe_csv
 from pymercator.features_catalog import validate_features_catalog
 from pymercator.features_matrix import write_feature_matrix
+from pymercator.features_v2 import load_features_config, write_features_v2
 from pymercator.indices_prices import check_indices_prices_dir, fetch_indices_prices
 from pymercator.market_context import validate_market_context
 from pymercator.market_context_auto import write_auto_market_context
@@ -189,6 +190,7 @@ def run_update_flow(
     context_output: str = "storage/context/latest_market_context.json",
     universe_output: str = "data/universes/ibov_live.csv",
     features_catalog: str = "config/features_catalog.json",
+    features_config: str = "config/features.json",
     matrix_output: str = "storage/features/latest_feature_matrix.csv",
     context_config: str = "config/market_context.json",
     context_thresholds: str = "config/market_context_thresholds.json",
@@ -205,6 +207,7 @@ def run_update_flow(
         "context": context_output,
         "universe": universe_output,
         "features_catalog": features_catalog,
+        "features_config": features_config,
         "matrix": matrix_output,
         "update_status": str(_update_status_path(context_output)),
         "context_config": context_config,
@@ -388,14 +391,25 @@ def run_update_flow(
             )
 
         current_step = "features_check"
-        features_check = validate_features_catalog(features_catalog)
+        v2_config = load_features_config(features_config)
+        use_features_v2 = bool(v2_config.get("enabled", False))
+        if use_features_v2:
+            features_check = {
+                "valid": True,
+                "schema_version": v2_config.get("schema_version", "features_config.v2"),
+                "feature_set": v2_config.get("feature_set", "core_v2"),
+                "enabled": True,
+                "file": features_config,
+            }
+        else:
+            features_check = validate_features_catalog(features_catalog)
         status = "OK" if features_check.get("valid") else "FAIL"
         steps.append(_step("features_check", status, features_check))
         if status != "OK":
             return _fail_payload(
                 list_name=list_text,
                 step="features_check",
-                reason="features catalog is invalid",
+                reason="features config is invalid",
                 detail=features_check,
                 steps=steps,
                 files=files,
@@ -406,13 +420,35 @@ def run_update_flow(
         matrix_tmp_output = str(
             matrix_output_path.with_name(f"{matrix_output_path.name}.tmp")
         )
-        matrix = write_feature_matrix(
-            universe=universe_output,
-            prices_dir=prices_dir,
-            context=context_output,
-            features=features_catalog,
-            output=matrix_tmp_output,
-        )
+        if use_features_v2:
+            matrix_tmp_history = str(
+                matrix_output_path.with_name("latest_feature_history.csv.tmp")
+            )
+            matrix_tmp_audit = str(
+                matrix_output_path.with_name("latest_feature_audit.json.tmp")
+            )
+            matrix_tmp_list = str(
+                matrix_output_path.with_name("latest_feature_list.json.tmp")
+            )
+            matrix = write_features_v2(
+                universe=universe_output,
+                prices_dir=prices_dir,
+                context=context_output,
+                indices_dir=indices_dir,
+                config_path=features_config,
+                matrix_output=matrix_tmp_output,
+                history_output=matrix_tmp_history,
+                audit_output=matrix_tmp_audit,
+                feature_list_output=matrix_tmp_list,
+            )
+        else:
+            matrix = write_feature_matrix(
+                universe=universe_output,
+                prices_dir=prices_dir,
+                context=context_output,
+                features=features_catalog,
+                output=matrix_tmp_output,
+            )
         universe_assets = int(universe.get("asset_count", 0) or 0)
         matrix_assets = int(matrix.get("assets", matrix.get("rows", 0)) or 0)
         matrix_rows = int(matrix.get("rows", 0) or 0)
@@ -447,7 +483,42 @@ def run_update_flow(
         if tmp_path.exists():
             matrix_output_path.parent.mkdir(parents=True, exist_ok=True)
             tmp_path.replace(matrix_output_path)
+        if use_features_v2:
+            for tmp_name, final_name in (
+                ("latest_feature_history.csv.tmp", "latest_feature_history.csv"),
+                ("latest_feature_audit.json.tmp", "latest_feature_audit.json"),
+                ("latest_feature_list.json.tmp", "latest_feature_list.json"),
+            ):
+                tmp_feature_path = matrix_output_path.with_name(tmp_name)
+                if tmp_feature_path.exists():
+                    tmp_feature_path.replace(matrix_output_path.with_name(final_name))
         matrix["output"] = str(matrix_output_path)
+        if use_features_v2:
+            matrix["matrix"] = str(matrix_output_path)
+            matrix["history_matrix"] = str(matrix_output_path.with_name("latest_feature_history.csv"))
+            matrix["feature_audit"] = str(matrix_output_path.with_name("latest_feature_audit.json"))
+            matrix["feature_list"] = str(matrix_output_path.with_name("latest_feature_list.json"))
+            for json_key in ("feature_audit", "feature_list"):
+                json_path = Path(matrix[json_key])
+                if not json_path.exists():
+                    continue
+                try:
+                    json_payload = json.loads(json_path.read_text(encoding="utf-8-sig"))
+                except Exception:
+                    continue
+                if isinstance(json_payload, dict):
+                    json_payload.update(
+                        {
+                            "matrix": matrix["matrix"],
+                            "history_matrix": matrix["history_matrix"],
+                            "feature_audit": matrix["feature_audit"],
+                            "feature_list": matrix["feature_list"],
+                        }
+                    )
+                    json_path.write_text(
+                        json.dumps(json_payload, ensure_ascii=False, indent=2),
+                        encoding="utf-8",
+                    )
 
     except Exception as exc:
         return _fail_payload(
@@ -652,6 +723,21 @@ def render_update_summary(payload: dict[str, Any]) -> str:
             )
 
     files = payload.get("files", {})
+    features_step = _find_step(payload.get("steps", []), "features") or {}
+    features_payload = features_step.get("payload", {})
+    if isinstance(features_payload, dict) and features_payload.get("feature_set"):
+        lines.extend(
+            [
+                "",
+                "FEATURES",
+                "--------------------------------------------------------------------------------",
+                f"feature_set          {features_payload.get('feature_set', '-')}",
+                f"features_total       {features_payload.get('features_total', 0)}",
+                f"features_used        {features_payload.get('features_used', 0)}",
+                f"feature_audit        {features_payload.get('feature_audit', '-')}",
+                f"matrix               {features_payload.get('matrix', features_payload.get('output', '-'))}",
+            ]
+        )
     if payload.get("warnings"):
         lines.extend(["", "WARNINGS:"])
         for warning in payload.get("warnings", []):
@@ -683,6 +769,7 @@ def run_update_command(args: Any) -> int:
         context_output=args.context_output,
         universe_output=args.universe_output,
         features_catalog=args.features_catalog,
+        features_config=getattr(args, "features_config", "config/features.json"),
         matrix_output=args.matrix_output,
         context_config=getattr(args, "context_config", "config/market_context.json"),
         context_thresholds=getattr(

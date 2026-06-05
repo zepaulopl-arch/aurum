@@ -30,6 +30,14 @@ DATASET_COLUMNS = [
     "market_volatility",
 ]
 
+DATASET_METADATA_COLUMNS = {
+    "date",
+    "ticker",
+    "sector",
+    "_close",
+    "feature_set",
+}
+
 
 def _to_float(value: Any, default: float = 0.0) -> float:
     try:
@@ -88,6 +96,119 @@ def _read_price_rows(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _audit_for_matrix(matrix: str | Path) -> dict[str, Any]:
+    matrix_path = Path(matrix)
+    candidates = [matrix_path.with_name("latest_feature_audit.json")]
+    default_matrix = Path("storage/features/latest_feature_matrix.csv")
+    if matrix_path.as_posix() == default_matrix.as_posix():
+        candidates.append(Path("storage/features/latest_feature_audit.json"))
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        try:
+            payload = json.loads(candidate.read_text(encoding="utf-8-sig"))
+        except Exception:
+            continue
+        if isinstance(payload, dict) and payload.get("schema_version") == "feature_audit.v2":
+            return payload
+    return {}
+
+
+def _history_matrix_for(matrix: str | Path) -> Path | None:
+    audit = _audit_for_matrix(matrix)
+    if audit.get("history_matrix"):
+        candidate = Path(str(audit["history_matrix"]))
+        if candidate.exists():
+            return candidate
+    matrix_path = Path(matrix)
+    candidate = matrix_path.with_name("latest_feature_history.csv")
+    return candidate if candidate.exists() else None
+
+
+def _dynamic_feature_columns(rows: list[dict[str, Any]], horizon: int) -> list[str]:
+    target_return = f"target_return_{horizon}d"
+    target_up = f"target_up_{horizon}d"
+    columns: list[str] = []
+    for row in rows:
+        for key, value in row.items():
+            if key in DATASET_METADATA_COLUMNS or key in {target_return, target_up}:
+                continue
+            if key.startswith("target_"):
+                continue
+            if key not in columns:
+                try:
+                    float(str(value).replace(",", "."))
+                except (TypeError, ValueError):
+                    if key in {"market_trend", "market_volatility"}:
+                        columns.append(key)
+                else:
+                    columns.append(key)
+    return columns
+
+
+def _build_prediction_dataset_from_history(
+    *,
+    history_matrix: Path,
+    horizon: int,
+    min_history: int,
+    audit: dict[str, Any],
+) -> dict[str, Any]:
+    history_rows = _read_csv(history_matrix)
+    rows_by_ticker: dict[str, list[dict[str, Any]]] = {}
+    for row in history_rows:
+        ticker = str(row.get("ticker", "")).strip().upper()
+        if not ticker:
+            continue
+        rows_by_ticker.setdefault(ticker, []).append(row)
+    for ticker_rows in rows_by_ticker.values():
+        ticker_rows.sort(key=lambda item: str(item.get("date", "")))
+
+    dataset_rows: list[dict[str, Any]] = []
+    feature_columns = _dynamic_feature_columns(history_rows, horizon)
+    target_return_col = f"target_return_{horizon}d"
+    target_up_col = f"target_up_{horizon}d"
+
+    for ticker, ticker_rows in rows_by_ticker.items():
+        for index in range(min_history, max(min_history, len(ticker_rows) - horizon)):
+            row = ticker_rows[index]
+            close = _to_float(row.get("_close"))
+            future_close = _to_float(ticker_rows[index + horizon].get("_close"))
+            if close <= 0 or future_close <= 0:
+                continue
+            target_return = round(((future_close / close) - 1.0) * 100.0, 4)
+            built = {
+                "date": row.get("date", ""),
+                "ticker": ticker,
+                "sector": row.get("sector", ""),
+            }
+            for column in feature_columns:
+                built[column] = row.get(column, 0.0)
+            built[target_return_col] = target_return
+            built[target_up_col] = 1 if target_return > 0 else 0
+            dataset_rows.append(built)
+
+    columns = ["date", "ticker", "sector", *feature_columns, target_return_col, target_up_col]
+    return {
+        "matrix": str(history_matrix),
+        "prices_dir": "",
+        "horizon": horizon,
+        "min_history": min_history,
+        "rows": len(dataset_rows),
+        "columns": columns,
+        "missing_price_files": [],
+        "missing_price_files_count": 0,
+        "dataset": dataset_rows,
+        "feature_set": audit.get("feature_set", "core_v2"),
+        "feature_columns": feature_columns,
+        "features_total": audit.get("features_total", len(feature_columns)),
+        "features_used": len(feature_columns),
+        "feature_groups": audit.get("feature_groups", {}),
+        "feature_selection_summary": audit.get("feature_selection_summary", {}),
+        "history_matrix": str(history_matrix),
+        "feature_audit": audit.get("feature_audit", ""),
+    }
+
+
 def _return_pct(closes: list[float], index: int, window: int) -> float:
     if index - window < 0:
         return 0.0
@@ -121,6 +242,16 @@ def build_prediction_dataset(
     horizon: int = 5,
     min_history: int = 20,
 ) -> dict[str, Any]:
+    history_matrix = _history_matrix_for(matrix)
+    audit = _audit_for_matrix(matrix)
+    if history_matrix is not None:
+        return _build_prediction_dataset_from_history(
+            history_matrix=history_matrix,
+            horizon=horizon,
+            min_history=min_history,
+            audit=audit,
+        )
+
     matrix_rows = _read_csv(matrix)
     dataset_rows: list[dict[str, Any]] = []
     missing_price_files: list[str] = []
@@ -780,6 +911,13 @@ def run_prediction_lab(
             "rows": dataset_payload["rows"],
             "columns": len(dataset_payload["columns"]),
             "missing_price_files": dataset_payload["missing_price_files_count"],
+            "feature_set": dataset_payload.get("feature_set", ""),
+            "features_total": dataset_payload.get("features_total", 0),
+            "features_used": dataset_payload.get("features_used", 0),
+            "feature_groups": dataset_payload.get("feature_groups", {}),
+            "feature_selection_summary": dataset_payload.get("feature_selection_summary", {}),
+            "feature_columns": dataset_payload.get("feature_columns", []),
+            "feature_audit": dataset_payload.get("feature_audit", ""),
         },
         "evaluation": {
             "file": evaluation_payload["output"],

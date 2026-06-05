@@ -619,6 +619,7 @@ def build_parser() -> argparse.ArgumentParser:
         )
         update_parser.add_argument("--universe-output", default="data/universes/ibov_live.csv")
         update_parser.add_argument("--features-catalog", default="config/features_catalog.json")
+        update_parser.add_argument("--features-config", default="config/features.json")
         update_parser.add_argument(
             "--matrix-output",
             default="storage/features/latest_feature_matrix.csv",
@@ -1131,6 +1132,45 @@ def build_parser() -> argparse.ArgumentParser:
         features_matrix_parser.add_argument("--context", required=True)
         features_matrix_parser.add_argument("--features", required=True)
         features_matrix_parser.add_argument("--output", required=True)
+        features_build_parser = features_subparsers.add_parser(
+            "build",
+            help="Build Feature Factory v2 matrix",
+        )
+        features_build_parser.set_defaults(features_command="build")
+        features_build_parser.add_argument("--list", default="IBOV")
+        features_build_parser.add_argument("--universe", default="data/universes/ibov_live.csv")
+        features_build_parser.add_argument("--prices-dir", default="data/prices")
+        features_build_parser.add_argument("--indices-dir", default="data/indices")
+        features_build_parser.add_argument(
+            "--context",
+            default="storage/context/latest_market_context.json",
+        )
+        features_build_parser.add_argument("--config", default="config/features.json")
+        features_build_parser.add_argument(
+            "--output",
+            default="storage/features/latest_feature_matrix.csv",
+        )
+        features_build_parser.add_argument(
+            "--history-output",
+            default="storage/features/latest_feature_history.csv",
+        )
+        features_build_parser.add_argument(
+            "--audit-output",
+            default="storage/features/latest_feature_audit.json",
+        )
+        features_build_parser.add_argument(
+            "--feature-list-output",
+            default="storage/features/latest_feature_list.json",
+        )
+        features_audit_parser = features_subparsers.add_parser(
+            "audit",
+            help="Render latest Feature Factory v2 audit",
+        )
+        features_audit_parser.set_defaults(features_command="audit")
+        features_audit_parser.add_argument(
+            "--audit",
+            default="storage/features/latest_feature_audit.json",
+        )
 
         confirm_parser = subparsers.add_parser("confirm", help="Register human confirmation")
         confirm_parser.set_defaults(command="confirm")

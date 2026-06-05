@@ -1,0 +1,31 @@
+{
+  "schema_version": "features_config.v2",
+  "enabled": true,
+  "feature_set": "core_v2",
+  "enabled_groups": {
+    "returns": true,
+    "trend": true,
+    "momentum": true,
+    "volatility": true,
+    "volume_liquidity": true,
+    "relative_strength": true,
+    "sector_breadth": true,
+    "risk_drawdown": true,
+    "compression": true,
+    "market_context": true,
+    "candle": false,
+    "statistical_lite": false,
+    "tsfresh": false
+  },
+  "selection": {
+    "enabled": true,
+    "max_missing_pct": 0.25,
+    "drop_constant": true,
+    "corr_threshold": 0.95,
+    "mutual_information_top_n": 120,
+    "per_horizon_selection": true
+  },
+  "history": {
+    "max_rows_per_asset": 1500
+  }
+}

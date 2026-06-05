@@ -97,6 +97,23 @@ def _patch_update_ok(monkeypatch):
             "output": kwargs["output"],
         },
     )
+    monkeypatch.setattr(
+        update_mod,
+        "write_features_v2",
+        lambda **kwargs: {
+            "status": "OK",
+            "feature_set": "core_v2",
+            "rows": 1,
+            "assets": 1,
+            "features_total": 10,
+            "features_used": 8,
+            "output": kwargs["matrix_output"],
+            "matrix": kwargs["matrix_output"],
+            "history_matrix": kwargs["history_output"],
+            "feature_audit": kwargs["audit_output"],
+            "feature_list": kwargs["feature_list_output"],
+        },
+    )
 
 
 def test_cli_update_accepts_defaults_and_prints_summary(monkeypatch, capsys):
@@ -251,11 +268,12 @@ def test_cli_update_fails_when_feature_matrix_loses_universe_assets(
     )
     monkeypatch.setattr(
         update_mod,
-        "write_feature_matrix",
+        "write_features_v2",
         lambda **kwargs: {
             "rows": 1,
             "assets": 1,
-            "output": kwargs["output"],
+            "output": kwargs["matrix_output"],
+            "matrix": kwargs["matrix_output"],
         },
     )
 

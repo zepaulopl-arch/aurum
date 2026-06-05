@@ -57,6 +57,7 @@ storage/prediction/*.txt
 storage/prediction/**/
 storage/context/
 storage/features/*.csv
+storage/features/*.json
 storage/reports/
 storage/runs/
 

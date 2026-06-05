@@ -230,6 +230,13 @@ def _fake_lab_factory(
             "dataset": {
                 "rows": horizon_asset_count * 2,
                 "output": str(dataset_output),
+                "feature_set": "core_v2",
+                "features_total": 120,
+                "features_used": 86,
+                "feature_groups": {"returns": True, "trend": True},
+                "feature_selection_summary": {"corr_threshold": 0.95},
+                "feature_columns": ["ret_5d", "context_score"],
+                "feature_audit": "storage/features/latest_feature_audit.json",
             },
             "evaluation": evaluation,
         }
@@ -269,6 +276,13 @@ def test_cli_train_generates_multi_horizon_evaluation_by_default(
     assert [call["horizon"] for call in calls] == [5, 20, 60]
     assert [call["engines"] for call in calls] == [["ridge_ensemble"]] * 3
     assert [call["base_engines"] for call in calls] == [BASE_ENGINES] * 3
+    payload = json.loads(evaluation.read_text(encoding="utf-8"))
+    assert payload["feature_set"] == "core_v2"
+    assert payload["features_total"] == 120
+    assert payload["features_used"] == 86
+    assert payload["feature_groups"] == {"returns": True, "trend": True}
+    assert payload["feature_selection_summary"] == {"corr_threshold": 0.95}
+    assert payload["feature_columns"] == ["ret_5d", "context_score"]
     assert [call["n_jobs"] for call in calls] == [4, 4, 4]
     assert [call["autotune"] for call in calls] == [False, False, False]
 

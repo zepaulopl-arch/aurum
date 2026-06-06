@@ -1162,6 +1162,17 @@ def main(argv: list[str] | None = None) -> int:
         set_ui_config_path(ui_config)
     set_color_mode(color_mode)
     set_palette(palette)
+
+    if (
+        cleaned_argv
+        and len(cleaned_argv) >= 2
+        and cleaned_argv[0] == "context"
+        and cleaned_argv[1] in {"audit", "show", "explain"}
+    ):
+        from pymercator.cli_context_audit import run_context_audit_argv
+
+        return run_context_audit_argv(cleaned_argv[1:])
+
     parser = build_parser()
     args = parser.parse_args(cleaned_argv)
     args.color = color_mode

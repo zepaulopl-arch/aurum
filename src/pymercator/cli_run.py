@@ -284,7 +284,7 @@ def run_decision_flow(
     prices_dir: str = "data/prices",
     observation_config: str = "config/observation.json",
     positions: str = "storage/positions/current_positions.csv",
-    borrow_data: str = "storage/borrow/latest_borrow_data.csv",
+    borrow_data: str = "data/borrow/borrow_rates.csv",
     limit: int = 20,
     run_dir: str = "storage/runs/latest",
     report_output: str = "storage/reports/latest_daily_report.txt",
@@ -831,3 +831,4 @@ def run_run_command(args: Any) -> int:
         print(render_run_summary(payload))
 
     return 0 if payload["status"] == "OK" else 1
+

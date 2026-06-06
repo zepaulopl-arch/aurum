@@ -748,9 +748,13 @@ function Get-PyMercatorShortSignalRows {
     foreach ($item in @($Candidates | Select-Object -First $Limit)) {
         $borrow = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $item -Name "borrow_status" -Default "-")
         $permission = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $item -Name "short_permission" -Default (Get-PyMercatorDailyObjectValue -Object $item -Name "permission" -Default "-"))
+        $shortExecution = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $item -Name "short_execution_status" -Default "")
         $execution = $permission
         $reason = Get-PyMercatorDailyObjectValue -Object $item -Name "reason" -Default (Get-PyMercatorDailyObjectValue -Object $item -Name "setup_reason" -Default "-")
-        if ($borrow -eq "DATA_MISSING") {
+        if ($shortExecution -and $shortExecution -ne "-") {
+            $execution = $shortExecution
+            $reason = Get-PyMercatorDailyObjectValue -Object $item -Name "short_execution_reason" -Default $reason
+        } elseif ($borrow -eq "DATA_MISSING" -or $borrow -eq "BORROW_DATA_MISSING") {
             $execution = "DATA_BLOCKED"
             $reason = "borrow data missing"
         }

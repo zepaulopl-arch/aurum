@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from pymercator.borrow_data import borrow_status_for_record, load_borrow_data, load_borrow_policy
+from pymercator.borrow_rates import normalize_ticker, read_borrow_rates_csv
+from pymercator.short_execution import ShortExecutionConfig, evaluate_short_execution
 from pymercator.domain import AssetDecision, DailyReport, ExecutionStatus, MarketRegime
 from pymercator.explain import decision_codes
 from pymercator.position_actions_config import load_position_actions_config
@@ -520,6 +522,129 @@ def _event_status() -> tuple[str, str]:
     return "EVENT_UNKNOWN", "event calendar unavailable"
 
 
+def _load_new_borrow_rate_records(path: str | Path | None) -> dict[str, dict[str, Any]]:
+    """Load data/borrow/borrow_rates.csv style records and adapt to the legacy borrow fields.
+
+    This keeps the existing short policy contract intact while allowing the newer
+    short execution engine to receive annual cost, quantity and source fields.
+    """
+    if not path:
+        return {}
+    source = Path(path)
+    if not source.exists():
+        return {}
+    records = read_borrow_rates_csv(source)
+    converted: dict[str, dict[str, Any]] = {}
+    for ticker, record in records.items():
+        borrow_available = bool(record.get("borrow_available", False))
+        available_qty = _to_float(record.get("available_qty"), 0.0)
+        rate = _to_float(record.get("borrow_rate_annual"), 0.0)
+        b3_fee = _to_float(record.get("b3_fee_annual"), 0.0)
+        broker_fee = _to_float(record.get("broker_fee_annual"), 0.0)
+        converted[normalize_ticker(ticker)] = {
+            **record,
+            "ticker": normalize_ticker(ticker),
+            "borrow_available": borrow_available,
+            "available_qty": available_qty,
+            # Legacy borrow policy expects borrow_fee_pct.
+            "borrow_fee_pct": rate,
+            "borrow_rate_annual": rate,
+            "b3_fee_annual": b3_fee,
+            "broker_fee_annual": broker_fee,
+            "updated_at": record.get("date") or record.get("updated_at") or "",
+            "recall_risk": record.get("recall_risk", "LOW" if borrow_available else "UNKNOWN"),
+            "short_liquidity": record.get(
+                "short_liquidity",
+                "OK" if borrow_available and available_qty > 0 else "WEAK",
+            ),
+            "squeeze_risk": record.get("squeeze_risk", "UNKNOWN"),
+            "source": record.get("source", "BORROW_RATES_CSV"),
+        }
+    return converted
+
+
+def _merge_borrow_records(
+    legacy_records: dict[str, dict[str, Any]],
+    new_records: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Merge borrow records without breaking legacy records passed by tests/config."""
+    merged = dict(new_records)
+    for ticker, record in legacy_records.items():
+        merged[normalize_ticker(ticker)] = dict(record)
+    return merged
+
+
+def _short_execution_borrow_record(record: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Adapt either legacy borrow data or new borrow_rates data for short_execution."""
+    if not record:
+        return None
+    rate = _to_float(
+        record.get("borrow_rate_annual", record.get("borrow_fee_pct", 0.0)),
+        0.0,
+    )
+    return {
+        **record,
+        "ticker": normalize_ticker(record.get("ticker", "")),
+        "borrow_available": bool(record.get("borrow_available", False)),
+        "available_qty": _to_float(record.get("available_qty"), 0.0),
+        "borrow_rate_annual": rate,
+        "b3_fee_annual": _to_float(record.get("b3_fee_annual"), 0.0),
+        "broker_fee_annual": _to_float(record.get("broker_fee_annual"), 0.0),
+    }
+
+
+def _short_execution_setup(decision: AssetDecision, score: float) -> dict[str, Any]:
+    """Build a conservative execution estimate for the isolated short engine."""
+    asset = decision.asset
+    entry = _to_float(getattr(asset, "last_close", None), 0.0)
+    if entry <= 0:
+        entry = 1.0
+    qty = 100.0
+    stop = entry * 1.03
+    target = entry * 0.97
+    expected_gross_pnl = max(0.0, (entry - target) * qty)
+    return {
+        "ticker": asset.ticker,
+        "short_signal": "SELL_SETUP",
+        "setup_score": score,
+        "entry": entry,
+        "stop": stop,
+        "target": target,
+        "qty": qty,
+        "notional": entry * qty,
+        "expected_gross_pnl": expected_gross_pnl,
+        "holding_days": 1,
+        "liquidity_status": "OK" if asset.liquidity_score >= 40.0 else "WEAK",
+    }
+
+
+def _attach_short_execution_fields(
+    row: dict[str, Any],
+    decision: AssetDecision,
+    score: float,
+    borrow_record: dict[str, Any] | None,
+) -> None:
+    """Attach new short execution diagnostics without changing legacy action/permission."""
+    evaluation = evaluate_short_execution(
+        _short_execution_setup(decision, score),
+        _short_execution_borrow_record(borrow_record),
+        profile="CON",
+        config=ShortExecutionConfig(),
+    )
+    row["short_execution_status"] = evaluation.get("execution", "DATA_BLOCKED")
+    row["short_execution_reason"] = evaluation.get("main_reason", "")
+    row["borrow_cost_brl"] = evaluation.get("borrow_cost_brl", 0.0)
+    row["borrow_cost_pct"] = evaluation.get("borrow_cost_pct", 0.0)
+    row["net_expected_pnl"] = evaluation.get("net_expected_pnl", 0.0)
+    row["net_expected_return_pct"] = evaluation.get("net_expected_return_pct", 0.0)
+    row["net_rr"] = evaluation.get("net_rr", 0.0)
+    row["available_qty"] = evaluation.get("available_qty", row.get("available_qty", 0.0))
+    row["borrow_rate_annual"] = evaluation.get(
+        "borrow_rate_annual",
+        row.get("borrow_rate_annual", row.get("borrow_fee_pct")),
+    )
+
+
 def _ready_long_count(report: DailyReport) -> int:
     return sum(
         1
@@ -787,6 +912,7 @@ def _short_row(
         "borrow_reason": borrow_reason,
         "event_reason": event_reason,
     }
+    _attach_short_execution_fields(row, decision, score, borrow_record)
     if borrow_record:
         row["borrow"] = dict(borrow_record)
     return row
@@ -805,6 +931,13 @@ def short_observation_candidates(short_candidates: list[dict[str, Any]]) -> list
                 "executable": False,
                 "borrow_status": row.get("borrow_status", "-"),
                 "permission": row.get("short_permission", row.get("permission", "-")),
+                "short_execution_status": row.get("short_execution_status", "-"),
+                "short_execution_reason": row.get("short_execution_reason", "-"),
+                "borrow_cost_brl": row.get("borrow_cost_brl", 0.0),
+                "borrow_cost_pct": row.get("borrow_cost_pct", 0.0),
+                "net_expected_pnl": row.get("net_expected_pnl", 0.0),
+                "net_expected_return_pct": row.get("net_expected_return_pct", 0.0),
+                "net_rr": row.get("net_rr", 0.0),
             }
         )
     return rows
@@ -876,6 +1009,17 @@ def build_position_actions(
         else short_config.get("borrow_data_path", "")
     )
     borrow_status, borrow_records = load_borrow_data(resolved_borrow_path)
+    new_borrow_records = _load_new_borrow_rate_records(resolved_borrow_path)
+    if new_borrow_records:
+        borrow_records = _merge_borrow_records(borrow_records, new_borrow_records)
+        if not isinstance(borrow_status, dict):
+            borrow_status = {}
+        borrow_status = {
+            **borrow_status,
+            "status": "OK",
+            "source": str(resolved_borrow_path),
+            "format": "borrow_rates",
+        }
     source = Path(positions_path)
     positions = load_positions(source)
     loaded = source.exists() and len(positions) > 0
@@ -968,3 +1112,4 @@ def render_position_books(position_actions: dict[str, Any]) -> list[str]:
 
 def position_actions_to_json(payload: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2)
+

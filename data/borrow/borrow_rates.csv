@@ -1,0 +1,6 @@
+date,ticker,borrow_available,available_qty,borrow_rate_annual,b3_fee_annual,broker_fee_annual,min_days,expiry_date,reversible,source
+2026-06-06,AZZA3,true,100000,8.50,0.70,0.00,1,2026-06-30,true,MANUAL
+2026-06-06,MGLU3,true,500000,35.00,0.70,0.00,1,2026-06-30,true,MANUAL
+2026-06-06,CSAN3,true,100000,12.00,0.70,0.00,1,2026-06-30,true,MANUAL
+2026-06-06,VAMO3,true,100000,18.00,0.70,0.00,1,2026-06-30,true,MANUAL
+2026-06-06,MRVE3,true,100000,10.00,0.70,0.00,1,2026-06-30,true,MANUAL

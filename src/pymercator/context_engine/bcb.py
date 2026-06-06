@@ -139,3 +139,93 @@ def fetch_bcb_snapshot(timeout: float = 12.0) -> SourceResult:
         detail={"source_status": source_status, "errors": errors},
         error="" if status == "OK" else str(errors),
     )
+
+# ---------------------------------------------------------------------------
+# Compatibility wrapper for Context Engine source repair
+# ---------------------------------------------------------------------------
+
+def _aurum_annualize_daily_rate(daily_rate_pct, business_days=252):
+    if daily_rate_pct is None:
+        return None
+    try:
+        daily = float(daily_rate_pct) / 100.0
+        return round(((1.0 + daily) ** int(business_days) - 1.0) * 100.0, 4)
+    except Exception:
+        return None
+
+
+def fetch_bcb_selic(timeout=12.0):
+    """Fetch Selic for Context Engine.
+
+    Compatibility wrapper:
+    - prefers existing fetch_bcb_snapshot() when available;
+    - accepts either selic_daily or selic_target from the snapshot;
+    - returns SourceResult with annual_proxy_pct when possible;
+    - never invents data.
+    """
+    from pymercator.context_engine.sources import SourceResult
+
+    if "fetch_bcb_snapshot" not in globals():
+        return SourceResult(
+            name="bcb_selic",
+            status="MISSING",
+            data={},
+            error="fetch_bcb_snapshot is not available in bcb.py",
+        )
+
+    snapshot = fetch_bcb_snapshot(timeout=timeout)
+    data = snapshot.data if isinstance(snapshot.data, dict) else {}
+
+    item = None
+    item_key = ""
+    for key in ("selic_daily", "selic_target"):
+        candidate = data.get(key)
+        if isinstance(candidate, dict):
+            item = candidate
+            item_key = key
+            break
+
+    if not item:
+        return SourceResult(
+            name="bcb_selic",
+            status=snapshot.status if snapshot.status else "MISSING",
+            data={},
+            error=snapshot.error or "No Selic item found in BCB snapshot.",
+            detail=getattr(snapshot, "detail", {}),
+        )
+
+    raw_value = item.get("value")
+    try:
+        value = float(raw_value) if raw_value is not None else None
+    except Exception:
+        value = None
+
+    if value is None:
+        return SourceResult(
+            name="bcb_selic",
+            status="MISSING",
+            data={},
+            error="Selic value is missing or invalid.",
+            detail=getattr(snapshot, "detail", {}),
+        )
+
+    if item_key == "selic_daily":
+        annual_proxy = _aurum_annualize_daily_rate(value)
+        daily_pct = value
+        source = "BCB_SGS_DAILY"
+    else:
+        annual_proxy = value
+        daily_pct = None
+        source = "BCB_SGS_TARGET"
+
+    return SourceResult(
+        name="bcb_selic",
+        status="OK",
+        data={
+            "daily_pct": daily_pct,
+            "annual_proxy_pct": annual_proxy,
+            "date": item.get("date"),
+            "source": source,
+        },
+        detail=getattr(snapshot, "detail", {}),
+    )

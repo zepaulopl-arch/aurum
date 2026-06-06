@@ -20,6 +20,7 @@ class SourceResult:
     data: Any = None
     url: str = ""
     error: str = ""
+    kind: str = "unknown"
     detail: dict[str, Any] = field(default_factory=dict)
 
     def as_status(self) -> str:
@@ -123,3 +124,35 @@ def parse_float(value: Any, default: float | None = None) -> float | None:
         return float(str(value).replace(",", "."))
     except (TypeError, ValueError):
         return default
+
+# ---------------------------------------------------------------------------
+# Compatibility helpers for Context Engine source repair
+# ---------------------------------------------------------------------------
+
+def source_status(results):
+    """Return source status mapping from SourceResult dictionary."""
+    return {
+        name: getattr(result, "status", "UNKNOWN")
+        for name, result in results.items()
+    }
+
+
+def source_errors(results):
+    """Return source errors mapping from SourceResult dictionary.
+
+    Includes direct result.error and nested result.detail["errors"] when present.
+    """
+    errors = {}
+
+    for name, result in results.items():
+        direct_error = getattr(result, "error", "")
+        if direct_error:
+            errors[name] = direct_error
+
+        detail = getattr(result, "detail", {})
+        if isinstance(detail, dict):
+            detail_errors = detail.get("errors")
+            if detail_errors:
+                errors[name] = detail_errors
+
+    return errors

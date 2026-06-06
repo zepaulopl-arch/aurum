@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -232,14 +232,13 @@ def test_mtm_cli_renders_required_sections(tmp_path: Path, capsys) -> None:
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert "REAL SIGNALS - WATCH OR BETTER" in output
-    assert "REAL SIGNAL RESULT (LONG + SHORT)" in output
-    assert "OBSERVATION TOP 10" in output
-    assert "OBSERVATION RESULT (TOP 10 LONG + TOP 10 SHORT)" in output
-    assert "LONG SIGNAL RESULT" not in output
-    assert "SHORT SIGNAL RESULT" not in output
-    assert "FINAL REVIEW" in output
-    assert "observation P&L is hypothetical" in output
+    assert "REAL LONG" in output
+    assert "REAL SHORT" in output
+    assert "REAL TOTAL" in output
+    assert "RADAR LONG" in output
+    assert "RADAR SHORT" in output
+    assert "RADAR TOTAL" in output
+    assert "FINAL TOTAL" in output
 
 
 def test_review_cli_renders_not_computed_summary_when_reference_prices_are_missing(
@@ -368,3 +367,4 @@ def test_review_marks_price_before_signal_as_stale(tmp_path: Path) -> None:
     assert row["review_status"] == "NOT_REVIEWED"
     assert row["return_pct"] is None
     assert row["sim_pnl"] is None
+

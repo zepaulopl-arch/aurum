@@ -679,7 +679,13 @@ def _render_table_rows(
                     return "RADAR_LOSS"
                 return "RADAR_FLAT"
             return status
-        return _as_text(row.get("execution"), "-")
+        else:
+            pnl = _as_float(row.get("real_pnl"))
+            if pnl > 0:
+                return "EXEC_GAIN"
+            if pnl < 0:
+                return "EXEC_LOSS"
+            return "EXEC_FLAT"
 
     lines = [title, "-" * 80]
     lines.append(
@@ -693,7 +699,53 @@ def _render_table_rows(
         lines.append(
             f"{index:>2}  {row['ticker']:<8} {row['execution']:<12} "
             f"{_as_float(row.get('score')):>6.1f} {_render_pct(row.get('return_pct')):>8} "
-            f"{_render_money(row.get('sim_pnl')):>11} {_row_status(row):<12} {row['main_reason']}"
+            f"{_render_money(row.get('sim_pnl') if radar_section else row.get('real_pnl')):>11} {_row_status(row):<12} {row['main_reason']}"
+        )
+    if len(rows) > limit:
+        lines.append(f"... {len(rows) - limit} more rows in observation_review.csv")
+    return lines
+
+
+def _render_table_data(
+    rows: list[dict[str, Any]],
+    limit: int = 12,
+    radar_section: bool = False,
+    status_label: str = "RADAR_STATUS",
+) -> list[str]:
+    """Render table header and data rows without section title."""
+
+    def _row_status(row: dict[str, Any]) -> str:
+        if radar_section:
+            status = _as_text(row.get("review_class"), "-")
+            if status in {"MISSED_OPPORTUNITY", "GOOD_BLOCK", "NEUTRAL_BLOCK"}:
+                pnl = _as_float(row.get("sim_pnl"))
+                if pnl > 0:
+                    return "RADAR_GAIN"
+                if pnl < 0:
+                    return "RADAR_LOSS"
+                return "RADAR_FLAT"
+            return status
+        else:
+            pnl = _as_float(row.get("real_pnl"))
+            if pnl > 0:
+                return "EXEC_GAIN"
+            if pnl < 0:
+                return "EXEC_LOSS"
+            return "EXEC_FLAT"
+
+    lines = []
+    lines.append(
+        f"{'#':>2}  {'TICKER':<8} {'EXECUTION':<12} {'SCORE':>6} {'MOVE':>8} {'PNL':>11} {status_label:<12} REASON"
+    )
+    if not rows:
+        lines.append("status             EMPTY")
+        lines.append("reason             no items")
+        return lines
+    for index, row in enumerate(rows[:limit], start=1):
+        lines.append(
+            f"{index:>2}  {row['ticker']:<8} {row['execution']:<12} "
+            f"{_as_float(row.get('score')):>6.1f} {_render_pct(row.get('return_pct')):>8} "
+            f"{_render_money(row.get('sim_pnl') if radar_section else row.get('real_pnl')):>11} {_row_status(row):<12} {row['main_reason']}"
         )
     if len(rows) > limit:
         lines.append(f"... {len(rows) - limit} more rows in observation_review.csv")
@@ -733,100 +785,93 @@ def _render_not_computed_review(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_real_operations(rows: list[dict[str, Any]]) -> list[str]:
-    long_rows = [row for row in rows if row.get("direction") == "LONG"]
-    short_rows = [row for row in rows if row.get("direction") == "SHORT"]
-    real_long_pnl = round(sum(_as_float(row.get("real_pnl")) for row in long_rows), 2)
-    real_short_pnl = round(sum(_as_float(row.get("real_pnl")) for row in short_rows), 2)
-    real_total_pnl = round(real_long_pnl + real_short_pnl, 2)
-    lines = ["REAL OPERATIONS", "-" * 80]
-    if not rows:
-        lines.extend(
-            [
-                "status             NO REAL TRADES",
-                "real_long_items    0",
-                "real_long_pnl      R$ 0.00",
-                "real_short_items   0",
-                "real_short_pnl     R$ 0.00",
-                "real_total_pnl     R$ 0.00",
-            ]
-        )
+def _render_real_section(
+    title: str, rows: list[dict[str, Any]], direction: str
+) -> list[str]:
+    """Render a REAL LONG or REAL SHORT section with table and summary."""
+    filtered = [row for row in rows if row.get("direction") == direction]
+    summary = _section_summary(filtered)
+    best, worst = _compact_best_worst(summary)
+    real_pnl = round(sum(_as_float(row.get("real_pnl")) for row in filtered), 2)
+    hit_rate = summary["hit_rate"]
+    avg_move = summary["avg_return_pct"]
+    items = len(filtered)
+
+    lines = [title, "-" * 80]
+    if not filtered:
+        lines.append("status             NO REAL " + direction + " TRADES")
         return lines
 
     lines.extend(
+        _render_table_data(
+            filtered,
+            limit=12,
+            radar_section=False,
+            status_label="STATUS",
+        )
+    )
+    lines.append("")
+    lines.extend(
         [
-            f"real_long_items    {len(long_rows)}",
-            f"real_long_pnl      R$ {_render_money(real_long_pnl)}",
-            f"real_short_items   {len(short_rows)}",
-            f"real_short_pnl     R$ {_render_money(real_short_pnl)}",
-            f"real_total_pnl     R$ {_render_money(real_total_pnl)}",
+            f"{title} TOTAL",
+            "-" * 80,
+            f"items              {items}",
+            f"pnl                R$ {_render_money(real_pnl)}",
+            f"hit_rate           {_render_pct(hit_rate)}",
+            f"avg_move           {_render_pct(avg_move)}",
+            f"best               {best}",
+            f"worst              {worst}",
         ]
     )
-    if long_rows:
-        lines.append("")
-        lines.extend(
-            _render_table_rows(
-                "REAL LONG",
-                long_rows,
-                limit=12,
-                radar_section=False,
-                status_label="STATUS",
-            )
+    return lines
+
+
+def _render_real_operations(rows: list[dict[str, Any]]) -> list[str]:
+    """Deprecated: kept for backward compatibility. Use render_observation_review instead."""
+    return []
+
+
+def _render_radar_section(
+    title: str, rows: list[dict[str, Any]], radar_section: bool = True
+) -> list[str]:
+    """Render a RADAR LONG or RADAR SHORT section with table and summary."""
+    summary = _section_summary(rows)
+    best, worst = _compact_best_worst(summary)
+    radar_pnl = round(sum(_as_float(row.get("sim_pnl")) for row in rows), 2)
+    hit_rate = summary["hit_rate"]
+    avg_move = summary["avg_return_pct"]
+    items = len(rows)
+
+    lines = [title, "-" * 80]
+    lines.extend(
+        _render_table_data(
+            rows,
+            limit=20,
+            radar_section=radar_section,
+            status_label="RADAR_STATUS",
         )
-    if short_rows:
-        lines.append("")
-        lines.extend(
-            _render_table_rows(
-                "REAL SHORT",
-                short_rows,
-                limit=12,
-                radar_section=False,
-                status_label="STATUS",
-            )
-        )
+    )
+    lines.append("")
+    lines.extend(
+        [
+            f"{title} TOTAL",
+            "-" * 80,
+            f"items              {items}",
+            f"pnl                R$ {_render_money(radar_pnl)}",
+            f"hit_rate           {_render_pct(hit_rate)}",
+            f"avg_move           {_render_pct(avg_move)}",
+            f"best               {best}",
+            f"worst              {worst}",
+        ]
+    )
     return lines
 
 
 def _render_radar_summary(
     long_rows: list[dict[str, Any]], short_rows: list[dict[str, Any]]
 ) -> list[str]:
-    long_summary = _section_summary(long_rows)
-    short_summary = _section_summary(short_rows)
-    long_best, long_worst = _compact_best_worst(long_summary)
-    short_best, short_worst = _compact_best_worst(short_summary)
-    radar_total_items = len(long_rows) + len(short_rows)
-    radar_total_pnl = round(long_summary["pnl_total"] + short_summary["pnl_total"], 2)
-    market_read = _market_read(long_summary["pnl_total"], short_summary["pnl_total"])
-    verdict = (
-        "RADAR_GAIN"
-        if radar_total_pnl > 0
-        else "RADAR_LOSS" if radar_total_pnl < 0 else "FLAT"
-    )
-
-    lines = ["RADAR SUMMARY", "-" * 80]
-    lines.extend(
-        [
-            f"radar_long_items   {long_summary['items']}",
-            f"radar_long_pnl     R$ {_render_money(long_summary['pnl_total'])}",
-            f"radar_long_hit     {_render_pct(long_summary['hit_rate'])}",
-            f"radar_long_avg     {_render_pct(long_summary['avg_return_pct'])}",
-            f"best_long          {long_best}",
-            f"worst_long         {long_worst}",
-            "",
-            f"radar_short_items  {short_summary['items']}",
-            f"radar_short_pnl    R$ {_render_money(short_summary['pnl_total'])}",
-            f"radar_short_hit    {_render_pct(short_summary['hit_rate'])}",
-            f"radar_short_avg    {_render_pct(short_summary['avg_return_pct'])}",
-            f"best_short         {short_best}",
-            f"worst_short        {short_worst}",
-            "",
-            f"radar_total_items  {radar_total_items}",
-            f"radar_total_pnl    R$ {_render_money(radar_total_pnl)}",
-            f"market_read        {market_read}",
-            f"verdict            {verdict}",
-        ]
-    )
-    return lines
+    """Deprecated: kept for backward compatibility. Use render_observation_review instead."""
+    return []
 
 
 def render_observation_review(payload: dict[str, Any]) -> str:
@@ -865,42 +910,81 @@ def render_observation_review(payload: dict[str, Any]) -> str:
         "AURUM MTM REVIEW",
         "-" * 80,
         f"capital            R$ {_render_money(payload['capital'])}",
-        f"real_pnl           R$ {_render_money(real_total_pnl)}",
-        f"radar_pnl          R$ {_render_money(radar_total_pnl)}",
-        f"verdict            {verdict}",
+        f"mode               observation",
         "",
     ]
-    lines.extend(_render_real_operations(real_rows))
+
+    # REAL LONG
+    lines.extend(_render_real_section("REAL LONG", real_rows, "LONG"))
     lines.append("")
-    lines.extend(_render_radar_summary(long_radar_rows, short_radar_rows))
-    if long_radar_rows:
-        lines.append("")
-        lines.extend(
-            _render_table_rows(
-                "RADAR LONG", long_radar_rows, limit=20, radar_section=True
-            )
-        )
-    if short_radar_rows:
-        lines.append("")
-        lines.extend(
-            _render_table_rows(
-                "RADAR SHORT", short_radar_rows, limit=20, radar_section=True
-            )
-        )
+
+    # REAL SHORT
+    lines.extend(_render_real_section("REAL SHORT", real_rows, "SHORT"))
     lines.append("")
+
+    # REAL TOTAL
     lines.extend(
         [
-            "FINAL REVIEW",
+            "REAL TOTAL",
             "-" * 80,
             f"real_long_pnl      R$ {_render_money(real_long_pnl)}",
             f"real_short_pnl     R$ {_render_money(real_short_pnl)}",
             f"real_total_pnl     R$ {_render_money(real_total_pnl)}",
+            f"real_trades        {len(real_rows)}",
+        ]
+    )
+    lines.append("")
+
+    # RADAR LONG
+    if long_radar_rows:
+        lines.extend(_render_radar_section("RADAR LONG", long_radar_rows))
+    else:
+        lines.extend(
+            [
+                "RADAR LONG",
+                "-" * 80,
+                "status             EMPTY",
+            ]
+        )
+    lines.append("")
+
+    # RADAR SHORT
+    if short_radar_rows:
+        lines.extend(_render_radar_section("RADAR SHORT", short_radar_rows))
+    else:
+        lines.extend(
+            [
+                "RADAR SHORT",
+                "-" * 80,
+                "status             EMPTY",
+            ]
+        )
+    lines.append("")
+
+    # RADAR TOTAL
+    lines.extend(
+        [
+            "RADAR TOTAL",
+            "-" * 80,
             f"radar_long_pnl     R$ {_render_money(radar_long_pnl)}",
             f"radar_short_pnl    R$ {_render_money(radar_short_pnl)}",
             f"radar_total_pnl    R$ {_render_money(radar_total_pnl)}",
-            f"combined_pnl       R$ {_render_money(real_total_pnl + radar_total_pnl)}",
+            f"radar_items        {len(radar_rows)}",
             f"market_read        {market_read}",
             f"verdict            {verdict}",
+        ]
+    )
+    lines.append("")
+
+    # FINAL TOTAL
+    lines.extend(
+        [
+            "FINAL TOTAL",
+            "-" * 80,
+            f"real_total_pnl     R$ {_render_money(real_total_pnl)}",
+            f"radar_total_pnl    R$ {_render_money(radar_total_pnl)}",
+            f"combined_pnl       R$ {_render_money(real_total_pnl + radar_total_pnl)}",
+            f"final_verdict      {verdict}",
         ]
     )
     return "\n".join(lines)

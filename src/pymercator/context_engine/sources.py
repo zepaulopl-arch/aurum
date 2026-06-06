@@ -5,7 +5,6 @@ from __future__ import annotations
 import csv
 import json
 import urllib.error
-import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,7 +27,12 @@ class SourceResult:
 
 
 def http_get_json(url: str, timeout: float = 12.0) -> SourceResult:
-    """Fetch JSON using stdlib only."""
+    """Fetch JSON using stdlib only.
+
+    Returns explicit JSON_DECODE_ERROR when the server responds with non-JSON or
+    an empty body. This is important for official endpoints that sometimes
+    return HTML, proxy messages, or maintenance pages.
+    """
     request = urllib.request.Request(
         url,
         headers={
@@ -38,8 +42,28 @@ def http_get_json(url: str, timeout: float = 12.0) -> SourceResult:
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw = response.read().decode("utf-8-sig")
-        return SourceResult(name="http", status="OK", data=json.loads(raw), url=url)
+            status_code = getattr(response, "status", None)
+            content_type = response.headers.get("Content-Type", "")
+            raw_bytes = response.read()
+        raw = raw_bytes.decode("utf-8-sig", errors="replace")
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            snippet = raw[:240].replace("\n", " ").replace("\r", " ")
+            return SourceResult(
+                name="http",
+                status="JSON_DECODE_ERROR",
+                url=url,
+                error=f"{exc}; content_type={content_type}; body_snippet={snippet!r}",
+                detail={"status_code": status_code, "content_type": content_type},
+            )
+        return SourceResult(
+            name="http",
+            status="OK",
+            data=payload,
+            url=url,
+            detail={"status_code": status_code, "content_type": content_type},
+        )
     except urllib.error.HTTPError as exc:
         return SourceResult(name="http", status="ERROR", url=url, error=f"HTTP {exc.code}: {exc.reason}")
     except urllib.error.URLError as exc:

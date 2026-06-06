@@ -53,6 +53,7 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--earnings-csv", default="data/context/earnings_calendar.csv")
     parser.add_argument("--geopolitical-json", default="data/context/geopolitical_context.json")
     parser.add_argument("--sector-json", default="data/context/sector_context.json")
+    parser.add_argument("--macro-manual-csv", default="data/context/macro_manual.csv")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--json", action="store_true")
 
@@ -265,6 +266,7 @@ def run_context_engine_argv(argv: list[str]) -> int:
             earnings_csv=args.earnings_csv,
             geopolitical_json=args.geopolitical_json,
             sector_json=args.sector_json,
+            macro_manual_csv=args.macro_manual_csv,
             write_output=True,
         )
         code = 0

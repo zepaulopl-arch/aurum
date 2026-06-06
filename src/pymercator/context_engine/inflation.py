@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from pymercator.context_engine.sources import SourceResult, http_get_json, parse_float
 
@@ -18,8 +18,9 @@ def fetch_focus_expectations(
 ) -> SourceResult:
     """Fetch annual market expectations from BCB Olinda/Focus OData.
 
-    The function is conservative. If the endpoint schema changes, it returns
-    ERROR instead of inventing expectations.
+    The URL must encode every query parameter, including spaces in `$orderby`.
+    If the endpoint schema changes or returns no rows, the function returns
+    MISSING/ERROR instead of inventing expectations.
     """
     year = int(reference_year or date.today().year)
     start = (date.today() - timedelta(days=45)).isoformat()
@@ -27,10 +28,14 @@ def fetch_focus_expectations(
         f"Indicador eq '{indicator}' and Data ge '{start}' "
         f"and DataReferencia eq '{year}'"
     )
-    url = (
-        f"{FOCUS_BASE}/ExpectativasMercadoAnuais?"
-        f"$top=10&$orderby=Data desc&$filter={quote(filter_expr)}&$format=json"
-    )
+    params = {
+        "$top": "10",
+        "$orderby": "Data desc",
+        "$filter": filter_expr,
+        "$format": "json",
+    }
+    url = f"{FOCUS_BASE}/ExpectativasMercadoAnuais?{urlencode(params, quote_via=quote)}"
+
     result = http_get_json(url, timeout=timeout)
     result.name = "bcb_focus"
     if result.status != "OK":

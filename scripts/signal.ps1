@@ -4,7 +4,8 @@ param(
     [int]$Top = 10,
     [switch]$Basket,
     [switch]$Color,
-    [switch]$Json
+    [switch]$Json,
+    [switch]$NoUpdate
 )
 
 $ErrorActionPreference = "Stop"
@@ -196,6 +197,23 @@ if ($Json) {
 }
 
 $StartedAt = Get-Date
+
+if (-not $NoUpdate) {
+    Write-Host ""
+    Write-Host "UPDATE"
+    Write-Host "--------------------------------------------------------------------------------"
+
+    python -m pymercator update --list $List
+    $UpdateExitCode = $LASTEXITCODE
+
+    if ($UpdateExitCode -ne 0) {
+        Write-Host ""
+        Write-Host "UPDATE FALHOU"
+        Write-Host "--------------------------------------------------------------------------------"
+        Write-Host ("ExitCode: {0}" -f $UpdateExitCode)
+        exit $UpdateExitCode
+    }
+}
 
 python @cmd *> $RunLog
 $ExitCode = $LASTEXITCODE

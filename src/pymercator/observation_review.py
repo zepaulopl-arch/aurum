@@ -247,6 +247,74 @@ def _classify_directional(prefix: str, pnl: float, *, relevance_brl: float) -> s
     return f"{prefix}_FLAT"
 
 
+
+def _d1xd_points(
+    *,
+    points: list[PricePoint],
+    ref_price: float,
+    ref_date: str,
+    signal_date: str,
+) -> tuple[PricePoint | None, PricePoint | None]:
+    """Return (reference, current) for review.
+
+    Rules:
+    1. If there is a price after ref_date, preserve legacy MTM behavior:
+       compare signal ref_price against the latest later price.
+    2. If there is no later price but D and D-1 exist, compute D-1 x D.
+    3. If only D exists, compare signal ref_price against D close.
+    4. If only stale data before D exists, return it so caller can mark STALE.
+    """
+
+    ordered = sorted(points, key=lambda p: p.date)
+    if not ordered:
+        return None, None
+
+    target_date = (ref_date or signal_date or "").strip()
+
+    if not target_date:
+        current = ordered[-1]
+        reference = PricePoint(date=current.date, close=float(ref_price or current.close))
+        return reference, current
+
+    before_or_on = [p for p in ordered if p.date <= target_date]
+    after = [p for p in ordered if p.date > target_date]
+
+    # Legacy review case: signal was generated at D, review happens after D.
+    # Compare the report reference price against the latest later close.
+    if after:
+        current = after[-1]
+        reference = PricePoint(date=target_date, close=float(ref_price))
+        return reference, current
+
+    # No later price. Find D as exact date or nearest available before it.
+    if before_or_on:
+        current = before_or_on[-1]
+    else:
+        # All data is after target; unusual, but keep newest as current.
+        current = ordered[-1]
+
+    previous = [p for p in ordered if p.date < current.date]
+
+    # True D-1 x D case: D exists and prior trading day exists.
+    if current.date == target_date and previous:
+        reference = previous[-1]
+        d_close = float(ref_price) if ref_price and ref_price > 0 else current.close
+        current = PricePoint(date=current.date, close=d_close)
+        return reference, current
+
+    # Same-day/single-day case: compare signal ref_price against same-day close.
+    # This preserves existing review tests and keeps price_status OK.
+    if current.date == target_date:
+        reference = PricePoint(date=target_date, close=float(ref_price))
+        return reference, current
+
+    # Stale case: latest available price is before target_date.
+    # Return a valid pair so caller can classify it as STALE instead of DATA_MISSING.
+    reference = PricePoint(date=target_date, close=float(ref_price))
+    return reference, current
+
+
+
 def _review_row(
     *,
     section: str,
@@ -317,17 +385,16 @@ def _review_row(
         row["main_reason"] = f"review price data missing: {exc}"
         return row
 
-    ref = _reference_point(
+    ref, current = _d1xd_points(
         points=points,
-        fallback_price=ref_price,
-        signal_date=signal_date,
+        ref_price=ref_price,
         ref_date=ref_date,
+        signal_date=signal_date,
     )
-    current = _current_point(points)
     if ref is None or current is None:
         row["price_status"] = "DATA_MISSING"
         row["review_class"] = "DATA_MISSING"
-        row["main_reason"] = "reference or review price data missing"
+        row["main_reason"] = "D-1 x D price data missing"
         return row
 
     row.update(

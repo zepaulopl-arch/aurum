@@ -145,6 +145,38 @@ def test_daily_outputs_four_tables(tmp_path: Path) -> None:
     assert {row["ticker"] for row in snapshot["tables"]["obs_short"]} == {"SOBS1", "SOBS2"}
 
 
+def test_daily_limits_each_table_to_top_10_best_scores(tmp_path: Path) -> None:
+    decisions = []
+    for index in range(12):
+        score = 100 - index
+        decisions.append(
+            {
+                "asset": {"ticker": f"OBS{index:02d}", "last_close": 10.0 + index},
+                "permission": {"status": "BLOCKED"},
+                "ranking": {"context_score": score},
+                "ref_price": 10.0 + index,
+                "reason": "ranking test",
+            }
+        )
+
+    snapshot = core.run_daily(
+        profile="CON",
+        list_name="IBOV",
+        signal_date="2026-06-05",
+        signals_dir=tmp_path / "signals",
+        update=False,
+        raw_payload={"status": "OK", "report": {"decisions": decisions}},
+    )
+
+    rows = snapshot["tables"]["obs_long"]
+    assert len(rows) == 10
+    assert [row["ticker"] for row in rows] == [f"OBS{index:02d}" for index in range(10)]
+    assert snapshot["counts"]["obs_long"] == 10
+    assert snapshot["raw_counts"]["obs_long"] == 12
+    assert "OBS LONG=10/12" in snapshot["text"]
+    assert "OBS LONG | TOP 10" in snapshot["text"]
+
+
 def test_daily_saves_immutable_snapshot(tmp_path: Path) -> None:
     snapshot = _daily(tmp_path)
     path = Path(snapshot["files"]["snapshot_json"])

@@ -480,6 +480,7 @@ def _run_daily_command(args: argparse.Namespace) -> int:
             list_name=getattr(args, "list", "") or args.universe_name or "IBOV",
             capital=args.capital,
             slots=args.slots,
+            table_limit=args.top,
             signal_date=args.signal_date or None,
             signals_dir=args.signals_dir,
             prices_dir=args.prices_dir,
@@ -883,6 +884,7 @@ def build_parser() -> argparse.ArgumentParser:
         daily_parser.add_argument("--profile", default="")
         daily_parser.add_argument("--capital", type=float, default=100000.0)
         daily_parser.add_argument("--slots", type=int, default=5)
+        daily_parser.add_argument("--top", type=int, default=10)
         daily_parser.add_argument("--signals-dir", default="storage/signals")
         daily_parser.add_argument("--signal-date", default="")
         daily_parser.add_argument("--prices-dir", default="data/prices")

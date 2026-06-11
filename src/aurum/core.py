@@ -8,6 +8,7 @@ from typing import Any
 
 
 TABLE_KEYS = ("real_long", "real_short", "obs_long", "obs_short")
+DEFAULT_TABLE_LIMIT = 10
 TABLE_TITLES = {
     "real_long": "REAL LONG",
     "real_short": "REAL SHORT",
@@ -203,6 +204,27 @@ def _append_unique(rows: list[dict[str, Any]], row: dict[str, Any]) -> None:
 
 def _ensure_tables(tables: dict[str, list[dict[str, Any]]]) -> dict[str, list[dict[str, Any]]]:
     return {key: list(tables.get(key, [])) for key in TABLE_KEYS}
+
+
+def _sort_table(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        rows,
+        key=lambda row: (-_as_float(row.get("score")), int(row.get("rank") or 9999)),
+    )
+
+
+def limit_tables(
+    tables: dict[str, list[dict[str, Any]]],
+    *,
+    limit: int = DEFAULT_TABLE_LIMIT,
+) -> dict[str, list[dict[str, Any]]]:
+    """Keep only the best rows from each operational table."""
+    resolved_limit = max(0, int(limit or 0))
+    out: dict[str, list[dict[str, Any]]] = {}
+    for key in TABLE_KEYS:
+        rows = _sort_table([row for row in tables.get(key, []) if isinstance(row, dict)])
+        out[key] = rows[:resolved_limit] if resolved_limit else rows
+    return _ensure_tables(out)
 
 
 def update_data(
@@ -401,7 +423,7 @@ def classify_into_four_tables(raw_payload: dict[str, Any]) -> dict[str, list[dic
             )
 
     for key in TABLE_KEYS:
-        tables[key].sort(key=lambda row: (-_as_float(row.get("score")), int(row.get("rank") or 9999)))
+        tables[key] = _sort_table(tables[key])
     return _ensure_tables(tables)
 
 
@@ -694,8 +716,16 @@ def _fmt_pct(value: Any) -> str:
         return "-"
 
 
-def _render_signal_table(lines: list[str], title: str, rows: list[dict[str, Any]]) -> None:
-    lines.extend([title, "-" * 80])
+def _render_signal_table(
+    lines: list[str],
+    title: str,
+    rows: list[dict[str, Any]],
+    *,
+    raw_count: int,
+    limit: int,
+) -> None:
+    lines.extend([f"{title} | TOP {limit}", "-" * 80])
+    lines.append(f"shown={len(rows)} total_candidates={raw_count}")
     if not rows:
         lines.extend(["NO ITEMS", ""])
         return
@@ -715,22 +745,41 @@ def _render_signal_table(lines: list[str], title: str, rows: list[dict[str, Any]
 def render_daily_report(snapshot: dict[str, Any]) -> str:
     tables = snapshot.get("tables", {}) if isinstance(snapshot.get("tables"), dict) else {}
     counts = {key: len(tables.get(key, []) or []) for key in TABLE_KEYS}
+    raw_counts = snapshot.get("raw_counts", {}) if isinstance(snapshot.get("raw_counts"), dict) else counts
+    limit = int(snapshot.get("table_limit") or DEFAULT_TABLE_LIMIT)
     lines = [
-        "AURUM DAILY",
+        "AURUM DAILY | TOP SIGNAL TABLES",
         "-" * 80,
         f"profile={snapshot.get('profile', '-')} list={snapshot.get('list', '-')} "
         f"signal_date={snapshot.get('signal_date', '-')}",
         f"capital={_fmt_money(snapshot.get('capital'))} slots={snapshot.get('slots', '-')} "
         f"sizing={snapshot.get('sizing_mode', '-')}",
+        f"table_limit={limit}",
+        "",
+        "BOARD",
+        "-" * 80,
+        " | ".join(
+            f"{TABLE_TITLES[key]}={counts[key]}/{raw_counts.get(key, counts[key])}"
+            for key in TABLE_KEYS
+        ),
         "",
     ]
     for key in TABLE_KEYS:
-        _render_signal_table(lines, TABLE_TITLES[key], tables.get(key, []))
+        _render_signal_table(
+            lines,
+            TABLE_TITLES[key],
+            tables.get(key, []),
+            raw_count=int(raw_counts.get(key, counts[key]) or 0),
+            limit=limit,
+        )
     lines.extend(
         [
             "SUMMARY",
             "-" * 80,
-            " | ".join(f"{TABLE_TITLES[key]}={counts[key]}" for key in TABLE_KEYS),
+            " | ".join(
+                f"{TABLE_TITLES[key]}={counts[key]}/{raw_counts.get(key, counts[key])}"
+                for key in TABLE_KEYS
+            ),
             "",
             "FILES",
             "-" * 80,
@@ -798,6 +847,7 @@ def run_daily(
     prices_dir: str = "data/prices",
     update: bool = True,
     force: bool = False,
+    table_limit: int = DEFAULT_TABLE_LIMIT,
     raw_payload: dict[str, Any] | None = None,
     update_payload: dict[str, Any] | None = None,
     **signal_kwargs: Any,
@@ -818,8 +868,11 @@ def run_daily(
         prices_dir=prices_dir,
         **signal_kwargs,
     )
+    raw_tables = classify_into_four_tables(raw)
+    raw_counts = {key: len(raw_tables.get(key, [])) for key in TABLE_KEYS}
+    limited_tables = limit_tables(raw_tables, limit=table_limit)
     tables = size_positions(
-        classify_into_four_tables(raw),
+        limited_tables,
         capital=capital,
         slots=slots,
         sizing_mode="per_slot",
@@ -833,11 +886,13 @@ def run_daily(
         "capital": float(capital),
         "slots": max(1, int(slots or 1)),
         "sizing_mode": "per_slot",
+        "table_limit": max(0, int(table_limit or 0)),
         "raw_status": raw.get("status") if isinstance(raw, dict) else "-",
         "update": resolved_update or {},
         "features": features,
         "tables": tables,
         "counts": {key: len(tables.get(key, [])) for key in TABLE_KEYS},
+        "raw_counts": raw_counts,
         "files": {},
     }
     files = save_signal_snapshot(snapshot, signals_dir=signals_dir, force=force)

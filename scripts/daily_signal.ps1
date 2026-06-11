@@ -4,6 +4,7 @@ param(
     [string]$List = "IBOV",
     [double]$Capital = 100000.0,
     [int]$Slots = 5,
+    [int]$Top = 10,
     [string]$SignalDate = "",
     [string]$SignalsDir = "storage/signals",
     [string]$PricesDir = "data/prices",
@@ -26,6 +27,7 @@ $argsPayload = @{
     list_name = $List
     capital = $Capital
     slots = $Slots
+    table_limit = $Top
     signal_date = $SignalDate
     signals_dir = $SignalsDir
     prices_dir = $PricesDir
@@ -38,6 +40,7 @@ $env:AURUM_CORE_ARGS = $argsPayload
 $code = @'
 import json
 import os
+import sys
 
 from aurum.core import run_daily
 
@@ -46,7 +49,18 @@ emit_json = bool(args.pop("emit_json", False))
 if not args.get("signal_date"):
     args["signal_date"] = None
 
-payload = run_daily(**args)
+try:
+    payload = run_daily(**args)
+except FileExistsError as exc:
+    print("AURUM DAILY | SNAPSHOT ALREADY EXISTS", file=sys.stderr)
+    print(str(exc), file=sys.stderr)
+    print(
+        "Para regenerar o snapshot de hoje com o ranking corrigido, rode: "
+        "scripts\\daily_signal.ps1 -Force",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+
 if emit_json:
     print(json.dumps(payload, ensure_ascii=False, indent=2))
 else:

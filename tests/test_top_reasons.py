@@ -1,4 +1,4 @@
-from pymercator.top_reasons import format_top_reason_legend, format_top_reasons
+from aurum.top_reasons import format_top_reason_legend, format_top_reasons
 
 
 def test_top_reason_abbreviations_and_legend_are_screen_scoped():

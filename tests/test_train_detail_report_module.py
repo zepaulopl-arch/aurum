@@ -1,5 +1,5 @@
-from pymercator.train_detail_report import render_train_detail_report
-from pymercator.ui import strip_ansi
+from aurum.train_detail_report import render_train_detail_report
+from aurum.ui import strip_ansi
 
 
 def _metrics(accuracy: float = 0.56) -> dict[str, object]:

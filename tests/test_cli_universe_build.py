@@ -1,7 +1,7 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
-from pymercator.data.prices_csv import write_price_rows_csv
+from aurum.cli import main
+from aurum.data.prices_csv import write_price_rows_csv
 
 
 def _write_price_file(path: Path) -> None:
@@ -49,5 +49,5 @@ def test_universe_build_command_creates_output_csv(tmp_path: Path, capsys):
     assert output.exists()
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR UNIVERSE BUILD" in captured.out
+    assert "AURUM UNIVERSE BUILD" in captured.out
     assert "PRIO3" in captured.out

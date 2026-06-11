@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_prices_tickers_template_and_check(tmp_path: Path, capsys):
@@ -31,6 +31,6 @@ def test_prices_tickers_template_and_check(tmp_path: Path, capsys):
 
     captured = capsys.readouterr()
     assert "Ticker list template written to:" in captured.out
-    assert "PYMERCATOR TICKER LIST CHECK" in captured.out
+    assert "AURUM TICKER LIST CHECK" in captured.out
     assert "VALID" in captured.out
     assert "True" in captured.out

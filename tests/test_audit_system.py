@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pymercator.audit_system import (
+from aurum.audit_system import (
     audit_system,
     render_system_audit,
 )
@@ -14,21 +14,21 @@ def _touch(path: Path) -> None:
 
 
 def test_audit_system_detects_official_and_legacy_scripts(tmp_path: Path) -> None:
-    for script in ("signal.ps1", "review.ps1", "train.ps1", "weekend.ps1"):
+    for script in ("daily_signal.ps1", "daily_review.ps1", "weekly_train.ps1"):
         _touch(tmp_path / "scripts" / script)
-    _touch(tmp_path / "scripts" / "run_daily_signal.ps1")
-    _touch(tmp_path / "src" / "pymercator" / "__init__.py")
-    _touch(tmp_path / "src" / "pymercator" / "feature_builder.py")
-    _touch(tmp_path / "src" / "pymercator" / "model_training.py")
-    _touch(tmp_path / "src" / "pymercator" / "market_context.py")
-    _touch(tmp_path / "src" / "pymercator" / "short_execution.py")
+    _touch(tmp_path / "scripts" / "signal.ps1")
+    _touch(tmp_path / "src" / "aurum" / "__init__.py")
+    _touch(tmp_path / "src" / "aurum" / "feature_builder.py")
+    _touch(tmp_path / "src" / "aurum" / "model_training.py")
+    _touch(tmp_path / "src" / "aurum" / "market_context.py")
+    _touch(tmp_path / "src" / "aurum" / "short_execution.py")
     _touch(tmp_path / "config" / "policy.json")
 
     payload = audit_system(tmp_path)
 
-    assert payload["official_scripts"]["count"] == 4
+    assert payload["official_scripts"]["count"] == 3
     assert payload["legacy_scripts"]["count"] == 1
-    assert payload["legacy_scripts"]["found"] == ["scripts/run_daily_signal.ps1"]
+    assert payload["legacy_scripts"]["found"] == ["scripts/signal.ps1"]
     assert payload["status"] == "LEGACY_FOUND"
     assert payload["modules"]["feature_modules"]
     assert payload["modules"]["engine_modules"]
@@ -38,9 +38,9 @@ def test_audit_system_detects_official_and_legacy_scripts(tmp_path: Path) -> Non
 
 
 def test_audit_system_ok_when_no_legacy_and_all_official_exist(tmp_path: Path) -> None:
-    for script in ("signal.ps1", "review.ps1", "train.ps1", "weekend.ps1"):
+    for script in ("daily_signal.ps1", "daily_review.ps1", "weekly_train.ps1"):
         _touch(tmp_path / "scripts" / script)
-    _touch(tmp_path / "src" / "pymercator" / "__init__.py")
+    _touch(tmp_path / "src" / "aurum" / "__init__.py")
 
     payload = audit_system(tmp_path)
 
@@ -50,21 +50,21 @@ def test_audit_system_ok_when_no_legacy_and_all_official_exist(tmp_path: Path) -
 
 
 def test_audit_system_reports_missing_official_script(tmp_path: Path) -> None:
-    _touch(tmp_path / "scripts" / "signal.ps1")
-    _touch(tmp_path / "src" / "pymercator" / "__init__.py")
+    _touch(tmp_path / "scripts" / "daily_signal.ps1")
+    _touch(tmp_path / "src" / "aurum" / "__init__.py")
 
     payload = audit_system(tmp_path)
 
     assert payload["status"] == "MISSING_OFFICIAL_SCRIPT"
-    assert "scripts/review.ps1" in payload["official_scripts"]["missing"]
+    assert "scripts/daily_review.ps1" in payload["official_scripts"]["missing"]
 
 
 def test_render_system_audit_contains_key_sections(tmp_path: Path) -> None:
-    for script in ("signal.ps1", "review.ps1", "train.ps1", "weekend.ps1"):
+    for script in ("daily_signal.ps1", "daily_review.ps1", "weekly_train.ps1"):
         _touch(tmp_path / "scripts" / script)
-    _touch(tmp_path / "src" / "pymercator" / "__init__.py")
-    _touch(tmp_path / "src" / "pymercator" / "features.py")
-    _touch(tmp_path / "src" / "pymercator" / "prediction_engine.py")
+    _touch(tmp_path / "src" / "aurum" / "__init__.py")
+    _touch(tmp_path / "src" / "aurum" / "features.py")
+    _touch(tmp_path / "src" / "aurum" / "prediction_engine.py")
 
     output = render_system_audit(audit_system(tmp_path))
 

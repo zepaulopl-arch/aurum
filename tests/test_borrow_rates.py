@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from pymercator.borrow_rates import (
+from aurum.borrow_rates import (
     estimate_borrow_cost,
     get_borrow_record,
     read_borrow_rates_csv,

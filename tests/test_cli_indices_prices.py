@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_indices_prices_check_command(tmp_path: Path, capsys):
@@ -26,6 +26,6 @@ def test_indices_prices_check_command(tmp_path: Path, capsys):
     assert exit_code == 0
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR INDICES PRICES CHECK" in captured.out
+    assert "AURUM INDICES PRICES CHECK" in captured.out
     assert "VALID FILES" in captured.out
     assert "^BVSP.csv" in captured.out

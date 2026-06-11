@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_features_check_command(tmp_path: Path, capsys):
@@ -35,5 +35,5 @@ def test_features_check_command(tmp_path: Path, capsys):
     assert exit_code == 0
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR FEATURES CATALOG" in captured.out
+    assert "AURUM FEATURES CATALOG" in captured.out
     assert "return_1d" in captured.out

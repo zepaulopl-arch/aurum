@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from pymercator.market_context import load_market_context
-from pymercator.market_context_consolidator import (
+from aurum.market_context import load_market_context
+from aurum.market_context_consolidator import (
     build_market_context,
     load_market_context_thresholds,
     write_market_context,

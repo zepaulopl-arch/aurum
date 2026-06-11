@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from pymercator.basket import run_daily_basket
-from pymercator.cli_update import _build_update_status
-from pymercator.pipeline import run_daily_pipeline
-from pymercator.position_actions import build_position_actions
-from pymercator.reports.json_report import daily_report_to_dict
+from aurum.basket import run_daily_basket
+from aurum.cli_update import _build_update_status
+from aurum.pipeline import run_daily_pipeline
+from aurum.position_actions import build_position_actions
+from aurum.reports.json_report import daily_report_to_dict
 
 
 def test_daily_report_contract_contains_required_sections(tmp_path: Path):

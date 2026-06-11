@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.data.ticker_list import (
+from aurum.data.ticker_list import (
     ticker_symbols_from_csv,
     validate_ticker_list_csv,
     write_starter_ticker_list,

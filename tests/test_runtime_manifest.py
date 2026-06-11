@@ -22,36 +22,37 @@ def test_operational_scripts_use_ops_common_and_runtime_config():
     )
     assert runtime_config["schema_version"] == "runtime_config.v1"
 
-    for script_name in (
-        "signal.ps1",
-        "train.ps1",
-        "weekend.ps1",
-    ):
+    expected_functions = {
+        "daily_signal.ps1": "from aurum.core import run_daily",
+        "daily_review.ps1": "from aurum.core import run_review",
+        "weekly_train.ps1": "from aurum.core import run_weekly",
+    }
+    for script_name, function_import in expected_functions.items():
         text = (ROOT / "scripts" / script_name).read_text(encoding="utf-8")
         assert "ops_common.ps1" in text
-        assert "Initialize-PyMercatorScript" in text
+        assert "Initialize-AurumScript" in text
         assert "Write-RunManifest" in text
         assert "[switch]$Color" in text
-        assert "$null = Invoke-" in text
+        assert function_import in text
+        assert "python -m aurum" not in text
+        assert "-m aurum" not in text
         assert "C:\\Users\\zepau\\anaconda3\\python.exe" not in text
         assert "--no-color" not in text
-        if script_name == "train.ps1":
-            assert "Show-PyMercatorProfileSummary" in text
 
     ops_common = (ROOT / "scripts" / "ops_common.ps1").read_text(encoding="utf-8")
     assert "PROFILE SUMMARY" in ops_common
     assert "ConvertFrom-Json" in ops_common
 
     common = (ROOT / "scripts" / "ops_common.ps1").read_text(encoding="utf-8")
-    assert "Get-PyMercatorColorArgs" in common
+    assert "Get-AurumColorArgs" in common
     assert 'return @("--no-color")' in common
-    assert 'return @("--color", $script:PYMERCATOR_COLOR)' in common
+    assert 'return @("--color", $script:AURUM_COLOR)' in common
     assert "Remove-AnsiFromFile" in common
-    assert "Show-PyMercatorSignals" in common
-    assert "PYMERCATOR SIGNALS" in common
+    assert "Show-AurumSignals" in common
+    assert "AURUM SIGNALS" in common
 
-    daily_signal = (ROOT / "scripts" / "signal.ps1").read_text(encoding="utf-8")
-    assert "Show-PyMercatorSignals" in daily_signal
+    daily_signal = (ROOT / "scripts" / "daily_signal.ps1").read_text(encoding="utf-8")
+    assert "run_daily(**args)" in daily_signal
 
 
 def test_ops_common_creates_runtime_manifest():
@@ -64,11 +65,11 @@ def test_ops_common_creates_runtime_manifest():
             "$ErrorActionPreference = 'Stop'",
             f". {_ps_quote(ROOT / 'scripts' / 'ops_common.ps1')}",
             (
-                "$py = Initialize-PyMercatorScript "
+                "$py = Initialize-AurumScript "
                 f"-RequestedPython {_ps_quote(sys.executable)} "
                 "-ScriptName 'test_runtime.ps1'"
             ),
-            "$dir = New-PyMercatorLogDir -Prefix 'pytest_manifest' -ScriptName 'test_runtime.ps1'",
+            "$dir = New-AurumLogDir -Prefix 'pytest_manifest' -ScriptName 'test_runtime.ps1'",
             (
                 "$code = Run-Step -Name 'Python version' "
                 "-Command @($py, '-c', 'print(123)') "
@@ -80,7 +81,7 @@ def test_ops_common_creates_runtime_manifest():
                 "Write-RunManifest -Status 'OK' "
                 "-Outputs @{ report_json = 'report.json'; update_status = 'latest_update_status.json' }"
             ),
-            "Write-Output $script:PYMERCATOR_MANIFEST_PATH",
+            "Write-Output $script:AURUM_MANIFEST_PATH",
         ]
     )
 
@@ -217,9 +218,9 @@ def test_ops_common_renders_daily_signal_screen(tmp_path: Path):
         [
             "$ErrorActionPreference = 'Stop'",
             f". {_ps_quote(ROOT / 'scripts' / 'ops_common.ps1')}",
-            "Set-PyMercatorColorMode -Enabled $false",
+            "Set-AurumColorMode -Enabled $false",
             (
-                "Show-PyMercatorSignals "
+                "Show-AurumSignals "
                 f"-ReportJson {_ps_quote(report)} "
                 f"-BasketFile {_ps_quote(basket)} "
                 f"-UpdateStatusFile {_ps_quote(update)} "
@@ -239,7 +240,7 @@ def test_ops_common_renders_daily_signal_screen(tmp_path: Path):
     )
     assert result.returncode == 0, result.stderr + result.stdout
     output = result.stdout
-    assert "PYMERCATOR SIGNALS" in output
+    assert "AURUM SIGNALS" in output
     assert "context_score" in output
     assert "47.6" in output
     assert "data_freshness" in output
@@ -279,8 +280,8 @@ def test_ops_common_renders_daily_signal_screen(tmp_path: Path):
     assert "\n0\n" not in output
 
     color_command = command.replace(
-        "Set-PyMercatorColorMode -Enabled $false",
-        "Set-PyMercatorColorMode -Enabled $true",
+        "Set-AurumColorMode -Enabled $false",
+        "Set-AurumColorMode -Enabled $true",
     )
     color_result = subprocess.run(
         [powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", color_command],

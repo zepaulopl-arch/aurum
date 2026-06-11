@@ -1,4 +1,4 @@
-from pymercator import terminal_ui as ui
+from aurum import terminal_ui as ui
 
 
 def test_kv_alignment():

@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from pymercator.cli import main
-from pymercator.domain import (
+from aurum.cli import main
+from aurum.domain import (
     AssetDecision,
     AssetSnapshot,
     DailyReport,
@@ -20,7 +20,7 @@ from pymercator.domain import (
 
 
 def test_horizon_alignment_classifies_close_weak_scores_as_flat_weak() -> None:
-    from pymercator.horizon_observer import (
+    from aurum.horizon_observer import (
         dominance_strength,
         horizon_alignment,
         horizon_spread,
@@ -191,7 +191,7 @@ def _fake_report(profile: str) -> DailyReport:
 
 
 def test_cli_run_executes_daily_with_defaults_for_outputs(tmp_path: Path, capsys):
-    from pymercator.storage.repositories import (
+    from aurum.storage.repositories import (
         latest_daily_run,
         signals_for_ticker,
         table_counts,
@@ -262,7 +262,7 @@ def test_cli_run_warns_but_continues_when_db_persistence_fails(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     report = tmp_path / "report.txt"
@@ -347,7 +347,7 @@ def test_cli_run_consumes_consolidated_market_context(tmp_path: Path, capsys):
 
 
 def test_cli_run_default_generates_basket(tmp_path: Path, monkeypatch, capsys):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     report = tmp_path / "report.txt"
@@ -407,7 +407,7 @@ def test_cli_run_positive_scenario_allows_actionable_and_basket(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     report = tmp_path / "report.txt"
@@ -611,7 +611,7 @@ def test_cli_run_applies_requested_profile_to_policy_layer(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     _write_context(context)
@@ -658,7 +658,7 @@ def test_cli_run_reuses_same_evaluation_across_profiles_for_basket(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     evaluation = tmp_path / "same_evaluation.json"
@@ -723,7 +723,7 @@ def test_cli_run_exposes_multi_horizon_prediction_observer(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     evaluation = tmp_path / "latest_evaluation.json"
@@ -827,7 +827,7 @@ def test_cli_run_blocks_actionable_when_model_quality_is_weak(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     evaluation = tmp_path / "latest_evaluation.json"
@@ -925,7 +925,7 @@ def test_cli_run_blocks_actionable_when_model_quality_is_degenerate(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     evaluation = tmp_path / "latest_evaluation.json"
@@ -988,7 +988,7 @@ def test_cli_run_blocks_actionable_when_model_quality_is_degenerate(
 
 
 def test_run_summary_abbreviates_top_reasons_without_mid_token_truncation() -> None:
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     payload = {
         "status": "OK",
@@ -1067,7 +1067,7 @@ def test_cli_run_blocks_non_ok_prediction_evaluation(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     evaluation = tmp_path / "latest_evaluation.json"
@@ -1120,7 +1120,7 @@ def test_cli_run_blocks_experimental_prediction_without_explicit_allow(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     evaluation = tmp_path / "latest_evaluation.json"

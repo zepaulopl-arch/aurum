@@ -1,12 +1,12 @@
 import json
 from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def _patch_update_ok(monkeypatch):
-    import pymercator.cli_update as update_mod
-    import pymercator.market_context_consolidator as context_mod
+    import aurum.cli_update as update_mod
+    import aurum.market_context_consolidator as context_mod
 
     monkeypatch.setattr(
         update_mod,
@@ -168,7 +168,7 @@ def test_cli_update_fails_clearly_on_step_failure(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_update as update_mod
+    import aurum.cli_update as update_mod
 
     monkeypatch.setattr(
         update_mod,
@@ -193,7 +193,7 @@ def test_cli_update_fails_clearly_on_step_failure(
 
 
 def test_cli_update_passes_default_long_history_and_cache(monkeypatch):
-    import pymercator.cli_update as update_mod
+    import aurum.cli_update as update_mod
 
     captured: dict[str, object] = {}
 
@@ -213,7 +213,7 @@ def test_cli_update_passes_default_long_history_and_cache(monkeypatch):
 
 
 def test_cli_update_no_cache_disables_price_cache(monkeypatch):
-    import pymercator.cli_update as update_mod
+    import aurum.cli_update as update_mod
 
     captured: dict[str, object] = {}
 
@@ -235,7 +235,7 @@ def test_cli_update_fails_when_feature_matrix_loses_universe_assets(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_update as update_mod
+    import aurum.cli_update as update_mod
 
     _patch_update_ok(monkeypatch)
     monkeypatch.setattr(
@@ -281,7 +281,7 @@ def test_cli_update_fails_when_feature_matrix_loses_universe_assets(
 
 
 def test_cli_update_does_not_use_1900_for_indices(monkeypatch):
-    import pymercator.cli_update as update_mod
+    import aurum.cli_update as update_mod
 
     captured: dict[str, object] = {}
 
@@ -303,7 +303,7 @@ def test_cli_update_marks_optional_index_failure_as_partial(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_update as update_mod
+    import aurum.cli_update as update_mod
 
     _patch_update_ok(monkeypatch)
     monkeypatch.setattr(
@@ -339,7 +339,7 @@ def test_cli_update_marks_optional_index_failure_as_partial(
 
 
 def test_update_summary_explains_freshness_partial_and_stale_items():
-    from pymercator.cli_update import render_update_summary
+    from aurum.cli_update import render_update_summary
 
     output = render_update_summary(
         {
@@ -385,7 +385,7 @@ def test_cli_update_partial_index_cache_fallback_includes_operational_impact(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_update as update_mod
+    import aurum.cli_update as update_mod
 
     _patch_update_ok(monkeypatch)
     monkeypatch.setattr(
@@ -432,7 +432,7 @@ def test_cli_update_required_index_failure_is_fail(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_update as update_mod
+    import aurum.cli_update as update_mod
 
     _patch_update_ok(monkeypatch)
     monkeypatch.setattr(

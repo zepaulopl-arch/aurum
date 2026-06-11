@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_daily_cli_run_dir_creates_timestamped_txt_and_json(tmp_path: Path):
@@ -37,7 +37,7 @@ def test_daily_cli_run_dir_creates_timestamped_txt_and_json(tmp_path: Path):
     txt = report_txt.read_text(encoding="utf-8")
     json_text = report_json.read_text(encoding="utf-8")
 
-    assert "PYMERCATOR DAILY OPERATIONAL REPORT" in txt
+    assert "AURUM DAILY OPERATIONAL REPORT" in txt
     assert "WATCH_ONLY" in txt
     assert '"posture": "WATCH_ONLY"' in json_text
     assert '"decision_codes"' in json_text

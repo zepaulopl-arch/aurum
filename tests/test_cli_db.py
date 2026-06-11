@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pymercator.cli import main
-from pymercator.storage.repositories import save_daily_run, save_simulation
+from aurum.cli import main
+from aurum.storage.repositories import save_daily_run, save_simulation
 
 
 def _sample_payload() -> dict:

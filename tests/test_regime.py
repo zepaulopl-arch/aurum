@@ -1,5 +1,5 @@
-from pymercator.engines.regime import classify_market_regime
-from pymercator.policy import load_policy
+from aurum.engines.regime import classify_market_regime
+from aurum.policy import load_policy
 
 
 def test_extreme_headline_denies_market_regime():

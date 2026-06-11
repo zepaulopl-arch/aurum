@@ -1,4 +1,4 @@
-from pymercator.sentiment_store import (
+from aurum.sentiment_store import (
     check_sentiment_dir,
     check_sentiment_file,
 )

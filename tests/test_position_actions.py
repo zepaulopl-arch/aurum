@@ -2,8 +2,8 @@ import json
 from datetime import date
 from pathlib import Path
 
-from pymercator.cli import main
-from pymercator.domain import (
+from aurum.cli import main
+from aurum.domain import (
     AssetDecision,
     AssetSnapshot,
     DailyReport,
@@ -18,7 +18,7 @@ from pymercator.domain import (
     UniverseHealth,
     UniverseHealthResult,
 )
-from pymercator.position_actions import (
+from aurum.position_actions import (
     Position,
     build_position_actions,
     load_positions,
@@ -392,7 +392,7 @@ def test_run_json_contains_position_action_books_and_keeps_long_basket_blocked(
     monkeypatch,
     capsys,
 ) -> None:
-    import pymercator.cli_run as run_mod
+    import aurum.cli_run as run_mod
 
     context = tmp_path / "context.json"
     evaluation = tmp_path / "evaluation.json"

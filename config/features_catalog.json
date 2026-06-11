@@ -1,5 +1,5 @@
 {
-  "source": "pymercator",
+  "source": "aurum",
   "features": [
     {
       "name": "return_1d",
@@ -41,14 +41,14 @@
       "group": "technical",
       "enabled": true,
       "required": true,
-      "description": "Operational trend score already used by pyMercator."
+      "description": "Operational trend score already used by Aurum."
     },
     {
       "name": "momentum_score",
       "group": "technical",
       "enabled": true,
       "required": true,
-      "description": "Operational momentum score already used by pyMercator."
+      "description": "Operational momentum score already used by Aurum."
     },
     {
       "name": "news_score",

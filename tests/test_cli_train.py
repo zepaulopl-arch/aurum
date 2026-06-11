@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from pymercator.cli import build_parser, main
+from aurum.cli import build_parser, main
 
 BASE_ENGINES = ["extratrees", "randomforest", "gradientboosting"]
 
@@ -254,7 +254,7 @@ def test_cli_train_generates_multi_horizon_evaluation_by_default(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -356,8 +356,8 @@ def test_cli_train_details_prints_operational_report_and_writes_plain_output(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
-    from pymercator.ui import strip_ansi
+    import aurum.cli_train as train_mod
+    from aurum.ui import strip_ansi
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     detail_report = tmp_path / "latest_train_detail_report.txt"
@@ -389,7 +389,7 @@ def test_cli_train_details_prints_operational_report_and_writes_plain_output(
     raw_output = capsys.readouterr().out
     output = strip_ansi(raw_output)
     assert "\x1b[" in raw_output
-    assert "PYMERCATOR TRAIN DETAIL" in output
+    assert "AURUM TRAIN DETAIL" in output
     assert "GLOBAL SUMMARY" in output
     assert "engine" in output
     assert "multi_horizon_ridge" in output
@@ -421,7 +421,7 @@ def test_cli_train_details_prints_operational_report_and_writes_plain_output(
 
     text = detail_report.read_text(encoding="utf-8")
     assert "\x1b[" not in text
-    assert "PYMERCATOR TRAIN DETAIL" in text
+    assert "AURUM TRAIN DETAIL" in text
     assert "HORIZON SCOREBOARD" in text
     assert "BASE ENGINE METRICS" not in text
     assert "probability_distribution" not in text
@@ -435,7 +435,7 @@ def test_cli_train_details_prob_dist_prints_probability_buckets(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -472,7 +472,7 @@ def test_cli_train_details_with_engine_values_stays_summary_only(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -514,7 +514,7 @@ def test_cli_train_accepts_histgradientboosting_as_experimental_engine(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -541,7 +541,7 @@ def test_cli_train_accepts_histgradientboosting_as_experimental_engine(
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert "PYMERCATOR TRAIN DETAIL" in output
+    assert "AURUM TRAIN DETAIL" in output
     assert "GLOBAL SUMMARY" in output
     assert calls[0]["base_engines"] == [
         "extratrees",
@@ -565,7 +565,7 @@ def test_cli_train_details_engines_prints_complete_base_engine_metrics(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -606,7 +606,7 @@ def test_cli_train_details_full_prints_all_detail_sections(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -645,7 +645,7 @@ def test_cli_train_details_full_prints_all_detail_sections(
 
 
 def test_cli_train_profile_is_ignored_with_warning(tmp_path: Path, monkeypatch, capsys):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -687,7 +687,7 @@ def test_cli_train_lists_dropped_assets_by_horizon_with_reason(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     universe = tmp_path / "universe.csv"
     matrix = tmp_path / "matrix.csv"
@@ -789,7 +789,7 @@ def test_cli_train_blocks_when_matrix_is_missing(tmp_path: Path, capsys):
 
 
 def test_cli_train_parse_engines_keeps_real_names():
-    from pymercator.cli_train import parse_engines
+    from aurum.cli_train import parse_engines
 
     assert parse_engines("extratrees,randomforest") == ["extratrees", "randomforest"]
     assert parse_engines("") == ["ridge_ensemble"]
@@ -855,7 +855,7 @@ def test_cli_train_experimental_overrides_horizons_base_engines_weights_and_auto
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -928,7 +928,7 @@ def test_cli_train_experimental_preserves_default_latest_operational_evaluation(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, _dataset, _evaluation = _write_train_inputs(tmp_path)
     prediction_dir = tmp_path / "storage" / "prediction"
@@ -996,7 +996,7 @@ def test_cli_train_explicit_rolling_majority_is_baseline(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -1040,7 +1040,7 @@ def test_cli_train_baseline_preserves_default_latest_operational_evaluation(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, _dataset, _evaluation = _write_train_inputs(tmp_path)
     prediction_dir = tmp_path / "storage" / "prediction"
@@ -1101,7 +1101,7 @@ def test_cli_train_autotune_records_summary_in_operational_json(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -1151,7 +1151,7 @@ def test_cli_train_autotune_details_prints_audit_summary(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -1191,7 +1191,7 @@ def test_cli_train_benchmark_engines_writes_json_without_changing_config(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     output = tmp_path / "latest_engine_benchmark.json"
@@ -1249,7 +1249,7 @@ def test_cli_train_benchmark_marks_failed_engine_and_continues(
     tmp_path: Path,
     monkeypatch,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     output = tmp_path / "latest_engine_benchmark.json"
@@ -1354,7 +1354,7 @@ def test_cli_train_rejects_non_standard_horizons_without_experimental(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -1397,7 +1397,7 @@ def test_cli_train_rejects_two_operational_base_engines_without_experimental(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -1436,7 +1436,7 @@ def test_cli_train_fails_with_insufficient_operational_assets(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -1482,7 +1482,7 @@ def test_cli_train_fails_with_insufficient_operational_assets(
 
 
 def test_train_diagnostic_normalizes_b3_ticker_suffixes(tmp_path: Path):
-    from pymercator.cli_train import _build_training_diagnostic
+    from aurum.cli_train import _build_training_diagnostic
 
     universe = tmp_path / "universe.csv"
     matrix = tmp_path / "matrix.csv"
@@ -1518,7 +1518,7 @@ def test_cli_train_fails_when_one_operational_horizon_fails(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []
@@ -1558,7 +1558,7 @@ def test_cli_train_fails_with_fewer_than_two_valid_horizons(
     monkeypatch,
     capsys,
 ):
-    import pymercator.cli_train as train_mod
+    import aurum.cli_train as train_mod
 
     matrix, prices_dir, dataset, evaluation = _write_train_inputs(tmp_path)
     calls: list[dict] = []

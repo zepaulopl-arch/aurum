@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.data.prices_csv import (
+from aurum.data.prices_csv import (
     check_prices_dir,
     validate_price_csv,
     write_price_rows_csv,

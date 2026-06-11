@@ -1,5 +1,5 @@
-﻿from pymercator.explain import decision_codes, decision_label
-from pymercator.pipeline import run_daily_pipeline
+from aurum.explain import decision_codes, decision_label
+from aurum.pipeline import run_daily_pipeline
 
 
 def test_decision_codes_include_headline_sector_and_cap_for_prio3_active():

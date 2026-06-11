@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pymercator.context_audit import (
+from aurum.context_audit import (
     audit_context,
     render_context_audit,
     render_context_explain,

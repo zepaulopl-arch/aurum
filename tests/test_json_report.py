@@ -1,7 +1,7 @@
-﻿import json
+import json
 
-from pymercator.pipeline import run_daily_pipeline
-from pymercator.reports.json_report import (
+from aurum.pipeline import run_daily_pipeline
+from aurum.reports.json_report import (
     daily_report_to_dict,
     render_daily_report_json,
 )

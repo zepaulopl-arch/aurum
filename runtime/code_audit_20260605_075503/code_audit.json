@@ -8,13 +8,13 @@
   },
   "top_files_by_lines": [
     {
-      "path": "src\\pymercator\\cli_train.py",
+      "path": "src\\aurum\\cli_train.py",
       "lines": 2988,
       "nonempty_lines": 2704,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\legacy_prediction_engines.py",
+      "path": "src\\aurum\\legacy_prediction_engines.py",
       "lines": 2361,
       "nonempty_lines": 2048,
       "suffix": ".py"
@@ -26,7 +26,7 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli.py",
+      "path": "src\\aurum\\cli.py",
       "lines": 1492,
       "nonempty_lines": 1292,
       "suffix": ".py"
@@ -44,49 +44,49 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\features_v2.py",
+      "path": "src\\aurum\\features_v2.py",
       "lines": 1089,
       "nonempty_lines": 1007,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\prediction_lab.py",
+      "path": "src\\aurum\\prediction_lab.py",
       "lines": 1044,
       "nonempty_lines": 848,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\position_actions.py",
+      "path": "src\\aurum\\position_actions.py",
       "lines": 970,
       "nonempty_lines": 868,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_run.py",
+      "path": "src\\aurum\\cli_run.py",
       "lines": 833,
       "nonempty_lines": 763,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_update.py",
+      "path": "src\\aurum\\cli_update.py",
       "lines": 788,
       "nonempty_lines": 728,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\basket.py",
+      "path": "src\\aurum\\basket.py",
       "lines": 761,
       "nonempty_lines": 634,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\observation.py",
+      "path": "src\\aurum\\observation.py",
       "lines": 550,
       "nonempty_lines": 491,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\market_context_sources.py",
+      "path": "src\\aurum\\market_context_sources.py",
       "lines": 531,
       "nonempty_lines": 480,
       "suffix": ".py"
@@ -98,19 +98,19 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\real_run.py",
+      "path": "src\\aurum\\real_run.py",
       "lines": 514,
       "nonempty_lines": 466,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\scenario_pack.py",
+      "path": "src\\aurum\\scenario_pack.py",
       "lines": 498,
       "nonempty_lines": 423,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\market_context_consolidator.py",
+      "path": "src\\aurum\\market_context_consolidator.py",
       "lines": 493,
       "nonempty_lines": 444,
       "suffix": ".py"
@@ -128,19 +128,19 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\borrow_data.py",
+      "path": "src\\aurum\\borrow_data.py",
       "lines": 469,
       "nonempty_lines": 418,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\storage\\repositories.py",
+      "path": "src\\aurum\\storage\\repositories.py",
       "lines": 459,
       "nonempty_lines": 411,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_scenario.py",
+      "path": "src\\aurum\\cli_scenario.py",
       "lines": 455,
       "nonempty_lines": 428,
       "suffix": ".py"
@@ -158,7 +158,7 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\ui\\colors.py",
+      "path": "src\\aurum\\ui\\colors.py",
       "lines": 392,
       "nonempty_lines": 344,
       "suffix": ".py"
@@ -170,25 +170,25 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\legacy_inventory.py",
+      "path": "src\\aurum\\legacy_inventory.py",
       "lines": 381,
       "nonempty_lines": 315,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\market_context_auto.py",
+      "path": "src\\aurum\\market_context_auto.py",
       "lines": 374,
       "nonempty_lines": 305,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\data\\universe_builder.py",
+      "path": "src\\aurum\\data\\universe_builder.py",
       "lines": 374,
       "nonempty_lines": 284,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\indices_prices.py",
+      "path": "src\\aurum\\indices_prices.py",
       "lines": 366,
       "nonempty_lines": 307,
       "suffix": ".py"
@@ -212,31 +212,31 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_universe.py",
+      "path": "src\\aurum\\cli_universe.py",
       "lines": 350,
       "nonempty_lines": 295,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\sentiment_store.py",
+      "path": "src\\aurum\\sentiment_store.py",
       "lines": 349,
       "nonempty_lines": 285,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_parsers.py",
+      "path": "src\\aurum\\cli_parsers.py",
       "lines": 347,
       "nonempty_lines": 314,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\legacy_classification.py",
+      "path": "src\\aurum\\legacy_classification.py",
       "lines": 297,
       "nonempty_lines": 248,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_context.py",
+      "path": "src\\aurum\\cli_context.py",
       "lines": 295,
       "nonempty_lines": 246,
       "suffix": ".py"
@@ -250,13 +250,13 @@
   ],
   "top_files_by_nonempty_lines": [
     {
-      "path": "src\\pymercator\\cli_train.py",
+      "path": "src\\aurum\\cli_train.py",
       "lines": 2988,
       "nonempty_lines": 2704,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\legacy_prediction_engines.py",
+      "path": "src\\aurum\\legacy_prediction_engines.py",
       "lines": 2361,
       "nonempty_lines": 2048,
       "suffix": ".py"
@@ -268,7 +268,7 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli.py",
+      "path": "src\\aurum\\cli.py",
       "lines": 1492,
       "nonempty_lines": 1292,
       "suffix": ".py"
@@ -286,55 +286,55 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\features_v2.py",
+      "path": "src\\aurum\\features_v2.py",
       "lines": 1089,
       "nonempty_lines": 1007,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\position_actions.py",
+      "path": "src\\aurum\\position_actions.py",
       "lines": 970,
       "nonempty_lines": 868,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\prediction_lab.py",
+      "path": "src\\aurum\\prediction_lab.py",
       "lines": 1044,
       "nonempty_lines": 848,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_run.py",
+      "path": "src\\aurum\\cli_run.py",
       "lines": 833,
       "nonempty_lines": 763,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_update.py",
+      "path": "src\\aurum\\cli_update.py",
       "lines": 788,
       "nonempty_lines": 728,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\basket.py",
+      "path": "src\\aurum\\basket.py",
       "lines": 761,
       "nonempty_lines": 634,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\observation.py",
+      "path": "src\\aurum\\observation.py",
       "lines": 550,
       "nonempty_lines": 491,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\market_context_sources.py",
+      "path": "src\\aurum\\market_context_sources.py",
       "lines": 531,
       "nonempty_lines": 480,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\real_run.py",
+      "path": "src\\aurum\\real_run.py",
       "lines": 514,
       "nonempty_lines": 466,
       "suffix": ".py"
@@ -346,19 +346,19 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\market_context_consolidator.py",
+      "path": "src\\aurum\\market_context_consolidator.py",
       "lines": 493,
       "nonempty_lines": 444,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_scenario.py",
+      "path": "src\\aurum\\cli_scenario.py",
       "lines": 455,
       "nonempty_lines": 428,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\scenario_pack.py",
+      "path": "src\\aurum\\scenario_pack.py",
       "lines": 498,
       "nonempty_lines": 423,
       "suffix": ".py"
@@ -370,7 +370,7 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\borrow_data.py",
+      "path": "src\\aurum\\borrow_data.py",
       "lines": 469,
       "nonempty_lines": 418,
       "suffix": ".py"
@@ -382,7 +382,7 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\storage\\repositories.py",
+      "path": "src\\aurum\\storage\\repositories.py",
       "lines": 459,
       "nonempty_lines": 411,
       "suffix": ".py"
@@ -400,7 +400,7 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\ui\\colors.py",
+      "path": "src\\aurum\\ui\\colors.py",
       "lines": 392,
       "nonempty_lines": 344,
       "suffix": ".py"
@@ -412,13 +412,13 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\legacy_inventory.py",
+      "path": "src\\aurum\\legacy_inventory.py",
       "lines": 381,
       "nonempty_lines": 315,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_parsers.py",
+      "path": "src\\aurum\\cli_parsers.py",
       "lines": 347,
       "nonempty_lines": 314,
       "suffix": ".py"
@@ -436,7 +436,7 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\indices_prices.py",
+      "path": "src\\aurum\\indices_prices.py",
       "lines": 366,
       "nonempty_lines": 307,
       "suffix": ".py"
@@ -448,25 +448,25 @@
       "suffix": ".ps1"
     },
     {
-      "path": "src\\pymercator\\market_context_auto.py",
+      "path": "src\\aurum\\market_context_auto.py",
       "lines": 374,
       "nonempty_lines": 305,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_universe.py",
+      "path": "src\\aurum\\cli_universe.py",
       "lines": 350,
       "nonempty_lines": 295,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\sentiment_store.py",
+      "path": "src\\aurum\\sentiment_store.py",
       "lines": 349,
       "nonempty_lines": 285,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\data\\universe_builder.py",
+      "path": "src\\aurum\\data\\universe_builder.py",
       "lines": 374,
       "nonempty_lines": 284,
       "suffix": ".py"
@@ -478,13 +478,13 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\daily_auto.py",
+      "path": "src\\aurum\\daily_auto.py",
       "lines": 288,
       "nonempty_lines": 256,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\data\\universe_diagnostics.py",
+      "path": "src\\aurum\\data\\universe_diagnostics.py",
       "lines": 289,
       "nonempty_lines": 252,
       "suffix": ".py"
@@ -492,7 +492,7 @@
   ],
   "large_cli_files": [
     {
-      "path": "src\\pymercator\\cli_train.py",
+      "path": "src\\aurum\\cli_train.py",
       "lines": 2988,
       "nonempty_lines": 2704,
       "suffix": ".py"
@@ -504,7 +504,7 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli.py",
+      "path": "src\\aurum\\cli.py",
       "lines": 1492,
       "nonempty_lines": 1292,
       "suffix": ".py"
@@ -516,13 +516,13 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_run.py",
+      "path": "src\\aurum\\cli_run.py",
       "lines": 833,
       "nonempty_lines": 763,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_update.py",
+      "path": "src\\aurum\\cli_update.py",
       "lines": 788,
       "nonempty_lines": 728,
       "suffix": ".py"
@@ -534,7 +534,7 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_scenario.py",
+      "path": "src\\aurum\\cli_scenario.py",
       "lines": 455,
       "nonempty_lines": 428,
       "suffix": ".py"
@@ -546,19 +546,19 @@
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_universe.py",
+      "path": "src\\aurum\\cli_universe.py",
       "lines": 350,
       "nonempty_lines": 295,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_parsers.py",
+      "path": "src\\aurum\\cli_parsers.py",
       "lines": 347,
       "nonempty_lines": 314,
       "suffix": ".py"
     },
     {
-      "path": "src\\pymercator\\cli_context.py",
+      "path": "src\\aurum\\cli_context.py",
       "lines": 295,
       "nonempty_lines": 246,
       "suffix": ".py"
@@ -698,22 +698,22 @@
       "name": "_to_float",
       "count": 9,
       "files": [
-        "src\\pymercator\\borrow_data.py",
-        "src\\pymercator\\data\\universe_builder.py",
-        "src\\pymercator\\features_matrix.py",
-        "src\\pymercator\\features_v2.py",
-        "src\\pymercator\\legacy_prediction_engines.py",
-        "src\\pymercator\\observation.py",
-        "src\\pymercator\\position_actions.py",
-        "src\\pymercator\\prediction_lab.py",
-        "src\\pymercator\\ui\\colors.py"
+        "src\\aurum\\borrow_data.py",
+        "src\\aurum\\data\\universe_builder.py",
+        "src\\aurum\\features_matrix.py",
+        "src\\aurum\\features_v2.py",
+        "src\\aurum\\legacy_prediction_engines.py",
+        "src\\aurum\\observation.py",
+        "src\\aurum\\position_actions.py",
+        "src\\aurum\\prediction_lab.py",
+        "src\\aurum\\ui\\colors.py"
       ]
     },
     {
       "name": "fit",
       "count": 8,
       "files": [
-        "src\\pymercator\\legacy_prediction_engines.py",
+        "src\\aurum\\legacy_prediction_engines.py",
         "tests\\test_cli_prediction_lab.py",
         "tests\\test_prediction_calibration.py",
         "tests\\test_prediction_lab.py"
@@ -723,8 +723,8 @@
       "name": "__init__",
       "count": 7,
       "files": [
-        "src\\pymercator\\cli.py",
-        "src\\pymercator\\legacy_prediction_engines.py",
+        "src\\aurum\\cli.py",
+        "src\\aurum\\legacy_prediction_engines.py",
         "tests\\test_cli_prediction_lab.py",
         "tests\\test_prediction_calibration.py",
         "tests\\test_prediction_lab.py"
@@ -734,7 +734,7 @@
       "name": "predict",
       "count": 6,
       "files": [
-        "src\\pymercator\\legacy_prediction_engines.py",
+        "src\\aurum\\legacy_prediction_engines.py",
         "tests\\test_cli_prediction_lab.py",
         "tests\\test_prediction_lab.py"
       ]
@@ -743,10 +743,10 @@
       "name": "_price_file_for_ticker",
       "count": 4,
       "files": [
-        "src\\pymercator\\basket.py",
-        "src\\pymercator\\features_matrix.py",
-        "src\\pymercator\\features_v2.py",
-        "src\\pymercator\\prediction_lab.py"
+        "src\\aurum\\basket.py",
+        "src\\aurum\\features_matrix.py",
+        "src\\aurum\\features_v2.py",
+        "src\\aurum\\prediction_lab.py"
       ]
     },
     {
@@ -761,70 +761,70 @@
       "name": "_clamp",
       "count": 3,
       "files": [
-        "src\\pymercator\\engines\\ranking.py",
-        "src\\pymercator\\observation.py",
-        "src\\pymercator\\position_actions.py"
+        "src\\aurum\\engines\\ranking.py",
+        "src\\aurum\\observation.py",
+        "src\\aurum\\position_actions.py"
       ]
     },
     {
       "name": "_load_json",
       "count": 3,
       "files": [
-        "src\\pymercator\\cli_scenario.py",
-        "src\\pymercator\\human_confirmation.py",
-        "src\\pymercator\\short_policy.py"
+        "src\\aurum\\cli_scenario.py",
+        "src\\aurum\\human_confirmation.py",
+        "src\\aurum\\short_policy.py"
       ]
     },
     {
       "name": "_parse_date",
       "count": 3,
       "files": [
-        "src\\pymercator\\borrow_data.py",
-        "src\\pymercator\\data\\prices_csv.py",
-        "src\\pymercator\\update_freshness.py"
+        "src\\aurum\\borrow_data.py",
+        "src\\aurum\\data\\prices_csv.py",
+        "src\\aurum\\update_freshness.py"
       ]
     },
     {
       "name": "_quantile",
       "count": 3,
       "files": [
-        "src\\pymercator\\legacy_prediction_engines.py",
-        "src\\pymercator\\market_context_auto.py",
-        "src\\pymercator\\observation.py"
+        "src\\aurum\\legacy_prediction_engines.py",
+        "src\\aurum\\market_context_auto.py",
+        "src\\aurum\\observation.py"
       ]
     },
     {
       "name": "_read_csv",
       "count": 3,
       "files": [
-        "src\\pymercator\\basket.py",
-        "src\\pymercator\\features_v2.py",
-        "src\\pymercator\\prediction_lab.py"
+        "src\\aurum\\basket.py",
+        "src\\aurum\\features_v2.py",
+        "src\\aurum\\prediction_lab.py"
       ]
     },
     {
       "name": "_read_price_rows",
       "count": 3,
       "files": [
-        "src\\pymercator\\basket.py",
-        "src\\pymercator\\features_v2.py",
-        "src\\pymercator\\prediction_lab.py"
+        "src\\aurum\\basket.py",
+        "src\\aurum\\features_v2.py",
+        "src\\aurum\\prediction_lab.py"
       ]
     },
     {
       "name": "_write_csv",
       "count": 3,
       "files": [
-        "src\\pymercator\\basket.py",
-        "src\\pymercator\\cli_scenario.py",
-        "src\\pymercator\\features_v2.py"
+        "src\\aurum\\basket.py",
+        "src\\aurum\\cli_scenario.py",
+        "src\\aurum\\features_v2.py"
       ]
     },
     {
       "name": "_write_prices",
       "count": 3,
       "files": [
-        "src\\pymercator\\cli_scenario.py",
+        "src\\aurum\\cli_scenario.py",
         "tests\\test_cli_context_auto.py",
         "tests\\test_market_context_auto.py"
       ]
@@ -833,7 +833,7 @@
       "name": "predict_proba",
       "count": 3,
       "files": [
-        "src\\pymercator\\legacy_prediction_engines.py",
+        "src\\aurum\\legacy_prediction_engines.py",
         "tests\\test_prediction_calibration.py"
       ]
     },
@@ -841,79 +841,79 @@
       "name": "_as_bool",
       "count": 2,
       "files": [
-        "src\\pymercator\\features_catalog.py",
-        "src\\pymercator\\indices_catalog.py"
+        "src\\aurum\\features_catalog.py",
+        "src\\aurum\\indices_catalog.py"
       ]
     },
     {
       "name": "_base_ticker",
       "count": 2,
       "files": [
-        "src\\pymercator\\data\\universe_builder.py",
-        "src\\pymercator\\legacy_universe.py"
+        "src\\aurum\\data\\universe_builder.py",
+        "src\\aurum\\legacy_universe.py"
       ]
     },
     {
       "name": "_confusion_counts",
       "count": 2,
       "files": [
-        "src\\pymercator\\cli_train.py",
-        "src\\pymercator\\legacy_prediction_engines.py"
+        "src\\aurum\\cli_train.py",
+        "src\\aurum\\legacy_prediction_engines.py"
       ]
     },
     {
       "name": "_feature_value",
       "count": 2,
       "files": [
-        "src\\pymercator\\legacy_prediction_engines.py",
-        "src\\pymercator\\prediction_lab.py"
+        "src\\aurum\\legacy_prediction_engines.py",
+        "src\\aurum\\prediction_lab.py"
       ]
     },
     {
       "name": "_feature_vector",
       "count": 2,
       "files": [
-        "src\\pymercator\\legacy_prediction_engines.py",
-        "src\\pymercator\\prediction_lab.py"
+        "src\\aurum\\legacy_prediction_engines.py",
+        "src\\aurum\\prediction_lab.py"
       ]
     },
     {
       "name": "_float",
       "count": 2,
       "files": [
-        "src\\pymercator\\data\\universe_csv.py",
-        "src\\pymercator\\market_context_consolidator.py"
+        "src\\aurum\\data\\universe_csv.py",
+        "src\\aurum\\market_context_consolidator.py"
       ]
     },
     {
       "name": "_float_or_none",
       "count": 2,
       "files": [
-        "src\\pymercator\\data\\universe_csv.py",
-        "src\\pymercator\\storage\\repositories.py"
+        "src\\aurum\\data\\universe_csv.py",
+        "src\\aurum\\storage\\repositories.py"
       ]
     },
     {
       "name": "_horizon_sort_key",
       "count": 2,
       "files": [
-        "src\\pymercator\\cli_run.py",
-        "src\\pymercator\\cli_train.py"
+        "src\\aurum\\cli_run.py",
+        "src\\aurum\\cli_train.py"
       ]
     },
     {
       "name": "_load_yaml",
       "count": 2,
       "files": [
-        "src\\pymercator\\legacy_indices.py",
-        "src\\pymercator\\legacy_universe.py"
+        "src\\aurum\\legacy_indices.py",
+        "src\\aurum\\legacy_universe.py"
       ]
     },
     {
       "name": "_metrics",
       "count": 2,
       "files": [
-        "src\\pymercator\\prediction_lab.py",
+        "src\\aurum\\prediction_lab.py",
         "tests\\test_train_detail_report_module.py"
       ]
     },
@@ -921,8 +921,8 @@
       "name": "_normalize_ticker",
       "count": 2,
       "files": [
-        "src\\pymercator\\basket.py",
-        "src\\pymercator\\cli_train.py"
+        "src\\aurum\\basket.py",
+        "src\\aurum\\cli_train.py"
       ]
     },
     {
@@ -937,8 +937,8 @@
       "name": "_return_pct",
       "count": 2,
       "files": [
-        "src\\pymercator\\features_matrix.py",
-        "src\\pymercator\\prediction_lab.py"
+        "src\\aurum\\features_matrix.py",
+        "src\\aurum\\prediction_lab.py"
       ]
     },
     {
@@ -953,16 +953,16 @@
       "name": "_split_tags",
       "count": 2,
       "files": [
-        "src\\pymercator\\cli_context.py",
-        "src\\pymercator\\cli_prices.py"
+        "src\\aurum\\cli_context.py",
+        "src\\aurum\\cli_prices.py"
       ]
     },
     {
       "name": "_ticker",
       "count": 2,
       "files": [
-        "src\\pymercator\\borrow_data.py",
-        "src\\pymercator\\position_actions.py"
+        "src\\aurum\\borrow_data.py",
+        "src\\aurum\\position_actions.py"
       ]
     },
     {
@@ -977,8 +977,8 @@
       "name": "_write_json",
       "count": 2,
       "files": [
-        "src\\pymercator\\features_v2.py",
-        "src\\pymercator\\human_confirmation.py"
+        "src\\aurum\\features_v2.py",
+        "src\\aurum\\human_confirmation.py"
       ]
     },
     {
@@ -1001,48 +1001,48 @@
       "name": "load_market_context_thresholds",
       "count": 2,
       "files": [
-        "src\\pymercator\\market_context_auto.py",
-        "src\\pymercator\\market_context_consolidator.py"
+        "src\\aurum\\market_context_auto.py",
+        "src\\aurum\\market_context_consolidator.py"
       ]
     },
     {
       "name": "load_universe_csv",
       "count": 2,
       "files": [
-        "src\\pymercator\\data\\universe_csv.py",
-        "src\\pymercator\\loaders.py"
+        "src\\aurum\\data\\universe_csv.py",
+        "src\\aurum\\loaders.py"
       ]
     },
     {
       "name": "render_position_books",
       "count": 2,
       "files": [
-        "src\\pymercator\\position_actions.py",
-        "src\\pymercator\\short_render.py"
+        "src\\aurum\\position_actions.py",
+        "src\\aurum\\short_render.py"
       ]
     },
     {
       "name": "render_table",
       "count": 2,
       "files": [
-        "src\\pymercator\\terminal_render.py",
-        "src\\pymercator\\terminal_ui.py"
+        "src\\aurum\\terminal_render.py",
+        "src\\aurum\\terminal_ui.py"
       ]
     },
     {
       "name": "render_train_detail_report",
       "count": 2,
       "files": [
-        "src\\pymercator\\cli_train.py",
-        "src\\pymercator\\train_detail_report.py"
+        "src\\aurum\\cli_train.py",
+        "src\\aurum\\train_detail_report.py"
       ]
     },
     {
       "name": "write_json",
       "count": 2,
       "files": [
-        "src\\pymercator\\manifest.py",
-        "src\\pymercator\\scenario_pack.py"
+        "src\\aurum\\manifest.py",
+        "src\\aurum\\scenario_pack.py"
       ]
     }
   ],
@@ -1057,36 +1057,36 @@
   "possibly_unused_configs": [],
   "possibly_unimported_modules": [
     {
-      "module": "pymercator.data.__init__",
-      "path": "src\\pymercator\\data\\__init__.py"
+      "module": "aurum.data.__init__",
+      "path": "src\\aurum\\data\\__init__.py"
     },
     {
-      "module": "pymercator.engines.__init__",
-      "path": "src\\pymercator\\engines\\__init__.py"
+      "module": "aurum.engines.__init__",
+      "path": "src\\aurum\\engines\\__init__.py"
     },
     {
-      "module": "pymercator.model_governance",
-      "path": "src\\pymercator\\model_governance.py"
+      "module": "aurum.model_governance",
+      "path": "src\\aurum\\model_governance.py"
     },
     {
-      "module": "pymercator.presets",
-      "path": "src\\pymercator\\presets.py"
+      "module": "aurum.presets",
+      "path": "src\\aurum\\presets.py"
     },
     {
-      "module": "pymercator.reports.__init__",
-      "path": "src\\pymercator\\reports\\__init__.py"
+      "module": "aurum.reports.__init__",
+      "path": "src\\aurum\\reports\\__init__.py"
     },
     {
-      "module": "pymercator.storage.__init__",
-      "path": "src\\pymercator\\storage\\__init__.py"
+      "module": "aurum.storage.__init__",
+      "path": "src\\aurum\\storage\\__init__.py"
     },
     {
-      "module": "pymercator.storage.models",
-      "path": "src\\pymercator\\storage\\models.py"
+      "module": "aurum.storage.models",
+      "path": "src\\aurum\\storage\\models.py"
     },
     {
-      "module": "pymercator.ui.__init__",
-      "path": "src\\pymercator\\ui\\__init__.py"
+      "module": "aurum.ui.__init__",
+      "path": "src\\aurum\\ui\\__init__.py"
     }
   ],
   "safe_cut_suggestions": [

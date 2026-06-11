@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def _write_local_sources(tmp_path: Path) -> dict[str, Path]:

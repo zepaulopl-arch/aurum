@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from pymercator.data.prices_csv import read_price_rows_csv, write_price_rows_csv
-from pymercator.data.prices_yahoo import fetch_yahoo_prices_to_dir
+from aurum.data.prices_csv import read_price_rows_csv, write_price_rows_csv
+from aurum.data.prices_yahoo import fetch_yahoo_prices_to_dir
 
 
 def _write_cached_price(path: Path, rows: list[dict[str, object]]) -> None:
@@ -37,7 +37,7 @@ def test_fetch_yahoo_prices_to_dir_uses_cache_when_end_is_covered(
     def fail_fetch(**kwargs):
         raise AssertionError("cache hit should not download")
 
-    monkeypatch.setattr("pymercator.data.prices_yahoo.fetch_yahoo_prices", fail_fetch)
+    monkeypatch.setattr("aurum.data.prices_yahoo.fetch_yahoo_prices", fail_fetch)
 
     payload = fetch_yahoo_prices_to_dir(
         tickers=["PRIO3.SA"],
@@ -92,7 +92,7 @@ def test_fetch_yahoo_prices_to_dir_merges_incremental_cache(
             },
         ]
 
-    monkeypatch.setattr("pymercator.data.prices_yahoo.fetch_yahoo_prices", fake_fetch)
+    monkeypatch.setattr("aurum.data.prices_yahoo.fetch_yahoo_prices", fake_fetch)
 
     payload = fetch_yahoo_prices_to_dir(
         tickers=["PRIO3.SA"],
@@ -107,6 +107,42 @@ def test_fetch_yahoo_prices_to_dir_merges_incremental_cache(
     assert payload["failed"] == 0
     assert [row["date"] for row in rows] == ["2025-01-02", "2025-01-03"]
     assert rows[0]["close"] == "10.75"
+
+
+def test_fetch_yahoo_prices_to_dir_treats_public_end_as_inclusive(
+    tmp_path: Path,
+    monkeypatch,
+):
+    output = tmp_path / "PRIO3.SA.csv"
+
+    def fake_fetch(**kwargs):
+        assert kwargs["end"] == "2025-01-05"
+        return [
+            {
+                "date": "2025-01-04",
+                "open": 12,
+                "high": 13,
+                "low": 11,
+                "close": 12.5,
+                "volume": 1300,
+            }
+        ]
+
+    monkeypatch.setattr("aurum.data.prices_yahoo.fetch_yahoo_prices", fake_fetch)
+
+    payload = fetch_yahoo_prices_to_dir(
+        tickers=["PRIO3.SA"],
+        start="2025-01-01",
+        end="2025-01-04",
+        output_dir=tmp_path,
+        use_cache=False,
+    )
+
+    rows = read_price_rows_csv(output)
+
+    assert payload["end"] == "2025-01-04"
+    assert payload["provider_end"] == "2025-01-05"
+    assert [row["date"] for row in rows] == ["2025-01-04"]
 
 
 def test_fetch_yahoo_prices_to_dir_preserves_cache_on_provider_failure(
@@ -131,7 +167,7 @@ def test_fetch_yahoo_prices_to_dir_preserves_cache_on_provider_failure(
     def fail_fetch(**kwargs):
         raise RuntimeError("provider unavailable")
 
-    monkeypatch.setattr("pymercator.data.prices_yahoo.fetch_yahoo_prices", fail_fetch)
+    monkeypatch.setattr("aurum.data.prices_yahoo.fetch_yahoo_prices", fail_fetch)
 
     payload = fetch_yahoo_prices_to_dir(
         tickers=["PRIO3.SA"],
@@ -169,7 +205,7 @@ def test_fetch_yahoo_prices_to_dir_no_cache_does_not_hide_failure(
     def fail_fetch(**kwargs):
         raise RuntimeError("provider unavailable")
 
-    monkeypatch.setattr("pymercator.data.prices_yahoo.fetch_yahoo_prices", fail_fetch)
+    monkeypatch.setattr("aurum.data.prices_yahoo.fetch_yahoo_prices", fail_fetch)
 
     payload = fetch_yahoo_prices_to_dir(
         tickers=["PRIO3.SA"],

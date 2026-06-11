@@ -1,4 +1,4 @@
-from pymercator.pipeline import run_daily_pipeline
+from aurum.pipeline import run_daily_pipeline
 
 
 def test_daily_pipeline_generates_report():

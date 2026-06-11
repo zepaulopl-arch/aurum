@@ -1,7 +1,7 @@
-PYMERCATOR CODE AUDIT
+AURUM CODE AUDIT
 ================================================================================
 timestamp: 20260604_141850
-root: C:\Users\zepau\ML\projetos\pyMercator
+root: C:\Users\zepau\ML\projetos\Aurum
 
 BASELINE
 --------------------------------------------------------------------------------
@@ -103,31 +103,31 @@ data/prices/PETR3.SA.csv                                  6632      6632    Fals
 LARGE CLI FILES
 --------------------------------------------------------------------------------
 FILE                                 LINES  NONEMPTY
-src/pymercator/cli_train.py          2525   2268    
-src/pymercator/cli.py                1459   1253    
-src/pymercator/cli_run.py            976    877     
-src/pymercator/cli_update.py         701    641     
-src/pymercator/cli_scenario.py       455    428     
-src/pymercator/cli_universe.py       350    295     
-src/pymercator/cli_context.py        300    249     
-src/pymercator/cli_parsers.py        291    266     
-src/pymercator/cli_prices.py         182    147     
-src/pymercator/cli_packs.py          178    142     
-src/pymercator/cli_legacy.py         149    127     
-src/pymercator/cli_indices.py        144    123     
-src/pymercator/cli_predict.py        109    90      
-src/pymercator/cli_basket.py         88     78      
-src/pymercator/cli_borrow.py         70     62      
-src/pymercator/cli_daily_auto.py     58     49      
-src/pymercator/cli_positions.py      55     49      
-src/pymercator/cli_daily.py          53     42      
-src/pymercator/cli_observe.py        49     43      
-src/pymercator/cli_execution.py      47     37      
-src/pymercator/cli_real_pack.py      44     37      
-src/pymercator/cli_features.py       43     33      
-src/pymercator/cli_confirm.py        33     27      
-src/pymercator/cli_scenario_pack.py  28     21      
-src/pymercator/cli_sentiment.py      20     13      
+src/aurum/cli_train.py          2525   2268    
+src/aurum/cli.py                1459   1253    
+src/aurum/cli_run.py            976    877     
+src/aurum/cli_update.py         701    641     
+src/aurum/cli_scenario.py       455    428     
+src/aurum/cli_universe.py       350    295     
+src/aurum/cli_context.py        300    249     
+src/aurum/cli_parsers.py        291    266     
+src/aurum/cli_prices.py         182    147     
+src/aurum/cli_packs.py          178    142     
+src/aurum/cli_legacy.py         149    127     
+src/aurum/cli_indices.py        144    123     
+src/aurum/cli_predict.py        109    90      
+src/aurum/cli_basket.py         88     78      
+src/aurum/cli_borrow.py         70     62      
+src/aurum/cli_daily_auto.py     58     49      
+src/aurum/cli_positions.py      55     49      
+src/aurum/cli_daily.py          53     42      
+src/aurum/cli_observe.py        49     43      
+src/aurum/cli_execution.py      47     37      
+src/aurum/cli_real_pack.py      44     37      
+src/aurum/cli_features.py       43     33      
+src/aurum/cli_confirm.py        33     27      
+src/aurum/cli_scenario_pack.py  28     21      
+src/aurum/cli_sentiment.py      20     13      
 
 POWERSHELL SCRIPTS
 --------------------------------------------------------------------------------
@@ -155,74 +155,74 @@ scripts/legacy/run_weekly_training.ps1
 
 DUPLICATED FUNCTION NAMES
 --------------------------------------------------------------------------------
-_as_bool: src/pymercator/features_catalog.py:81, src/pymercator/indices_catalog.py:15
-_base_ticker: src/pymercator/legacy_universe.py:60, src/pymercator/data/universe_builder.py:43
-_clamp: src/pymercator/observation.py:85, src/pymercator/position_actions.py:51, src/pymercator/engines/ranking.py:21
-_confusion_counts: src/pymercator/cli_train.py:1920, src/pymercator/legacy_prediction_engines.py:256
-_dedupe: src/pymercator/cli_run.py:77, src/pymercator/legacy_indices.py:240
-_deep_merge: src/pymercator/market_context_consolidator.py:65, src/pymercator/observation.py:68, src/pymercator/position_actions_config.py:51, src/pymercator/prediction_config.py:107, src/pymercator/short_policy.py:58
-_feature_value: src/pymercator/legacy_prediction_engines.py:159, src/pymercator/prediction_lab.py:247
-_feature_vector: src/pymercator/legacy_prediction_engines.py:175, src/pymercator/prediction_lab.py:255
-_float: src/pymercator/market_context_consolidator.py:157, src/pymercator/data/universe_csv.py:64
-_horizon_sort_key: src/pymercator/cli_run.py:90, src/pymercator/cli_train.py:1544
-_load_json: src/pymercator/cli_scenario.py:238, src/pymercator/human_confirmation.py:21, src/pymercator/short_policy.py:68
-_load_yaml: src/pymercator/legacy_indices.py:47, src/pymercator/legacy_universe.py:36
-_normalize_ticker: src/pymercator/basket.py:75, src/pymercator/cli_train.py:105
-_pack_top_from_summary: src/pymercator/cli.py:547, src/pymercator/cli_packs.py:12
-_parse_csv_arg: src/pymercator/cli.py:144, src/pymercator/cli_daily_auto.py:53, src/pymercator/cli_predict.py:104
-_parse_date: src/pymercator/borrow_data.py:90, src/pymercator/update_freshness.py:8, src/pymercator/data/prices_csv.py:25
-_prediction_behavior: src/pymercator/cli_run.py:113, src/pymercator/position_actions.py:167
-_price_file_for_ticker: src/pymercator/basket.py:153, src/pymercator/features_matrix.py:34, src/pymercator/prediction_lab.py:48
-_quantile: src/pymercator/legacy_prediction_engines.py:399, src/pymercator/market_context_auto.py:141, src/pymercator/observation.py:89
-_read_csv: src/pymercator/basket.py:108, src/pymercator/prediction_lab.py:41
-_read_json: src/pymercator/cli.py:543, src/pymercator/cli_packs.py:8, src/pymercator/features_matrix.py:11, src/pymercator/market_context_consolidator.py:75
-_read_price_rows: src/pymercator/basket.py:130, src/pymercator/prediction_lab.py:66
-_return_pct: src/pymercator/features_matrix.py:71, src/pymercator/prediction_lab.py:91
-_split_tags: src/pymercator/cli_context.py:26, src/pymercator/cli_prices.py:18
-_ticker: src/pymercator/borrow_data.py:32, src/pymercator/position_actions.py:40
-_to_float: src/pymercator/borrow_data.py:46, src/pymercator/features_matrix.py:27, src/pymercator/legacy_prediction_engines.py:152, src/pymercator/observation.py:78, src/pymercator/position_actions.py:44, src/pymercator/prediction_lab.py:34, src/pymercator/data/universe_builder.py:74, src/pymercator/ui/colors.py:313
-_write_csv: src/pymercator/basket.py:518, src/pymercator/cli_scenario.py:74
-_write_json: src/pymercator/basket.py:527, src/pymercator/cli_context.py:90, src/pymercator/human_confirmation.py:25
-load_market_context_thresholds: src/pymercator/market_context_auto.py:23, src/pymercator/market_context_consolidator.py:95
-load_universe_csv: src/pymercator/loaders.py:9, src/pymercator/data/universe_csv.py:173
-render_train_detail_report: src/pymercator/cli_train.py:2185, src/pymercator/train_detail_report.py:6
-write_json: src/pymercator/manifest.py:22, src/pymercator/scenario_pack.py:44
+_as_bool: src/aurum/features_catalog.py:81, src/aurum/indices_catalog.py:15
+_base_ticker: src/aurum/legacy_universe.py:60, src/aurum/data/universe_builder.py:43
+_clamp: src/aurum/observation.py:85, src/aurum/position_actions.py:51, src/aurum/engines/ranking.py:21
+_confusion_counts: src/aurum/cli_train.py:1920, src/aurum/legacy_prediction_engines.py:256
+_dedupe: src/aurum/cli_run.py:77, src/aurum/legacy_indices.py:240
+_deep_merge: src/aurum/market_context_consolidator.py:65, src/aurum/observation.py:68, src/aurum/position_actions_config.py:51, src/aurum/prediction_config.py:107, src/aurum/short_policy.py:58
+_feature_value: src/aurum/legacy_prediction_engines.py:159, src/aurum/prediction_lab.py:247
+_feature_vector: src/aurum/legacy_prediction_engines.py:175, src/aurum/prediction_lab.py:255
+_float: src/aurum/market_context_consolidator.py:157, src/aurum/data/universe_csv.py:64
+_horizon_sort_key: src/aurum/cli_run.py:90, src/aurum/cli_train.py:1544
+_load_json: src/aurum/cli_scenario.py:238, src/aurum/human_confirmation.py:21, src/aurum/short_policy.py:68
+_load_yaml: src/aurum/legacy_indices.py:47, src/aurum/legacy_universe.py:36
+_normalize_ticker: src/aurum/basket.py:75, src/aurum/cli_train.py:105
+_pack_top_from_summary: src/aurum/cli.py:547, src/aurum/cli_packs.py:12
+_parse_csv_arg: src/aurum/cli.py:144, src/aurum/cli_daily_auto.py:53, src/aurum/cli_predict.py:104
+_parse_date: src/aurum/borrow_data.py:90, src/aurum/update_freshness.py:8, src/aurum/data/prices_csv.py:25
+_prediction_behavior: src/aurum/cli_run.py:113, src/aurum/position_actions.py:167
+_price_file_for_ticker: src/aurum/basket.py:153, src/aurum/features_matrix.py:34, src/aurum/prediction_lab.py:48
+_quantile: src/aurum/legacy_prediction_engines.py:399, src/aurum/market_context_auto.py:141, src/aurum/observation.py:89
+_read_csv: src/aurum/basket.py:108, src/aurum/prediction_lab.py:41
+_read_json: src/aurum/cli.py:543, src/aurum/cli_packs.py:8, src/aurum/features_matrix.py:11, src/aurum/market_context_consolidator.py:75
+_read_price_rows: src/aurum/basket.py:130, src/aurum/prediction_lab.py:66
+_return_pct: src/aurum/features_matrix.py:71, src/aurum/prediction_lab.py:91
+_split_tags: src/aurum/cli_context.py:26, src/aurum/cli_prices.py:18
+_ticker: src/aurum/borrow_data.py:32, src/aurum/position_actions.py:40
+_to_float: src/aurum/borrow_data.py:46, src/aurum/features_matrix.py:27, src/aurum/legacy_prediction_engines.py:152, src/aurum/observation.py:78, src/aurum/position_actions.py:44, src/aurum/prediction_lab.py:34, src/aurum/data/universe_builder.py:74, src/aurum/ui/colors.py:313
+_write_csv: src/aurum/basket.py:518, src/aurum/cli_scenario.py:74
+_write_json: src/aurum/basket.py:527, src/aurum/cli_context.py:90, src/aurum/human_confirmation.py:25
+load_market_context_thresholds: src/aurum/market_context_auto.py:23, src/aurum/market_context_consolidator.py:95
+load_universe_csv: src/aurum/loaders.py:9, src/aurum/data/universe_csv.py:173
+render_train_detail_report: src/aurum/cli_train.py:2185, src/aurum/train_detail_report.py:6
+write_json: src/aurum/manifest.py:22, src/aurum/scenario_pack.py:44
 
 RENDERING DUPLICATION MARKERS
 --------------------------------------------------------------------------------
 Write-Host "[-=]{10,}: scripts/legacy/run_absolute_tests.ps1 (10), scripts/ops_common.ps1 (6), scripts/legacy/run_daily_profiles.ps1 (4), scripts/legacy/run_daily_operation.ps1 (2), scripts/legacy/run_initial_full_check.ps1 (2), scripts/legacy/run_operational_tests.ps1 (2), scripts/legacy/run_weekly_training.ps1 (2), scripts/run_daily_signal.ps1 (2), scripts/run_daily_train.ps1 (2), scripts/run_weekend_full.ps1 (2)
-"[-]" \* 80: src/pymercator/borrow_data.py (3), src/pymercator/cli_borrow.py (2), src/pymercator/cli_observe.py (2), src/pymercator/cli_context.py (1), src/pymercator/market_context_sources.py (1), tests/test_basket_daily.py (1)
-render_\w+\(: src/pymercator/cli_universe.py (14), src/pymercator/cli_prices.py (7), src/pymercator/scenario_pack.py (7), src/pymercator/cli_context.py (5), src/pymercator/cli_run.py (5), src/pymercator/basket.py (4), src/pymercator/cli_train.py (4), src/pymercator/position_actions.py (4), src/pymercator/real_run.py (4), src/pymercator/cli_predict.py (3), src/pymercator/cli_update.py (3), src/pymercator/prediction_lab.py (3)
-colorize\(: src/pymercator/cli_train.py (12), src/pymercator/cli_scenario.py (3), src/pymercator/prediction_lab.py (3), src/pymercator/ui/colors.py (3), src/pymercator/cli_run.py (2), src/pymercator/cli_universe.py (2), tests/test_terminal_output.py (2), src/pymercator/ui/formatters.py (1), src/pymercator/ui/tables.py (1)
-format_kv_section\(: src/pymercator/cli_run.py (8), src/pymercator/cli_scenario.py (6), src/pymercator/cli_universe.py (5), src/pymercator/cli.py (4), src/pymercator/cli_basket.py (2), src/pymercator/basket.py (1), src/pymercator/ui/formatters.py (1)
-muted_line\(\): src/pymercator/cli_train.py (9), src/pymercator/position_actions.py (8), src/pymercator/cli_run.py (3), src/pymercator/cli_universe.py (3), src/pymercator/observation.py (3), src/pymercator/cli.py (1), src/pymercator/cli_scenario.py (1)
-f"\{\'#[^\n]+: src/pymercator/position_actions.py (5), src/pymercator/observation.py (2), src/pymercator/cli_run.py (1), src/pymercator/cli_scenario.py (1)
+"[-]" \* 80: src/aurum/borrow_data.py (3), src/aurum/cli_borrow.py (2), src/aurum/cli_observe.py (2), src/aurum/cli_context.py (1), src/aurum/market_context_sources.py (1), tests/test_basket_daily.py (1)
+render_\w+\(: src/aurum/cli_universe.py (14), src/aurum/cli_prices.py (7), src/aurum/scenario_pack.py (7), src/aurum/cli_context.py (5), src/aurum/cli_run.py (5), src/aurum/basket.py (4), src/aurum/cli_train.py (4), src/aurum/position_actions.py (4), src/aurum/real_run.py (4), src/aurum/cli_predict.py (3), src/aurum/cli_update.py (3), src/aurum/prediction_lab.py (3)
+colorize\(: src/aurum/cli_train.py (12), src/aurum/cli_scenario.py (3), src/aurum/prediction_lab.py (3), src/aurum/ui/colors.py (3), src/aurum/cli_run.py (2), src/aurum/cli_universe.py (2), tests/test_terminal_output.py (2), src/aurum/ui/formatters.py (1), src/aurum/ui/tables.py (1)
+format_kv_section\(: src/aurum/cli_run.py (8), src/aurum/cli_scenario.py (6), src/aurum/cli_universe.py (5), src/aurum/cli.py (4), src/aurum/cli_basket.py (2), src/aurum/basket.py (1), src/aurum/ui/formatters.py (1)
+muted_line\(\): src/aurum/cli_train.py (9), src/aurum/position_actions.py (8), src/aurum/cli_run.py (3), src/aurum/cli_universe.py (3), src/aurum/observation.py (3), src/aurum/cli.py (1), src/aurum/cli_scenario.py (1)
+f"\{\'#[^\n]+: src/aurum/position_actions.py (5), src/aurum/observation.py (2), src/aurum/cli_run.py (1), src/aurum/cli_scenario.py (1)
 
 CONFIGS POSSIBLY NOT USED
 --------------------------------------------------------------------------------
-config/borrow_policy.json            REFERENCED refs=1   sample=src/pymercator/borrow_data.py
-config/execution_policy.json         REFERENCED refs=5   sample=tests/test_cli_execution_policy.py, tests/test_execution_policy.py, src/pymercator/cli.py, src/pymercator/execution_policy.py, src/pymercator/human_confirmation.py
-config/features_catalog.json         REFERENCED refs=13  sample=config/pymercator_presets.json, tests/test_cli_features_catalog.py, tests/test_features_catalog.py, storage/scenario_runs/20260528_225028/00_manifest.json, storage/scenario_runs/20260528_230342/00_manifest.json
-config/indices_catalog.json          REFERENCED refs=10  sample=config/pymercator_presets.json, tests/test_cli_daily_auto.py, tests/test_cli_indices.py, tests/test_daily_auto.py, tests/test_indices_catalog.py
+config/borrow_policy.json            REFERENCED refs=1   sample=src/aurum/borrow_data.py
+config/execution_policy.json         REFERENCED refs=5   sample=tests/test_cli_execution_policy.py, tests/test_execution_policy.py, src/aurum/cli.py, src/aurum/execution_policy.py, src/aurum/human_confirmation.py
+config/features_catalog.json         REFERENCED refs=13  sample=config/aurum_presets.json, tests/test_cli_features_catalog.py, tests/test_features_catalog.py, storage/scenario_runs/20260528_225028/00_manifest.json, storage/scenario_runs/20260528_230342/00_manifest.json
+config/indices_catalog.json          REFERENCED refs=10  sample=config/aurum_presets.json, tests/test_cli_daily_auto.py, tests/test_cli_indices.py, tests/test_daily_auto.py, tests/test_indices_catalog.py
 config/market_context.json           REFERENCED refs=13  sample=tests/test_cli_context.py, tests/test_cli_run_simplified.py, tests/test_cli_update.py, tests/test_market_context.py, tests/test_market_context_consolidator.py
-config/market_context_auto.json      REFERENCED refs=27  sample=config/pymercator_presets.json, tests/test_cli_context_auto.py, tests/test_cli_daily_auto.py, tests/test_context_snapshot_manifest.py, tests/test_daily_auto.py
-config/market_context_thresholds.json REFERENCED refs=6   sample=src/pymercator/cli.py, src/pymercator/cli_context.py, src/pymercator/cli_parsers.py, src/pymercator/cli_update.py, src/pymercator/market_context_auto.py
-config/observation.json              REFERENCED refs=4   sample=tests/test_cli_observe.py, src/pymercator/cli_parsers.py, src/pymercator/cli_run.py, src/pymercator/observation.py
+config/market_context_auto.json      REFERENCED refs=27  sample=config/aurum_presets.json, tests/test_cli_context_auto.py, tests/test_cli_daily_auto.py, tests/test_context_snapshot_manifest.py, tests/test_daily_auto.py
+config/market_context_thresholds.json REFERENCED refs=6   sample=src/aurum/cli.py, src/aurum/cli_context.py, src/aurum/cli_parsers.py, src/aurum/cli_update.py, src/aurum/market_context_auto.py
+config/observation.json              REFERENCED refs=4   sample=tests/test_cli_observe.py, src/aurum/cli_parsers.py, src/aurum/cli_run.py, src/aurum/observation.py
 config/policy.json                   REFERENCED refs=66  sample=scripts/run_daily_train.ps1, scripts/run_weekend_full.ps1, tests/test_cli_execution_policy.py, tests/test_execution_policy.py, tests/test_policy_calibration.py
-config/position_actions.json         REFERENCED refs=26  sample=tests/test_position_actions_config.py, tests/test_position_actions_direction.py, storage/reports/latest_daily_report.json, storage/runs/latest/report.json, src/pymercator/position_actions.py
-config/prediction.json               REFERENCED refs=7   sample=README.md, tests/test_cli_diag.py, tests/test_prediction_config.py, src/pymercator/cli.py, src/pymercator/cli_train.py
-config/pymercator_presets.json       REFERENCED refs=1   sample=src/pymercator/presets.py
+config/position_actions.json         REFERENCED refs=26  sample=tests/test_position_actions_config.py, tests/test_position_actions_direction.py, storage/reports/latest_daily_report.json, storage/runs/latest/report.json, src/aurum/position_actions.py
+config/prediction.json               REFERENCED refs=7   sample=README.md, tests/test_cli_diag.py, tests/test_prediction_config.py, src/aurum/cli.py, src/aurum/cli_train.py
+config/aurum_presets.json       REFERENCED refs=1   sample=src/aurum/presets.py
 config/runtime.json                  REFERENCED refs=2   sample=scripts/ops_common.ps1, tests/test_runtime_manifest.py
-config/short_policy.json             REFERENCED refs=1   sample=src/pymercator/short_policy.py
-config/short_thresholds.json         REFERENCED refs=1   sample=src/pymercator/short_policy.py
-config/ui.json                       REFERENCED refs=3   sample=tests/test_terminal_output.py, src/pymercator/cli.py, src/pymercator/ui/colors.py
+config/short_policy.json             REFERENCED refs=1   sample=src/aurum/short_policy.py
+config/short_thresholds.json         REFERENCED refs=1   sample=src/aurum/short_policy.py
+config/ui.json                       REFERENCED refs=3   sample=tests/test_terminal_output.py, src/aurum/cli.py, src/aurum/ui/colors.py
 
 MODULES IMPORTED BY NOBODY (HEURISTIC)
 --------------------------------------------------------------------------------
-src/pymercator/__main__.py                       pymercator.__main__ | heuristic; may be CLI-discovered or test-only
-src/pymercator/model_governance.py               pymercator.model_governance | heuristic; may be CLI-discovered or test-only
-src/pymercator/presets.py                        pymercator.presets | heuristic; may be CLI-discovered or test-only
-src/pymercator/train_detail_report.py            pymercator.train_detail_report | heuristic; may be CLI-discovered or test-only
+src/aurum/__main__.py                       aurum.__main__ | heuristic; may be CLI-discovered or test-only
+src/aurum/model_governance.py               aurum.model_governance | heuristic; may be CLI-discovered or test-only
+src/aurum/presets.py                        aurum.presets | heuristic; may be CLI-discovered or test-only
+src/aurum/train_detail_report.py            aurum.train_detail_report | heuristic; may be CLI-discovered or test-only
 
 SAFE CUT SUGGESTIONS
 --------------------------------------------------------------------------------

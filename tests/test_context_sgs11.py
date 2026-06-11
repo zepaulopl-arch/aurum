@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pymercator.context_engine.bcb import annualize_daily_rate
+from aurum.context_engine.bcb import annualize_daily_rate
 
 
 def test_annualize_daily_selic_rate() -> None:

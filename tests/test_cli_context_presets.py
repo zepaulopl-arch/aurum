@@ -1,4 +1,4 @@
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_context_presets_command_lists_presets(capsys):
@@ -7,6 +7,6 @@ def test_context_presets_command_lists_presets(capsys):
     assert exit_code == 0
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR MARKET CONTEXT PRESETS" in captured.out
+    assert "AURUM MARKET CONTEXT PRESETS" in captured.out
     assert "normal" in captured.out
     assert "oil_war" in captured.out

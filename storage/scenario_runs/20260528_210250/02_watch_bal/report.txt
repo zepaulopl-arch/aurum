@@ -1,4 +1,4 @@
-PYMERCATOR DAILY OPERATIONAL REPORT
+AURUM DAILY OPERATIONAL REPORT
 ----------------------------------------------------------------------------------------------------------------------
 UNIVERSE             IBOV
 PROFILE              BAL

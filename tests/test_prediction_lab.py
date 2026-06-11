@@ -1,16 +1,16 @@
-﻿import csv
+import csv
 import os
 from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 
-from pymercator.legacy_prediction_engines import (
+from aurum.legacy_prediction_engines import (
     apply_consensus_guard,
     parse_legacy_engines,
     predict_legacy_engine,
 )
-from pymercator.prediction_lab import (
+from aurum.prediction_lab import (
     build_prediction_dataset,
     run_prediction_lab,
     walk_forward_evaluate,
@@ -158,7 +158,7 @@ def test_ridge_ensemble_trains_three_base_engines(
     tmp_path: Path,
     monkeypatch,
 ):
-    import pymercator.legacy_prediction_engines as engines_mod
+    import aurum.legacy_prediction_engines as engines_mod
 
     class DummyModel:
         def __init__(self, value: float):
@@ -221,7 +221,7 @@ def test_ridge_ensemble_degrades_when_one_base_engine_fails(
     tmp_path: Path,
     monkeypatch,
 ):
-    import pymercator.legacy_prediction_engines as engines_mod
+    import aurum.legacy_prediction_engines as engines_mod
 
     class DummyModel:
         def __init__(self, value: float):
@@ -268,7 +268,7 @@ def test_ridge_ensemble_degrades_when_one_base_engine_fails(
 
 
 def test_autotune_uses_recent_sample_for_large_training_sets(monkeypatch):
-    import pymercator.legacy_prediction_engines as engines_mod
+    import aurum.legacy_prediction_engines as engines_mod
 
     rows = [
         {
@@ -314,7 +314,7 @@ def test_ridge_ensemble_fails_with_only_one_base_engine(
     tmp_path: Path,
     monkeypatch,
 ):
-    import pymercator.legacy_prediction_engines as engines_mod
+    import aurum.legacy_prediction_engines as engines_mod
 
     class DummyModel:
         def fit(self, _x_rows, _y_values):
@@ -374,8 +374,8 @@ def test_predict_legacy_engine_clips_excessive_returns():
 
 
 @pytest.mark.skipif(
-    os.environ.get("PYMERCATOR_RUN_ENGINE_TESTS") != "1",
-    reason="heavy legacy engine test; set PYMERCATOR_RUN_ENGINE_TESTS=1 to run",
+    os.environ.get("AURUM_RUN_ENGINE_TESTS") != "1",
+    reason="heavy legacy engine test; set AURUM_RUN_ENGINE_TESTS=1 to run",
 )
 def test_walk_forward_evaluate_runs_all_engines(tmp_path: Path):
     matrix = tmp_path / "matrix.csv"
@@ -407,7 +407,7 @@ def test_walk_forward_evaluate_runs_all_engines(tmp_path: Path):
 
 
 def test_available_engines_exposes_legacy_engines():
-    from pymercator.prediction_lab import available_engines
+    from aurum.prediction_lab import available_engines
 
     engines = available_engines()
 
@@ -424,7 +424,7 @@ def test_available_engines_exposes_legacy_engines():
 
 
 def test_modern_sklearn_engines_use_scaling_and_calibration():
-    import pymercator.legacy_prediction_engines as engines_mod
+    import aurum.legacy_prediction_engines as engines_mod
 
     if not engines_mod.SKLEARN_AVAILABLE:
         pytest.skip("sklearn not available")

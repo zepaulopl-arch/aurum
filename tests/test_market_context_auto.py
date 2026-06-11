@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.market_context_auto import (
+from aurum.market_context_auto import (
     build_auto_market_context,
     calibrate_market_context_thresholds,
     write_auto_market_context,

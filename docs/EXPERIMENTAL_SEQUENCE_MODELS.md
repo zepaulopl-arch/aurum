@@ -1,6 +1,6 @@
 # Experimental Sequence Models
 
-LSTM, GRU, TCN and TFT are experimental research models in pyMercator.
+LSTM, GRU, TCN and TFT are experimental research models in Aurum.
 
 They do not replace the current operational engines:
 

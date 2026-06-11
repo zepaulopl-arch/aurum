@@ -1,4 +1,4 @@
-# pyMercator Operating Guide
+# Aurum Operating Guide
 
 ## Rotina simples
 
@@ -29,11 +29,11 @@ Fim de semana:
 ## Diagnostico
 
 ```powershell
-python -m pymercator diag
-python -m pymercator context sources
-python -m pymercator mtm --run-dir runtime\daily_signal_<timestamp> --capital 10000
-python -m pymercator db status
-python -m pymercator db last-run
+python -m aurum diag
+python -m aurum context sources
+python -m aurum mtm --run-dir runtime\daily_signal_<timestamp> --capital 10000
+python -m aurum db status
+python -m aurum db last-run
 python -m pytest tests -q
 ```
 

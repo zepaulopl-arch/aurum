@@ -1,5 +1,5 @@
-﻿from pymercator.explain import decision_codes, decision_label
-from pymercator.pipeline import run_daily_pipeline
+from aurum.explain import decision_codes, decision_label
+from aurum.pipeline import run_daily_pipeline
 
 
 def test_watch_without_specific_risk_is_caution_not_ok():

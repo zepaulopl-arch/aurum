@@ -1,4 +1,4 @@
-﻿from pymercator.policy import load_policy
+from aurum.policy import load_policy
 
 
 def test_policy_uses_annualized_volatility_calibration():

@@ -1,4 +1,4 @@
-from pymercator import presets
+from aurum import presets
 
 
 def test_load_defaults_when_missing(tmp_path):

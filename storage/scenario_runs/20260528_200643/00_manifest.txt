@@ -1,4 +1,4 @@
-PYMERCATOR SCENARIO PACK MANIFEST
+AURUM SCENARIO PACK MANIFEST
 ----------------------------------------------------------------------------------------------------------------------
 CREATED AT         2026-05-28T20:06:43
 PACK DIR           storage\scenario_runs\20260528_200643

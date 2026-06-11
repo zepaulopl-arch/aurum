@@ -1,16 +1,16 @@
-﻿PYMERCATOR CLI HELP
+AURUM CLI HELP
 Generated at: 2026-06-05T11:00:35.9592842Z
 Python: C:\Users\zepau\anaconda3\python.exe
 
 ================================================================================
-python -m pymercator --help
+python -m aurum --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator [-h] [--color {auto,always,never}] [--no-color]
+usage: aurum [-h] [--color {auto,always,never}] [--no-color]
                   [--palette PALETTE] [--ui-config UI_CONFIG]
                   {update,train,run,db,observe,pos,borrow,lab,cfg,board,open,diag,basket,daily,daily-real,real-pack,scenario-pack,scenario,daily-auto,context,execution,indices,sentiment,predict,features,confirm,legacy,packs,prices,universe} ...
 
-pyMercator command line interface
+Aurum command line interface
 
 positional arguments:
   {update,train,run,db,observe,pos,borrow,lab,cfg,board,open,diag,basket,daily,daily-real,real-pack,scenario-pack,scenario,daily-auto,context,execution,indices,sentiment,predict,features,confirm,legacy,packs,prices,universe}
@@ -58,10 +58,10 @@ options:
                         Terminal UI config file. Default: config/ui.json
 
 ================================================================================
-python -m pymercator update --help
+python -m aurum update --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator update [-h] [--list LIST] [--start START] [--end END]
+usage: aurum update [-h] [--list LIST] [--start START] [--end END]
                          [--no-cache] [--tickers-file TICKERS_FILE]
                          [--prices-dir PRICES_DIR]
                          [--indices-catalog INDICES_CATALOG]
@@ -94,10 +94,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator diag --help
+python -m aurum diag --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator diag [-h] [--profile PROFILE] [--verbose]
+usage: aurum diag [-h] [--profile PROFILE] [--verbose]
 
 options:
   -h, --help         show this help message and exit
@@ -105,10 +105,10 @@ options:
   --verbose
 
 ================================================================================
-python -m pymercator train --help
+python -m aurum train --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator train [-h] [--details] [--prob-dist] [--full]
+usage: aurum train [-h] [--details] [--prob-dist] [--full]
                         [--output OUTPUT] [--config CONFIG]
                         [--horizons HORIZONS] [--matrix MATRIX]
                         [--universe UNIVERSE] [--prices-dir PRICES_DIR]
@@ -192,10 +192,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator train benchmark-engines --help
+python -m aurum train benchmark-engines --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator train [-h] [--details] [--prob-dist] [--full]
+usage: aurum train [-h] [--details] [--prob-dist] [--full]
                         [--output OUTPUT] [--config CONFIG]
                         [--horizons HORIZONS] [--matrix MATRIX]
                         [--universe UNIVERSE] [--prices-dir PRICES_DIR]
@@ -279,10 +279,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator run --help
+python -m aurum run --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator run [-h] [--profile PROFILE] [--list LIST] [--policy POLICY]
+usage: aurum run [-h] [--profile PROFILE] [--list LIST] [--policy POLICY]
                       [--universe UNIVERSE] [--context CONTEXT]
                       [--matrix MATRIX] [--evaluation EVALUATION]
                       [--observation-config OBSERVATION_CONFIG]
@@ -332,10 +332,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator db --help
+python -m aurum db --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator db [-h] [--db DB] [--json]
+usage: aurum db [-h] [--db DB] [--json]
                      {status,last-run,signal,rank-last,sim-last} ...
 
 Query local SQLite operational history.
@@ -355,10 +355,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator db status --help
+python -m aurum db status --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator db status [-h] [--db DB] [--json]
+usage: aurum db status [-h] [--db DB] [--json]
 
 options:
   -h, --help  show this help message and exit
@@ -366,10 +366,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator db last-run --help
+python -m aurum db last-run --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator db last-run [-h] [--db DB] [--json]
+usage: aurum db last-run [-h] [--db DB] [--json]
 
 options:
   -h, --help  show this help message and exit
@@ -377,10 +377,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator db signal --help
+python -m aurum db signal --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator db signal [-h] [--limit LIMIT] [--db DB] [--json] ticker
+usage: aurum db signal [-h] [--limit LIMIT] [--db DB] [--json] ticker
 
 positional arguments:
   ticker
@@ -392,10 +392,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator db rank-last --help
+python -m aurum db rank-last --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator db rank-last [-h] [--db DB] [--json]
+usage: aurum db rank-last [-h] [--db DB] [--json]
 
 options:
   -h, --help  show this help message and exit
@@ -403,10 +403,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator db sim-last --help
+python -m aurum db sim-last --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator db sim-last [-h] [--db DB] [--json]
+usage: aurum db sim-last [-h] [--db DB] [--json]
 
 options:
   -h, --help  show this help message and exit
@@ -414,10 +414,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator observe --help
+python -m aurum observe --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator observe [-h] [--list LIST] [--universe UNIVERSE]
+usage: aurum observe [-h] [--list LIST] [--universe UNIVERSE]
                           [--config CONFIG] [--limit LIMIT] [--cluster]
                           [--json]
                           {calibrate} ...
@@ -439,10 +439,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator basket --help
+python -m aurum basket --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator basket [-h] [--profile PROFILE] [--json] {daily,show} ...
+usage: aurum basket [-h] [--profile PROFILE] [--json] {daily,show} ...
 
 positional arguments:
   {daily,show}
@@ -455,10 +455,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator universe --help
+python -m aurum universe --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator universe [-h] [--json]
+usage: aurum universe [-h] [--json]
                            {check,summary,template,build,diagnose} ...
 
 positional arguments:
@@ -474,10 +474,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator scenario --help
+python -m aurum scenario --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator scenario [-h] {run} ...
+usage: aurum scenario [-h] {run} ...
 
 positional arguments:
   {run}
@@ -487,10 +487,10 @@ options:
   -h, --help  show this help message and exit
 
 ================================================================================
-python -m pymercator context --help
+python -m aurum context --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator context [-h] [--json] [--context CONTEXT]
+usage: aurum context [-h] [--json] [--context CONTEXT]
                           [--context-preset CONTEXT_PRESET]
                           [--headline-tags HEADLINE_TAGS]
                           [--market-trend MARKET_TREND]
@@ -519,10 +519,10 @@ options:
   --market-volatility MARKET_VOLATILITY
 
 ================================================================================
-python -m pymercator borrow --help
+python -m aurum borrow --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator borrow [-h] [--json] {show,import,diagnose} ...
+usage: aurum borrow [-h] [--json] {show,import,diagnose} ...
 
 positional arguments:
   {show,import,diagnose}
@@ -535,10 +535,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator pos --help
+python -m aurum pos --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator pos [-h] [--json] {show,import} ...
+usage: aurum pos [-h] [--json] {show,import} ...
 
 positional arguments:
   {show,import}
@@ -550,10 +550,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator prices --help
+python -m aurum prices --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator prices [-h] [--json]
+usage: aurum prices [-h] [--json]
                          {fetch,fetch-list,tickers-template,tickers-check,check} ...
 
 positional arguments:
@@ -569,10 +569,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator lab --help
+python -m aurum lab --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator lab [-h] [--fast] [--engines ENGINES] [--autotune]
+usage: aurum lab [-h] [--fast] [--engines ENGINES] [--autotune]
                       [--jobs JOBS] [--horizon HORIZON] [--profile PROFILE]
                       [--json]
 
@@ -591,10 +591,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator cfg --help
+python -m aurum cfg --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator cfg [-h] [--profile PROFILE] [--json]
+usage: aurum cfg [-h] [--profile PROFILE] [--json]
 
 options:
   -h, --help         show this help message and exit
@@ -602,10 +602,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator board --help
+python -m aurum board --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator board [-h] [--profile PROFILE] [--json]
+usage: aurum board [-h] [--profile PROFILE] [--json]
 
 options:
   -h, --help         show this help message and exit
@@ -613,10 +613,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator open --help
+python -m aurum open --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator open [-h] [--raw] [--profile PROFILE] [artifact]
+usage: aurum open [-h] [--raw] [--profile PROFILE] [artifact]
 
 positional arguments:
   artifact
@@ -627,10 +627,10 @@ options:
   --profile PROFILE
 
 ================================================================================
-python -m pymercator daily --help
+python -m aurum daily --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator daily [-h] --universe UNIVERSE
+usage: aurum daily [-h] --universe UNIVERSE
                         [--universe-name UNIVERSE_NAME] [--profile PROFILE]
                         [--headline-risk HEADLINE_RISK] [--policy POLICY]
                         [--limit LIMIT] [--output OUTPUT]
@@ -658,10 +658,10 @@ options:
   --market-volatility MARKET_VOLATILITY
 
 ================================================================================
-python -m pymercator daily-real --help
+python -m aurum daily-real --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator daily-real [-h] [--execution-policy EXECUTION_POLICY]
+usage: aurum daily-real [-h] [--execution-policy EXECUTION_POLICY]
                              --tickers-file TICKERS_FILE
                              [--features-file FEATURES_FILE] [--start START]
                              [--end END] --prices-dir PRICES_DIR
@@ -697,10 +697,10 @@ options:
   --market-volatility MARKET_VOLATILITY
 
 ================================================================================
-python -m pymercator real-pack --help
+python -m aurum real-pack --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator real-pack [-h] [--execution-policy EXECUTION_POLICY]
+usage: aurum real-pack [-h] [--execution-policy EXECUTION_POLICY]
                             --tickers-file TICKERS_FILE
                             [--features-file FEATURES_FILE] [--start START]
                             [--end END] --prices-dir PRICES_DIR
@@ -736,10 +736,10 @@ options:
   --market-volatility MARKET_VOLATILITY
 
 ================================================================================
-python -m pymercator scenario-pack --help
+python -m aurum scenario-pack --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator scenario-pack [-h] --universe UNIVERSE
+usage: aurum scenario-pack [-h] --universe UNIVERSE
                                 [--universe-name UNIVERSE_NAME]
                                 [--policy POLICY] [--run-dir RUN_DIR]
                                 [--limit LIMIT] [--context CONTEXT]
@@ -762,10 +762,10 @@ options:
   --market-volatility MARKET_VOLATILITY
 
 ================================================================================
-python -m pymercator daily-auto --help
+python -m aurum daily-auto --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator daily-auto [-h] [--execution-policy EXECUTION_POLICY]
+usage: aurum daily-auto [-h] [--execution-policy EXECUTION_POLICY]
                              [--indices-catalog INDICES_CATALOG]
                              [--indices-start INDICES_START]
                              [--indices-dir INDICES_DIR]
@@ -829,10 +829,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator execution --help
+python -m aurum execution --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator execution [-h] [--json] {template,check} ...
+usage: aurum execution [-h] [--json] {template,check} ...
 
 positional arguments:
   {template,check}
@@ -844,10 +844,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator indices --help
+python -m aurum indices --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator indices [-h] [--json] {fetch,prices-check,catalog,check} ...
+usage: aurum indices [-h] [--json] {fetch,prices-check,catalog,check} ...
 
 positional arguments:
   {fetch,prices-check,catalog,check}
@@ -861,10 +861,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator sentiment --help
+python -m aurum sentiment --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator sentiment [-h] [--json] {check} ...
+usage: aurum sentiment [-h] [--json] {check} ...
 
 positional arguments:
   {check}
@@ -875,10 +875,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator predict --help
+python -m aurum predict --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator predict [-h] [--json] {dataset,evaluate,lab} ...
+usage: aurum predict [-h] [--json] {dataset,evaluate,lab} ...
 
 positional arguments:
   {dataset,evaluate,lab}
@@ -891,10 +891,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator features --help
+python -m aurum features --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator features [-h] [--json]
+usage: aurum features [-h] [--json]
                            {check,catalog,matrix,build,audit} ...
 
 positional arguments:
@@ -910,10 +910,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator confirm --help
+python -m aurum confirm --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator confirm [-h] --pack PACK --ticker TICKER --decision DECISION
+usage: aurum confirm [-h] --pack PACK --ticker TICKER --decision DECISION
                           [--notes NOTES] [--operator OPERATOR]
                           [--execution-policy EXECUTION_POLICY] [--json]
 
@@ -928,10 +928,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator legacy --help
+python -m aurum legacy --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator legacy [-h] [--json]
+usage: aurum legacy [-h] [--json]
                          {classify,migrate-sentiment,migrate-features,migrate-indices,migrate-universe,scan} ...
 
 positional arguments:
@@ -948,10 +948,10 @@ options:
   --json
 
 ================================================================================
-python -m pymercator packs --help
+python -m aurum packs --help
 --------------------------------------------------------------------------------
 STATUS: OK
-usage: pymercator packs [-h] --run-dir RUN_DIR [--limit LIMIT] [--json]
+usage: aurum packs [-h] --run-dir RUN_DIR [--limit LIMIT] [--json]
 
 options:
   -h, --help         show this help message and exit

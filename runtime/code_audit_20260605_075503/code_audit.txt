@@ -1,4 +1,4 @@
-PYMERCATOR CODE AUDIT
+AURUM CODE AUDIT
 --------------------------------------------------------------------------------
 timestamp          20260605_075503
 files              224
@@ -9,108 +9,108 @@ TOP 40 FILES BY LINES
 --------------------------------------------------------------------------------
 path                                           lines  nonempty_lines
 ---------------------------------------------  -----  --------------
-src\pymercator\cli_train.py                    2988   2704          
-src\pymercator\legacy_prediction_engines.py    2361   2048          
+src\aurum\cli_train.py                    2988   2704          
+src\aurum\legacy_prediction_engines.py    2361   2048          
 tests\test_cli_train.py                        1593   1425          
-src\pymercator\cli.py                          1492   1292          
+src\aurum\cli.py                          1492   1292          
 scripts\ops_common.ps1                         1343   1206          
 tests\test_cli_run_simplified.py               1179   1065          
-src\pymercator\features_v2.py                  1089   1007          
-src\pymercator\prediction_lab.py               1044   848           
-src\pymercator\position_actions.py             970    868           
-src\pymercator\cli_run.py                      833    763           
-src\pymercator\cli_update.py                   788    728           
-src\pymercator\basket.py                       761    634           
-src\pymercator\observation.py                  550    491           
-src\pymercator\market_context_sources.py       531    480           
+src\aurum\features_v2.py                  1089   1007          
+src\aurum\prediction_lab.py               1044   848           
+src\aurum\position_actions.py             970    868           
+src\aurum\cli_run.py                      833    763           
+src\aurum\cli_update.py                   788    728           
+src\aurum\basket.py                       761    634           
+src\aurum\observation.py                  550    491           
+src\aurum\market_context_sources.py       531    480           
 tests\test_basket_daily.py                     515    462           
-src\pymercator\real_run.py                     514    466           
-src\pymercator\scenario_pack.py                498    423           
-src\pymercator\market_context_consolidator.py  493    444           
+src\aurum\real_run.py                     514    466           
+src\aurum\scenario_pack.py                498    423           
+src\aurum\market_context_consolidator.py  493    444           
 tests\test_cli_update.py                       480    414           
 tests\test_position_actions.py                 472    420           
-src\pymercator\borrow_data.py                  469    418           
-src\pymercator\storage\repositories.py         459    411           
-src\pymercator\cli_scenario.py                 455    428           
+src\aurum\borrow_data.py                  469    418           
+src\aurum\storage\repositories.py         459    411           
+src\aurum\cli_scenario.py                 455    428           
 tests\test_prediction_lab.py                   453    363           
 tests\test_cli_prediction_lab.py               417    359           
-src\pymercator\ui\colors.py                    392    344           
+src\aurum\ui\colors.py                    392    344           
 tests\test_terminal_output.py                  382    333           
-src\pymercator\legacy_inventory.py             381    315           
-src\pymercator\market_context_auto.py          374    305           
-src\pymercator\data\universe_builder.py        374    284           
-src\pymercator\indices_prices.py               366    307           
+src\aurum\legacy_inventory.py             381    315           
+src\aurum\market_context_auto.py          374    305           
+src\aurum\data\universe_builder.py        374    284           
+src\aurum\indices_prices.py               366    307           
 scripts\legacy\run_absolute_tests.ps1          363    306           
 scripts\legacy\run_daily_profiles.ps1          363    310           
 tests\test_prediction_calibration.py           355    308           
-src\pymercator\cli_universe.py                 350    295           
-src\pymercator\sentiment_store.py              349    285           
-src\pymercator\cli_parsers.py                  347    314           
-src\pymercator\legacy_classification.py        297    248           
-src\pymercator\cli_context.py                  295    246           
+src\aurum\cli_universe.py                 350    295           
+src\aurum\sentiment_store.py              349    285           
+src\aurum\cli_parsers.py                  347    314           
+src\aurum\legacy_classification.py        297    248           
+src\aurum\cli_context.py                  295    246           
 tests\test_indices_prices.py                   290    244           
 
 TOP 40 FILES BY NONEMPTY LINES
 --------------------------------------------------------------------------------
 path                                           nonempty_lines  lines
 ---------------------------------------------  --------------  -----
-src\pymercator\cli_train.py                    2704            2988 
-src\pymercator\legacy_prediction_engines.py    2048            2361 
+src\aurum\cli_train.py                    2704            2988 
+src\aurum\legacy_prediction_engines.py    2048            2361 
 tests\test_cli_train.py                        1425            1593 
-src\pymercator\cli.py                          1292            1492 
+src\aurum\cli.py                          1292            1492 
 scripts\ops_common.ps1                         1206            1343 
 tests\test_cli_run_simplified.py               1065            1179 
-src\pymercator\features_v2.py                  1007            1089 
-src\pymercator\position_actions.py             868             970  
-src\pymercator\prediction_lab.py               848             1044 
-src\pymercator\cli_run.py                      763             833  
-src\pymercator\cli_update.py                   728             788  
-src\pymercator\basket.py                       634             761  
-src\pymercator\observation.py                  491             550  
-src\pymercator\market_context_sources.py       480             531  
-src\pymercator\real_run.py                     466             514  
+src\aurum\features_v2.py                  1007            1089 
+src\aurum\position_actions.py             868             970  
+src\aurum\prediction_lab.py               848             1044 
+src\aurum\cli_run.py                      763             833  
+src\aurum\cli_update.py                   728             788  
+src\aurum\basket.py                       634             761  
+src\aurum\observation.py                  491             550  
+src\aurum\market_context_sources.py       480             531  
+src\aurum\real_run.py                     466             514  
 tests\test_basket_daily.py                     462             515  
-src\pymercator\market_context_consolidator.py  444             493  
-src\pymercator\cli_scenario.py                 428             455  
-src\pymercator\scenario_pack.py                423             498  
+src\aurum\market_context_consolidator.py  444             493  
+src\aurum\cli_scenario.py                 428             455  
+src\aurum\scenario_pack.py                423             498  
 tests\test_position_actions.py                 420             472  
-src\pymercator\borrow_data.py                  418             469  
+src\aurum\borrow_data.py                  418             469  
 tests\test_cli_update.py                       414             480  
-src\pymercator\storage\repositories.py         411             459  
+src\aurum\storage\repositories.py         411             459  
 tests\test_prediction_lab.py                   363             453  
 tests\test_cli_prediction_lab.py               359             417  
-src\pymercator\ui\colors.py                    344             392  
+src\aurum\ui\colors.py                    344             392  
 tests\test_terminal_output.py                  333             382  
-src\pymercator\legacy_inventory.py             315             381  
-src\pymercator\cli_parsers.py                  314             347  
+src\aurum\legacy_inventory.py             315             381  
+src\aurum\cli_parsers.py                  314             347  
 scripts\legacy\run_daily_profiles.ps1          310             363  
 tests\test_prediction_calibration.py           308             355  
-src\pymercator\indices_prices.py               307             366  
+src\aurum\indices_prices.py               307             366  
 scripts\legacy\run_absolute_tests.ps1          306             363  
-src\pymercator\market_context_auto.py          305             374  
-src\pymercator\cli_universe.py                 295             350  
-src\pymercator\sentiment_store.py              285             349  
-src\pymercator\data\universe_builder.py        284             374  
+src\aurum\market_context_auto.py          305             374  
+src\aurum\cli_universe.py                 295             350  
+src\aurum\sentiment_store.py              285             349  
+src\aurum\data\universe_builder.py        284             374  
 tests\test_runtime_manifest.py                 266             288  
-src\pymercator\daily_auto.py                   256             288  
-src\pymercator\data\universe_diagnostics.py    252             289  
+src\aurum\daily_auto.py                   256             288  
+src\aurum\data\universe_diagnostics.py    252             289  
 
 LARGE CLI FILES
 --------------------------------------------------------------------------------
 path                              lines  nonempty_lines
 --------------------------------  -----  --------------
-src\pymercator\cli_train.py       2988   2704          
+src\aurum\cli_train.py       2988   2704          
 tests\test_cli_train.py           1593   1425          
-src\pymercator\cli.py             1492   1292          
+src\aurum\cli.py             1492   1292          
 tests\test_cli_run_simplified.py  1179   1065          
-src\pymercator\cli_run.py         833    763           
-src\pymercator\cli_update.py      788    728           
+src\aurum\cli_run.py         833    763           
+src\aurum\cli_update.py      788    728           
 tests\test_cli_update.py          480    414           
-src\pymercator\cli_scenario.py    455    428           
+src\aurum\cli_scenario.py    455    428           
 tests\test_cli_prediction_lab.py  417    359           
-src\pymercator\cli_universe.py    350    295           
-src\pymercator\cli_parsers.py     347    314           
-src\pymercator\cli_context.py     295    246           
+src\aurum\cli_universe.py    350    295           
+src\aurum\cli_parsers.py     347    314           
+src\aurum\cli_context.py     295    246           
 
 POWERSHELL SCRIPTS
 --------------------------------------------------------------------------------
@@ -142,45 +142,45 @@ scripts\legacy\run_weekly_training.ps1     107    84
 DUPLICATE FUNCTIONS BY NAME
 --------------------------------------------------------------------------------
 _write_price_file                17  tests\test_cli_context_presets.py, tests\test_cli_daily_real.py, tests\test_cli_features_matrix.py, tests\test_cli_packs_real.py, tests\test_cli_prediction_lab.py
-_to_float                        9   src\pymercator\borrow_data.py, src\pymercator\data\universe_builder.py, src\pymercator\features_matrix.py, src\pymercator\features_v2.py, src\pymercator\legacy_prediction_engines.py
-fit                              8   src\pymercator\legacy_prediction_engines.py, tests\test_cli_prediction_lab.py, tests\test_prediction_calibration.py, tests\test_prediction_lab.py
-__init__                         7   src\pymercator\cli.py, src\pymercator\legacy_prediction_engines.py, tests\test_cli_prediction_lab.py, tests\test_prediction_calibration.py, tests\test_prediction_lab.py
-predict                          6   src\pymercator\legacy_prediction_engines.py, tests\test_cli_prediction_lab.py, tests\test_prediction_lab.py
-_price_file_for_ticker           4   src\pymercator\basket.py, src\pymercator\features_matrix.py, src\pymercator\features_v2.py, src\pymercator\prediction_lab.py
+_to_float                        9   src\aurum\borrow_data.py, src\aurum\data\universe_builder.py, src\aurum\features_matrix.py, src\aurum\features_v2.py, src\aurum\legacy_prediction_engines.py
+fit                              8   src\aurum\legacy_prediction_engines.py, tests\test_cli_prediction_lab.py, tests\test_prediction_calibration.py, tests\test_prediction_lab.py
+__init__                         7   src\aurum\cli.py, src\aurum\legacy_prediction_engines.py, tests\test_cli_prediction_lab.py, tests\test_prediction_calibration.py, tests\test_prediction_lab.py
+predict                          6   src\aurum\legacy_prediction_engines.py, tests\test_cli_prediction_lab.py, tests\test_prediction_lab.py
+_price_file_for_ticker           4   src\aurum\basket.py, src\aurum\features_matrix.py, src\aurum\features_v2.py, src\aurum\prediction_lab.py
 fake_download                    4   tests\test_daily_auto.py, tests\test_indices_prices.py
-_clamp                           3   src\pymercator\engines\ranking.py, src\pymercator\observation.py, src\pymercator\position_actions.py
-_load_json                       3   src\pymercator\cli_scenario.py, src\pymercator\human_confirmation.py, src\pymercator\short_policy.py
-_parse_date                      3   src\pymercator\borrow_data.py, src\pymercator\data\prices_csv.py, src\pymercator\update_freshness.py
-_quantile                        3   src\pymercator\legacy_prediction_engines.py, src\pymercator\market_context_auto.py, src\pymercator\observation.py
-_read_csv                        3   src\pymercator\basket.py, src\pymercator\features_v2.py, src\pymercator\prediction_lab.py
-_read_price_rows                 3   src\pymercator\basket.py, src\pymercator\features_v2.py, src\pymercator\prediction_lab.py
-_write_csv                       3   src\pymercator\basket.py, src\pymercator\cli_scenario.py, src\pymercator\features_v2.py
-_write_prices                    3   src\pymercator\cli_scenario.py, tests\test_cli_context_auto.py, tests\test_market_context_auto.py
-predict_proba                    3   src\pymercator\legacy_prediction_engines.py, tests\test_prediction_calibration.py
-_as_bool                         2   src\pymercator\features_catalog.py, src\pymercator\indices_catalog.py
-_base_ticker                     2   src\pymercator\data\universe_builder.py, src\pymercator\legacy_universe.py
-_confusion_counts                2   src\pymercator\cli_train.py, src\pymercator\legacy_prediction_engines.py
-_feature_value                   2   src\pymercator\legacy_prediction_engines.py, src\pymercator\prediction_lab.py
-_feature_vector                  2   src\pymercator\legacy_prediction_engines.py, src\pymercator\prediction_lab.py
-_float                           2   src\pymercator\data\universe_csv.py, src\pymercator\market_context_consolidator.py
-_float_or_none                   2   src\pymercator\data\universe_csv.py, src\pymercator\storage\repositories.py
-_horizon_sort_key                2   src\pymercator\cli_run.py, src\pymercator\cli_train.py
-_load_yaml                       2   src\pymercator\legacy_indices.py, src\pymercator\legacy_universe.py
-_metrics                         2   src\pymercator\prediction_lab.py, tests\test_train_detail_report_module.py
-_normalize_ticker                2   src\pymercator\basket.py, src\pymercator\cli_train.py
+_clamp                           3   src\aurum\engines\ranking.py, src\aurum\observation.py, src\aurum\position_actions.py
+_load_json                       3   src\aurum\cli_scenario.py, src\aurum\human_confirmation.py, src\aurum\short_policy.py
+_parse_date                      3   src\aurum\borrow_data.py, src\aurum\data\prices_csv.py, src\aurum\update_freshness.py
+_quantile                        3   src\aurum\legacy_prediction_engines.py, src\aurum\market_context_auto.py, src\aurum\observation.py
+_read_csv                        3   src\aurum\basket.py, src\aurum\features_v2.py, src\aurum\prediction_lab.py
+_read_price_rows                 3   src\aurum\basket.py, src\aurum\features_v2.py, src\aurum\prediction_lab.py
+_write_csv                       3   src\aurum\basket.py, src\aurum\cli_scenario.py, src\aurum\features_v2.py
+_write_prices                    3   src\aurum\cli_scenario.py, tests\test_cli_context_auto.py, tests\test_market_context_auto.py
+predict_proba                    3   src\aurum\legacy_prediction_engines.py, tests\test_prediction_calibration.py
+_as_bool                         2   src\aurum\features_catalog.py, src\aurum\indices_catalog.py
+_base_ticker                     2   src\aurum\data\universe_builder.py, src\aurum\legacy_universe.py
+_confusion_counts                2   src\aurum\cli_train.py, src\aurum\legacy_prediction_engines.py
+_feature_value                   2   src\aurum\legacy_prediction_engines.py, src\aurum\prediction_lab.py
+_feature_vector                  2   src\aurum\legacy_prediction_engines.py, src\aurum\prediction_lab.py
+_float                           2   src\aurum\data\universe_csv.py, src\aurum\market_context_consolidator.py
+_float_or_none                   2   src\aurum\data\universe_csv.py, src\aurum\storage\repositories.py
+_horizon_sort_key                2   src\aurum\cli_run.py, src\aurum\cli_train.py
+_load_yaml                       2   src\aurum\legacy_indices.py, src\aurum\legacy_universe.py
+_metrics                         2   src\aurum\prediction_lab.py, tests\test_train_detail_report_module.py
+_normalize_ticker                2   src\aurum\basket.py, src\aurum\cli_train.py
 _positions                       2   tests\test_position_actions_direction.py, tests\test_position_actions_stop_loss.py
-_return_pct                      2   src\pymercator\features_matrix.py, src\pymercator\prediction_lab.py
+_return_pct                      2   src\aurum\features_matrix.py, src\aurum\prediction_lab.py
 _sample_payload                  2   tests\test_cli_db.py, tests\test_storage_db.py
-_split_tags                      2   src\pymercator\cli_context.py, src\pymercator\cli_prices.py
-_ticker                          2   src\pymercator\borrow_data.py, src\pymercator\position_actions.py
+_split_tags                      2   src\aurum\cli_context.py, src\aurum\cli_prices.py
+_ticker                          2   src\aurum\borrow_data.py, src\aurum\position_actions.py
 _write_asset_price_file          2   tests\test_cli_daily_auto.py, tests\test_daily_auto.py
-_write_json                      2   src\pymercator\features_v2.py, src\pymercator\human_confirmation.py
+_write_json                      2   src\aurum\features_v2.py, src\aurum\human_confirmation.py
 _write_matrix                    2   tests\test_cli_prediction_lab.py, tests\test_prediction_lab.py
 _write_pack                      2   tests\test_cli_confirm.py, tests\test_human_confirmation.py
-load_market_context_thresholds   2   src\pymercator\market_context_auto.py, src\pymercator\market_context_consolidator.py
-load_universe_csv                2   src\pymercator\data\universe_csv.py, src\pymercator\loaders.py
-render_position_books            2   src\pymercator\position_actions.py, src\pymercator\short_render.py
-render_table                     2   src\pymercator\terminal_render.py, src\pymercator\terminal_ui.py
+load_market_context_thresholds   2   src\aurum\market_context_auto.py, src\aurum\market_context_consolidator.py
+load_universe_csv                2   src\aurum\data\universe_csv.py, src\aurum\loaders.py
+render_position_books            2   src\aurum\position_actions.py, src\aurum\short_render.py
+render_table                     2   src\aurum\terminal_render.py, src\aurum\terminal_ui.py
 
 RENDERING PATTERN COUNTS
 --------------------------------------------------------------------------------
@@ -199,14 +199,14 @@ POSSIBLY UNIMPORTED MODULES
 --------------------------------------------------------------------------------
 module                       path                              
 ---------------------------  ----------------------------------
-pymercator.data.__init__     src\pymercator\data\__init__.py   
-pymercator.engines.__init__  src\pymercator\engines\__init__.py
-pymercator.model_governance  src\pymercator\model_governance.py
-pymercator.presets           src\pymercator\presets.py         
-pymercator.reports.__init__  src\pymercator\reports\__init__.py
-pymercator.storage.__init__  src\pymercator\storage\__init__.py
-pymercator.storage.models    src\pymercator\storage\models.py  
-pymercator.ui.__init__       src\pymercator\ui\__init__.py     
+aurum.data.__init__     src\aurum\data\__init__.py   
+aurum.engines.__init__  src\aurum\engines\__init__.py
+aurum.model_governance  src\aurum\model_governance.py
+aurum.presets           src\aurum\presets.py         
+aurum.reports.__init__  src\aurum\reports\__init__.py
+aurum.storage.__init__  src\aurum\storage\__init__.py
+aurum.storage.models    src\aurum\storage\models.py  
+aurum.ui.__init__       src\aurum\ui\__init__.py     
 
 SAFE CUT SUGGESTIONS
 --------------------------------------------------------------------------------

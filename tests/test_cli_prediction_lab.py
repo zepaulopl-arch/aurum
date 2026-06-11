@@ -1,10 +1,10 @@
-﻿import json
+import json
 from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 
-from pymercator.cli import build_parser, main
+from aurum.cli import build_parser, main
 
 
 def _write_price_file(path: Path, start: float = 10.0) -> None:
@@ -61,7 +61,7 @@ def test_predict_lab_command_creates_outputs(tmp_path: Path, capsys):
     assert evaluation.exists()
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR PREDICTION LAB" in captured.out
+    assert "AURUM PREDICTION LAB" in captured.out
     assert "rolling_majority" in captured.out
 
 
@@ -173,7 +173,7 @@ def test_predict_lab_command_accepts_extratrees_engine(
     monkeypatch,
     capsys,
 ):
-    import pymercator.legacy_prediction_engines as engines_mod
+    import aurum.legacy_prediction_engines as engines_mod
 
     class FakeExtraTreesRegressor:
         def __init__(self, **kwargs):

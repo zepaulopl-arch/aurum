@@ -1,7 +1,7 @@
-from pymercator.engines.ranking import rank_assets
-from pymercator.engines.regime import classify_market_regime
-from pymercator.loaders import load_universe_csv
-from pymercator.policy import load_policy
+from aurum.engines.ranking import rank_assets
+from aurum.engines.regime import classify_market_regime
+from aurum.loaders import load_universe_csv
+from aurum.policy import load_policy
 
 
 def test_raw_signal_and_context_signal_are_separated():

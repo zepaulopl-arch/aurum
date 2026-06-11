@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pymercator.context_engine.builder import build_market_context
-from pymercator.context_engine.macro_manual import load_macro_manual, macro_value
+from aurum.context_engine.builder import build_market_context
+from aurum.context_engine.macro_manual import load_macro_manual, macro_value
 
 
 def test_load_macro_manual_values(tmp_path: Path) -> None:

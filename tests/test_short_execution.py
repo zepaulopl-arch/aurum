@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pymercator.short_execution import (
+from aurum.short_execution import (
     ShortExecutionConfig,
     batch_evaluate_short_execution,
     evaluate_short_execution,

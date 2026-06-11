@@ -1,8 +1,8 @@
-# pyMercator
+# Aurum
 
 Sistema de autorizacao operacional para mercado financeiro.
 
-O pyMercator nao e um robo de trade. Ele e um sistema de decisao em camadas:
+O Aurum nao e um robo de trade. Ele e um sistema de decisao em camadas:
 
 1. Market Regime
 2. Universe Health
@@ -27,7 +27,7 @@ O sistema nao procura "compras". Ele avalia se um risco pode ser autorizado.
 
 ```powershell
 python -m pip install -e .
-python -m pymercator daily `
+python -m aurum daily `
   --universe data\universes\ibov_sample.csv `
   --headline-risk ACTIVE `
   --headline-tags IRAN,OIL,WAR `
@@ -37,9 +37,9 @@ python -m pymercator daily `
 ## Rotina oficial
 
 ```powershell
-python -m pymercator update --list IBOV
-python -m pymercator train
-python -m pymercator run --profile CON --basket
+python -m aurum update --list IBOV
+python -m aurum train
+python -m aurum run --profile CON --basket
 ```
 
 Os comandos internos continuam disponiveis para diagnostico e operacoes pontuais.

@@ -1,10 +1,10 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from pymercator.cli import main
-from pymercator.observation_review import run_observation_review
+from aurum.cli import main
+from aurum.observation_review import run_observation_review
 
 
 def _write_price(path: Path, first_close: float, latest_close: float) -> None:
@@ -42,6 +42,7 @@ SIGNAL_TS = "2026-06-05T12:00:00Z"
 def _reference(close: float) -> dict:
     return {
         "ref_price": close,
+        "ref_date": "2026-06-05",
         "ref_ts": SIGNAL_TS,
         "ref_source": "test.report",
     }
@@ -346,6 +347,43 @@ def test_review_computes_same_day_price_change_from_reference_price(
     assert short_row["price_status"] == "OK"
     assert short_row["return_pct"] == -10.0
     assert short_row["sim_pnl"] == 500.0
+
+
+def test_review_uses_latest_two_trading_days_for_d1xd_when_report_reference_is_old(
+    tmp_path: Path,
+) -> None:
+    run_dir = tmp_path / "runtime" / "daily_signal_20260605_120000"
+    prices_dir = tmp_path / "prices"
+    _write_report(run_dir)
+    price_path = prices_dir / "LONG1.SA.csv"
+    price_path.parent.mkdir(parents=True, exist_ok=True)
+    price_path.write_text(
+        "\n".join(
+            [
+                "date,open,high,low,close,volume",
+                "2026-06-05,100,100,100,100,1000",
+                "2026-06-08,110,110,110,110,1000",
+                "2026-06-09,121,121,121,121,1000",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    review = run_observation_review(
+        run_dir=run_dir,
+        capital=10000.0,
+        prices_dir=prices_dir,
+    )
+
+    row = review["sections"]["observation_top10"]["rows"][0]
+
+    assert row["ticker"] == "LONG1"
+    assert row["reference_date"] == "2026-06-08"
+    assert row["reference_price"] == 110.0
+    assert row["current_date"] == "2026-06-09"
+    assert row["current_price"] == 121.0
+    assert row["return_pct"] == 10.0
 
 
 def test_review_marks_price_before_signal_as_stale(tmp_path: Path) -> None:

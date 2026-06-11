@@ -1,9 +1,9 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from pymercator.context_engine.builder import build_market_context
-from pymercator.context_engine.market_data import fetch_yahoo_quote
-from pymercator.context_engine.sources import SourceResult
+from aurum.context_engine.builder import build_market_context
+from aurum.context_engine.market_data import fetch_yahoo_quote
+from aurum.context_engine.sources import SourceResult
 
 def _local_files(tmp_path: Path) -> dict[str, Path]:
     macro = tmp_path / "macro.csv"
@@ -27,7 +27,7 @@ def test_builder_uses_manual_macro_and_skips_network_offline(tmp_path: Path) -> 
 def test_yahoo_quote_parser(monkeypatch) -> None:
     def fake_http_get_json(url: str, timeout: float = 12.0) -> SourceResult:
         return SourceResult("http", "OK", {"chart":{"result":[{"meta":{"currency":"USD", "exchangeName":"NYM"}, "indicators":{"quote":[{"close":[80.0,82.4]}]}}], "error":None}}, url=url)
-    monkeypatch.setattr("pymercator.context_engine.market_data.http_get_json", fake_http_get_json)
+    monkeypatch.setattr("aurum.context_engine.market_data.http_get_json", fake_http_get_json)
     result = fetch_yahoo_quote("CL=F")
     assert result.status == "OK"
     assert result.data["change_pct"] == 3.0

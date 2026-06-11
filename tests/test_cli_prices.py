@@ -1,7 +1,7 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
-from pymercator.data.prices_csv import write_price_rows_csv
+from aurum.cli import main
+from aurum.data.prices_csv import write_price_rows_csv
 
 
 def test_prices_check_command_accepts_valid_price_dir(tmp_path: Path, capsys):
@@ -31,7 +31,7 @@ def test_prices_check_command_accepts_valid_price_dir(tmp_path: Path, capsys):
     assert exit_code == 0
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR PRICES CHECK" in captured.out
+    assert "AURUM PRICES CHECK" in captured.out
     assert "VALID FILES" in captured.out
     assert "PRIO3.SA.csv" in captured.out
 

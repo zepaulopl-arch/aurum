@@ -1,4 +1,4 @@
-PYMERCATOR REFACTOR REPORT
+AURUM REFACTOR REPORT
 --------------------------------------------------------------------------------
 
 SUMMARY
@@ -28,10 +28,10 @@ FILES CHANGED
 scripts/dump_cli_help.ps1
 docs/COMMANDS.md
 docs/OPERATING.md
-config/pymercator_presets.json
-src/pymercator/cli.py
-src/pymercator/cli_train.py
-src/pymercator/legacy_prediction_engines.py
+config/aurum_presets.json
+src/aurum/cli.py
+src/aurum/cli_train.py
+src/aurum/legacy_prediction_engines.py
 tests/test_cli_diag.py
 tests/test_cli_train.py
 
@@ -60,7 +60,7 @@ TESTS EXECUTED
 --------------------------------------------------------------------------------
 python -m pytest tests -q -> 296 passed, 1 skipped
 .\scripts\dump_cli_help.ps1 -> runtime\cli_help_20260605_080035\help_index.txt
-python -m compileall -q src\pymercator\legacy_prediction_engines.py src\pymercator\cli_train.py src\pymercator\cli.py -> PASS
+python -m compileall -q src\aurum\legacy_prediction_engines.py src\aurum\cli_train.py src\aurum\cli.py -> PASS
 
 PYTEST RESULT
 --------------------------------------------------------------------------------

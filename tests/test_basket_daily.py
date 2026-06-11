@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from pymercator import basket as basket_mod
+from aurum import basket as basket_mod
 
 
 def _write_daily_prices(path: Path) -> None:
@@ -420,7 +420,7 @@ def test_cli_basket_daily_runs(tmp_path: Path) -> None:
         [
             sys.executable,
             "-m",
-            "pymercator.cli",
+            "aurum.cli",
             "basket",
             "daily",
             "--slots",
@@ -443,7 +443,7 @@ def test_cli_basket_daily_runs(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0
-    assert "PYMERCATOR DAILY BASKET" in result.stdout
+    assert "AURUM DAILY BASKET" in result.stdout
     assert "FILES" in result.stdout
     assert output_csv.exists()
 
@@ -496,7 +496,7 @@ def test_cli_basket_show_reads_latest_json(tmp_path: Path) -> None:
         [
             sys.executable,
             "-m",
-            "pymercator.cli",
+            "aurum.cli",
             "basket",
             "show",
             "--output",
@@ -507,7 +507,7 @@ def test_cli_basket_show_reads_latest_json(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0
-    assert "PYMERCATOR DAILY BASKET" in result.stdout
+    assert "AURUM DAILY BASKET" in result.stdout
     assert "FILES" in result.stdout
     assert "assets" in result.stdout
     assert " 1" in result.stdout

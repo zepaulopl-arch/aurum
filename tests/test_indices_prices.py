@@ -1,9 +1,9 @@
-﻿import json
+import json
 from pathlib import Path
 
 import pandas as pd
 
-from pymercator.indices_prices import check_indices_prices_dir, fetch_indices_prices
+from aurum.indices_prices import check_indices_prices_dir, fetch_indices_prices
 
 
 def test_fetch_indices_prices_writes_price_csvs(tmp_path: Path, monkeypatch):
@@ -39,7 +39,7 @@ def test_fetch_indices_prices_writes_price_csvs(tmp_path: Path, monkeypatch):
             }
         )
 
-    monkeypatch.setattr("pymercator.indices_prices._download_yfinance", fake_download)
+    monkeypatch.setattr("aurum.indices_prices._download_yfinance", fake_download)
 
     payload = fetch_indices_prices(
         catalog=catalog,
@@ -117,7 +117,7 @@ def test_fetch_indices_prices_allows_optional_failure(tmp_path: Path, monkeypatc
             }
         )
 
-    monkeypatch.setattr("pymercator.indices_prices._download_yfinance", fake_download)
+    monkeypatch.setattr("aurum.indices_prices._download_yfinance", fake_download)
 
     payload = fetch_indices_prices(
         catalog=catalog,
@@ -166,7 +166,7 @@ def test_fetch_indices_prices_sanitizes_incomplete_ohlc(tmp_path: Path, monkeypa
             }
         )
 
-    monkeypatch.setattr("pymercator.indices_prices._download_yfinance", fake_download)
+    monkeypatch.setattr("aurum.indices_prices._download_yfinance", fake_download)
 
     payload = fetch_indices_prices(
         catalog=catalog,
@@ -216,7 +216,7 @@ def test_fetch_indices_prices_uses_cache_when_end_is_covered(
     def fail_download(symbol: str, start: str, end: str | None = None):
         raise AssertionError("cache hit should not download")
 
-    monkeypatch.setattr("pymercator.indices_prices._download_yfinance", fail_download)
+    monkeypatch.setattr("aurum.indices_prices._download_yfinance", fail_download)
 
     payload = fetch_indices_prices(
         catalog=catalog,
@@ -229,6 +229,60 @@ def test_fetch_indices_prices_uses_cache_when_end_is_covered(
     assert payload["required_failed"] == 0
     assert payload["cache_hits"] == 1
     assert payload["results"][0]["status"] == "CACHED"
+
+
+def test_fetch_indices_prices_treats_public_end_as_inclusive(
+    tmp_path: Path,
+    monkeypatch,
+):
+    catalog = tmp_path / "indices_catalog.json"
+    output = tmp_path / "indices"
+
+    catalog.write_text(
+        """
+{
+  "indices": [
+    {
+      "name": "Ibovespa",
+      "symbol": "^BVSP",
+      "provider": "yfinance",
+      "category": "market",
+      "description": "",
+      "required": true,
+      "enabled": true
+    }
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+
+    def fake_download(symbol: str, start: str, end: str | None = None):
+        assert end == "2025-01-05"
+        return pd.DataFrame(
+            {
+                "date": ["2025-01-04"],
+                "open": [100.0],
+                "high": [101.0],
+                "low": [99.0],
+                "close": [100.5],
+                "volume": [1000],
+            }
+        )
+
+    monkeypatch.setattr("aurum.indices_prices._download_yfinance", fake_download)
+
+    payload = fetch_indices_prices(
+        catalog=catalog,
+        start="2025-01-01",
+        end="2025-01-04",
+        output=output,
+        use_cache=False,
+    )
+
+    assert payload["end"] == "2025-01-04"
+    assert payload["provider_end"] == "2025-01-05"
+    assert payload["status"] == "OK"
 
 
 def test_fetch_indices_prices_preserves_cache_on_provider_failure(
@@ -266,7 +320,7 @@ def test_fetch_indices_prices_preserves_cache_on_provider_failure(
     def fail_download(symbol: str, start: str, end: str | None = None):
         raise RuntimeError("provider unavailable")
 
-    monkeypatch.setattr("pymercator.indices_prices._download_yfinance", fail_download)
+    monkeypatch.setattr("aurum.indices_prices._download_yfinance", fail_download)
 
     payload = fetch_indices_prices(
         catalog=catalog,

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from pymercator.cli_train import _model_quality, render_train_detail_report
-from pymercator.legacy_prediction_engines import (
+from aurum.cli_train import _model_quality, render_train_detail_report
+from aurum.legacy_prediction_engines import (
     fit_calibrated_legacy_classifier,
     metric_report,
     tune_probability_threshold,
@@ -140,7 +140,7 @@ def test_threshold_tuning_prevents_predicted_up_rate_collapse():
 
 
 def test_fit_calibrated_classifier_uses_calibrated_classifier_cv(monkeypatch):
-    import pymercator.legacy_prediction_engines as engines_mod
+    import aurum.legacy_prediction_engines as engines_mod
 
     calls: dict[str, Any] = {}
 

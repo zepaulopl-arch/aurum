@@ -1,4 +1,4 @@
-PYMERCATOR SCENARIO PACK SUMMARY
+AURUM SCENARIO PACK SUMMARY
 ----------------------------------------------------------------------------------------------------------------------
 PACK DIR         storage\scenario_runs\20260528_225028
 

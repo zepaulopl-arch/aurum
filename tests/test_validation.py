@@ -1,6 +1,6 @@
-from pymercator.engines.validation import validate_trade
-from pymercator.loaders import load_universe_csv
-from pymercator.policy import load_policy
+from aurum.engines.validation import validate_trade
+from aurum.loaders import load_universe_csv
+from aurum.policy import load_policy
 
 
 def test_validation_blocks_low_rr_when_profile_requires_more():

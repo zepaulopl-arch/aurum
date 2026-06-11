@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from pymercator.prediction_config import effective_prediction_config
+from aurum.prediction_config import effective_prediction_config
 
 
 def test_repository_prediction_config_declares_operational_default_engine():

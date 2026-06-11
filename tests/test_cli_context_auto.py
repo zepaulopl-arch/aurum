@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def _write_prices(path: Path, closes: list[float]) -> None:
@@ -38,7 +38,7 @@ def test_context_auto_command_writes_context_file(tmp_path: Path, capsys):
     assert output.exists()
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR MARKET CONTEXT AUTO" in captured.out
+    assert "AURUM MARKET CONTEXT AUTO" in captured.out
     assert "RISK_ON" in captured.out
 
 
@@ -66,5 +66,5 @@ def test_context_calibrate_command_writes_threshold_payload(tmp_path: Path, caps
     assert output.exists()
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR MARKET CONTEXT CALIBRATION" in captured.out
+    assert "AURUM MARKET CONTEXT CALIBRATION" in captured.out
     assert "trend_up_return_20d_pct" in captured.out

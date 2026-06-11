@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.indices_catalog import (
+from aurum.indices_catalog import (
     validate_indices_catalog,
     write_indices_catalog,
 )

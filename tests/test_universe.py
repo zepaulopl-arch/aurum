@@ -1,6 +1,6 @@
-from pymercator.engines.universe import evaluate_universe_health
-from pymercator.loaders import load_universe_csv
-from pymercator.policy import load_policy
+from aurum.engines.universe import evaluate_universe_health
+from aurum.loaders import load_universe_csv
+from aurum.policy import load_policy
 
 
 def test_universe_health_classifies_sample():

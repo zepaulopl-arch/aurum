@@ -3,8 +3,8 @@ import json
 from datetime import date, timedelta
 from pathlib import Path
 
-from pymercator.features_v2 import build_features_v2, write_features_v2
-from pymercator.prediction_lab import build_prediction_dataset
+from aurum.features_v2 import build_features_v2, write_features_v2
+from aurum.prediction_lab import build_prediction_dataset
 
 
 def _write_price_file(path: Path, *, start: float = 10.0, rows: int = 90) -> None:

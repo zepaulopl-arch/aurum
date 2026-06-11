@@ -1,8 +1,8 @@
 import csv
 from pathlib import Path
 
-from pymercator.data.universe_csv import REQUIRED_COLUMNS, write_universe_template
-from pymercator.data.universe_diagnostics import diagnose_universe_csv
+from aurum.data.universe_csv import REQUIRED_COLUMNS, write_universe_template
+from aurum.data.universe_diagnostics import diagnose_universe_csv
 
 
 def test_diagnose_universe_csv_returns_status_for_template(tmp_path: Path):

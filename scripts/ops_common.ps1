@@ -3,26 +3,26 @@ $ErrorActionPreference = "Stop"
 $script:PY = ""
 $script:PROJECT_ROOT = ""
 $script:PYTHON_VERSION = ""
-$script:PYMERCATOR_DEFAULT_LIST = "IBOV"
-$script:PYMERCATOR_COLOR = "never"
+$script:AURUM_DEFAULT_LIST = "IBOV"
+$script:AURUM_COLOR = "never"
 $script:GIT_INFO = $null
-$script:PYMERCATOR_RUNTIME_DIR = ""
-$script:PYMERCATOR_MANIFEST_PATH = ""
-$script:PYMERCATOR_MANIFEST = $null
-$script:PYMERCATOR_SCRIPT_NAME = ""
-$script:PYMERCATOR_VT_ATTEMPTED = $false
+$script:AURUM_RUNTIME_DIR = ""
+$script:AURUM_MANIFEST_PATH = ""
+$script:AURUM_MANIFEST = $null
+$script:AURUM_SCRIPT_NAME = ""
+$script:AURUM_VT_ATTEMPTED = $false
 
-function Enable-PyMercatorVirtualTerminal {
-    if ($script:PYMERCATOR_VT_ATTEMPTED) {
+function Enable-AurumVirtualTerminal {
+    if ($script:AURUM_VT_ATTEMPTED) {
         return
     }
-    $script:PYMERCATOR_VT_ATTEMPTED = $true
+    $script:AURUM_VT_ATTEMPTED = $true
 
     $source = @"
 using System;
 using System.Runtime.InteropServices;
 
-public static class PyMercatorConsoleMode {
+public static class AurumConsoleMode {
     [DllImport("kernel32.dll")]
     private static extern IntPtr GetStdHandle(int nStdHandle);
 
@@ -43,25 +43,25 @@ public static class PyMercatorConsoleMode {
 "@
     try {
         Add-Type -TypeDefinition $source -ErrorAction SilentlyContinue | Out-Null
-        [PyMercatorConsoleMode]::EnableVirtualTerminal()
+        [AurumConsoleMode]::EnableVirtualTerminal()
     } catch {
         return
     }
 }
 
-function Set-PyMercatorColorMode {
+function Set-AurumColorMode {
     param([bool]$Enabled = $false)
 
     if ($Enabled) {
-        $script:PYMERCATOR_COLOR = "always"
+        $script:AURUM_COLOR = "always"
         Remove-Item Env:\NO_COLOR -ErrorAction SilentlyContinue
         Remove-Item Env:\PY_COLORS -ErrorAction SilentlyContinue
         $env:FORCE_COLOR = "1"
         $env:CLICOLOR = "1"
         $env:TERM = "xterm-256color"
-        Enable-PyMercatorVirtualTerminal
+        Enable-AurumVirtualTerminal
     } else {
-        $script:PYMERCATOR_COLOR = "never"
+        $script:AURUM_COLOR = "never"
         $env:NO_COLOR = "1"
         $env:PY_COLORS = "0"
         Remove-Item Env:\FORCE_COLOR -ErrorAction SilentlyContinue
@@ -69,9 +69,9 @@ function Set-PyMercatorColorMode {
     }
 }
 
-function Get-PyMercatorColorArgs {
-    if ($script:PYMERCATOR_COLOR -and $script:PYMERCATOR_COLOR -ne "never") {
-        return @("--color", $script:PYMERCATOR_COLOR)
+function Get-AurumColorArgs {
+    if ($script:AURUM_COLOR -and $script:AURUM_COLOR -ne "never") {
+        return @("--color", $script:AURUM_COLOR)
     }
     return @("--no-color")
 }
@@ -91,7 +91,7 @@ function Remove-AnsiFromFile {
     }
 }
 
-function Get-PyMercatorJsonValue {
+function Get-AurumJsonValue {
     param(
         [object]$Object,
         [string]$Name,
@@ -107,7 +107,7 @@ function Get-PyMercatorJsonValue {
     return $Default
 }
 
-function Get-PyMercatorProfilePaths {
+function Get-AurumProfilePaths {
     param(
         [string]$LogDir,
         [string]$Profile
@@ -122,7 +122,7 @@ function Get-PyMercatorProfilePaths {
     }
 }
 
-function Show-PyMercatorProfileSummary {
+function Show-AurumProfileSummary {
     param(
         [string]$LogDir,
         [string[]]$Profiles,
@@ -131,9 +131,9 @@ function Show-PyMercatorProfileSummary {
 
     $rows = @()
     $blockers = @{}
-    $script:PYMERCATOR_LAST_PROFILE_SUMMARY = $null
+    $script:AURUM_LAST_PROFILE_SUMMARY = $null
     foreach ($profile in $Profiles) {
-        $paths = Get-PyMercatorProfilePaths -LogDir $LogDir -Profile $profile
+        $paths = Get-AurumProfilePaths -LogDir $LogDir -Profile $profile
         $payload = $null
         if (Test-Path -LiteralPath $paths.Json) {
             try {
@@ -146,18 +146,18 @@ function Show-PyMercatorProfileSummary {
             Write-Host "WARNING: missing profile JSON for ${profile}: $($paths.Json)" -ForegroundColor Yellow
         }
 
-        $decision = Get-PyMercatorJsonValue -Object $payload -Name "decision" -Default $null
-        $decisions = @(Get-PyMercatorJsonValue -Object $payload -Name "decisions" -Default @())
-        $basketPayload = Get-PyMercatorJsonValue -Object $payload -Name "basket" -Default $null
-        $blockerPayload = Get-PyMercatorJsonValue -Object $payload -Name "blockers_count" -Default $null
+        $decision = Get-AurumJsonValue -Object $payload -Name "decision" -Default $null
+        $decisions = @(Get-AurumJsonValue -Object $payload -Name "decisions" -Default @())
+        $basketPayload = Get-AurumJsonValue -Object $payload -Name "basket" -Default $null
+        $blockerPayload = Get-AurumJsonValue -Object $payload -Name "blockers_count" -Default $null
         if ($null -eq $blockerPayload) {
-            $blockerPayload = Get-PyMercatorJsonValue -Object $payload -Name "blockers" -Default $null
+            $blockerPayload = Get-AurumJsonValue -Object $payload -Name "blockers" -Default $null
         }
 
         $volHigh = 0
         $atrHigh = 0
         foreach ($item in $decisions) {
-            $codes = @(Get-PyMercatorJsonValue -Object $item -Name "decision_codes" -Default @())
+            $codes = @(Get-AurumJsonValue -Object $item -Name "decision_codes" -Default @())
             if ($codes -contains "VOL_HIGH") {
                 $volHigh += 1
             }
@@ -178,12 +178,12 @@ function Show-PyMercatorProfileSummary {
 
         $rows += [pscustomobject]@{
             Profile = $profile
-            Actionable = [int](Get-PyMercatorJsonValue -Object $decision -Name "actionable" -Default 0)
-            Watch = [int](Get-PyMercatorJsonValue -Object $decision -Name "watch" -Default 0)
-            Blocked = [int](Get-PyMercatorJsonValue -Object $decision -Name "blocked" -Default 0)
+            Actionable = [int](Get-AurumJsonValue -Object $decision -Name "actionable" -Default 0)
+            Watch = [int](Get-AurumJsonValue -Object $decision -Name "watch" -Default 0)
+            Blocked = [int](Get-AurumJsonValue -Object $decision -Name "blocked" -Default 0)
             VolHigh = $volHigh
             AtrHigh = $atrHigh
-            Basket = [string](Get-PyMercatorJsonValue -Object $basketPayload -Name "status" -Default "-")
+            Basket = [string](Get-AurumJsonValue -Object $basketPayload -Name "status" -Default "-")
         }
     }
 
@@ -210,19 +210,19 @@ function Show-PyMercatorProfileSummary {
         }
     }
 
-    $script:PYMERCATOR_LAST_PROFILE_SUMMARY = [pscustomobject]@{
+    $script:AURUM_LAST_PROFILE_SUMMARY = [pscustomobject]@{
         TotalActionable = [int]$totalActionable
         GlobalBlockers = @($globalBlockers)
         SecondaryBlockers = @($secondaryBlockers)
     }
 
     if (-not $SkipVerdict) {
-        Show-PyMercatorVerdict
+        Show-AurumVerdict
     }
 }
 
-function Show-PyMercatorVerdict {
-    $summary = $script:PYMERCATOR_LAST_PROFILE_SUMMARY
+function Show-AurumVerdict {
+    $summary = $script:AURUM_LAST_PROFILE_SUMMARY
     if ($null -eq $summary) {
         $summary = [pscustomobject]@{
             TotalActionable = 0
@@ -249,7 +249,7 @@ function Show-PyMercatorVerdict {
     }
 }
 
-function Get-PyMercatorPytestCheck {
+function Get-AurumPytestCheck {
     param(
         [string]$LogFile,
         [Nullable[int]]$ExitCode = $null
@@ -294,7 +294,7 @@ function Get-PyMercatorPytestCheck {
     }
 }
 
-function Get-PyMercatorScenarioCheck {
+function Get-AurumScenarioCheck {
     param(
         [string]$LogFile,
         [Nullable[int]]$ExitCode = $null
@@ -329,7 +329,7 @@ function Get-PyMercatorScenarioCheck {
     }
 }
 
-function Show-PyMercatorSystemChecks {
+function Show-AurumSystemChecks {
     param(
         [string]$ScenarioLog = "",
         [Nullable[int]]$ScenarioExitCode = $null,
@@ -337,8 +337,8 @@ function Show-PyMercatorSystemChecks {
         [Nullable[int]]$PytestExitCode = $null
     )
 
-    $scenario = Get-PyMercatorScenarioCheck -LogFile $ScenarioLog -ExitCode $ScenarioExitCode
-    $pytest = Get-PyMercatorPytestCheck -LogFile $PytestLog -ExitCode $PytestExitCode
+    $scenario = Get-AurumScenarioCheck -LogFile $ScenarioLog -ExitCode $ScenarioExitCode
+    $pytest = Get-AurumPytestCheck -LogFile $PytestLog -ExitCode $PytestExitCode
 
     Write-Host ""
     Write-Host "SYSTEM CHECKS"
@@ -348,10 +348,10 @@ function Show-PyMercatorSystemChecks {
     Write-Host ("{0,-18} {1}" -f "tests", $pytest.Tests)
 
     if ($scenario.Status -eq "FAIL") {
-        Show-PyMercatorLogTail -LogFile $ScenarioLog -Lines 60
+        Show-AurumLogTail -LogFile $ScenarioLog -Lines 60
     }
     if ($pytest.Status -eq "FAIL") {
-        Show-PyMercatorLogTail -LogFile $PytestLog -Lines 60
+        Show-AurumLogTail -LogFile $PytestLog -Lines 60
     }
 
     return [pscustomobject]@{
@@ -361,7 +361,7 @@ function Show-PyMercatorSystemChecks {
     }
 }
 
-function Show-PyMercatorKeyFiles {
+function Show-AurumKeyFiles {
     param(
         [hashtable]$Files,
         [string[]]$Order = @(
@@ -386,7 +386,7 @@ function Show-PyMercatorKeyFiles {
     }
 }
 
-function Write-PyMercatorSummaryValue {
+function Write-AurumSummaryValue {
     param(
         [string]$Label,
         [object]$Value,
@@ -394,11 +394,11 @@ function Write-PyMercatorSummaryValue {
     )
 
     $text = if ($null -eq $Value -or "$Value" -eq "") { "-" } else { "$Value" }
-    $formattedValue = Format-PyMercatorSignalText -Text $text -Status $Status
+    $formattedValue = Format-AurumSignalText -Text $text -Status $Status
     Write-Host ("{0,-18} {1}" -f $Label, $formattedValue)
 }
 
-function Get-PyMercatorDailyObjectValue {
+function Get-AurumDailyObjectValue {
     param(
         [object]$Object,
         [string]$Name,
@@ -414,28 +414,28 @@ function Get-PyMercatorDailyObjectValue {
     return $Default
 }
 
-function Get-PyMercatorShortPermissionSummary {
+function Get-AurumShortPermissionSummary {
     param([object[]]$Candidates)
 
     if (-not $Candidates -or $Candidates.Count -eq 0) {
         return "-"
     }
     foreach ($candidate in $Candidates) {
-        $borrowStatus = "$(Get-PyMercatorDailyObjectValue -Object $candidate -Name 'borrow_status' -Default '')"
+        $borrowStatus = "$(Get-AurumDailyObjectValue -Object $candidate -Name 'borrow_status' -Default '')"
         if ($borrowStatus -match "DATA_MISSING|MISSING|UNKNOWN") {
             return "DATA_MISSING"
         }
     }
     foreach ($candidate in $Candidates) {
-        $manualOnly = Get-PyMercatorDailyObjectValue -Object $candidate -Name "manual_only" -Default $false
-        $permission = "$(Get-PyMercatorDailyObjectValue -Object $candidate -Name 'permission' -Default '')"
+        $manualOnly = Get-AurumDailyObjectValue -Object $candidate -Name "manual_only" -Default $false
+        $permission = "$(Get-AurumDailyObjectValue -Object $candidate -Name 'permission' -Default '')"
         if ($manualOnly -eq $true -or $permission -match "MANUAL") {
             return "MANUAL_ONLY"
         }
     }
     foreach ($candidate in $Candidates) {
-        $permission = "$(Get-PyMercatorDailyObjectValue -Object $candidate -Name 'permission' -Default '')"
-        $action = "$(Get-PyMercatorDailyObjectValue -Object $candidate -Name 'action' -Default '')"
+        $permission = "$(Get-AurumDailyObjectValue -Object $candidate -Name 'permission' -Default '')"
+        $action = "$(Get-AurumDailyObjectValue -Object $candidate -Name 'action' -Default '')"
         if ($permission -match "BLOCKED" -or $action -match "BLOCKED") {
             return "BLOCKED"
         }
@@ -443,7 +443,7 @@ function Get-PyMercatorShortPermissionSummary {
     return "OK"
 }
 
-function Show-PyMercatorDailySummary {
+function Show-AurumDailySummary {
     param(
         [string]$ReportJson,
         [string]$UpdateStatusFile,
@@ -455,22 +455,22 @@ function Show-PyMercatorDailySummary {
     Write-Host "--------------------------------------------------------------------------------"
 
     if (-not (Test-Path -LiteralPath $ReportJson)) {
-        Write-PyMercatorSummaryValue -Label "warning" -Value "report json not found" -Status "WARNING"
-        Write-PyMercatorSummaryValue -Label "json" -Value $ReportJson
-        Write-PyMercatorSummaryValue -Label "run_log" -Value $RunLog
+        Write-AurumSummaryValue -Label "warning" -Value "report json not found" -Status "WARNING"
+        Write-AurumSummaryValue -Label "json" -Value $ReportJson
+        Write-AurumSummaryValue -Label "run_log" -Value $RunLog
         return
     }
 
     try {
         $payload = Get-Content -LiteralPath $ReportJson -Raw | ConvertFrom-Json
     } catch {
-        Write-PyMercatorSummaryValue -Label "warning" -Value "unable to parse report json" -Status "WARNING"
-        Write-PyMercatorSummaryValue -Label "json" -Value $ReportJson
-        Write-PyMercatorSummaryValue -Label "run_log" -Value $RunLog
+        Write-AurumSummaryValue -Label "warning" -Value "unable to parse report json" -Status "WARNING"
+        Write-AurumSummaryValue -Label "json" -Value $ReportJson
+        Write-AurumSummaryValue -Label "run_log" -Value $RunLog
         return
     }
 
-    $updatePayload = Get-PyMercatorDailyObjectValue -Object $payload -Name "update_status" -Default $null
+    $updatePayload = Get-AurumDailyObjectValue -Object $payload -Name "update_status" -Default $null
     if ($null -eq $updatePayload -and $UpdateStatusFile -and (Test-Path -LiteralPath $UpdateStatusFile)) {
         try {
             $updatePayload = Get-Content -LiteralPath $UpdateStatusFile -Raw | ConvertFrom-Json
@@ -479,44 +479,44 @@ function Show-PyMercatorDailySummary {
         }
     }
 
-    $marketContext = Get-PyMercatorDailyObjectValue -Object $payload -Name "market_context" -Default $null
-    $regimeSummary = Get-PyMercatorDailyObjectValue -Object $marketContext -Name "regime_summary" -Default $null
-    $marketRegime = Get-PyMercatorDailyObjectValue -Object $payload -Name "market_regime" -Default $null
-    $prediction = Get-PyMercatorDailyObjectValue -Object $payload -Name "prediction" -Default $null
-    $predictionQuality = Get-PyMercatorDailyObjectValue -Object $prediction -Name "model_quality" -Default $null
-    $modelQuality = Get-PyMercatorDailyObjectValue -Object $payload -Name "model_quality" -Default $null
+    $marketContext = Get-AurumDailyObjectValue -Object $payload -Name "market_context" -Default $null
+    $regimeSummary = Get-AurumDailyObjectValue -Object $marketContext -Name "regime_summary" -Default $null
+    $marketRegime = Get-AurumDailyObjectValue -Object $payload -Name "market_regime" -Default $null
+    $prediction = Get-AurumDailyObjectValue -Object $payload -Name "prediction" -Default $null
+    $predictionQuality = Get-AurumDailyObjectValue -Object $prediction -Name "model_quality" -Default $null
+    $modelQuality = Get-AurumDailyObjectValue -Object $payload -Name "model_quality" -Default $null
     if ($modelQuality -isnot [string]) {
-        $modelQuality = Get-PyMercatorDailyObjectValue -Object $modelQuality -Name "status" -Default $null
+        $modelQuality = Get-AurumDailyObjectValue -Object $modelQuality -Name "status" -Default $null
     }
     if (-not $modelQuality -or "$modelQuality" -eq "-") {
-        $modelQuality = Get-PyMercatorDailyObjectValue -Object $predictionQuality -Name "status" -Default "-"
+        $modelQuality = Get-AurumDailyObjectValue -Object $predictionQuality -Name "status" -Default "-"
     }
-    $edge = Get-PyMercatorDailyObjectValue -Object $payload -Name "model_edge" -Default $null
+    $edge = Get-AurumDailyObjectValue -Object $payload -Name "model_edge" -Default $null
     if ($null -eq $edge -or "$edge" -eq "-") {
-        $edge = Get-PyMercatorDailyObjectValue -Object $predictionQuality -Name "edge" -Default "-"
+        $edge = Get-AurumDailyObjectValue -Object $predictionQuality -Name "edge" -Default "-"
     }
 
-    $decision = Get-PyMercatorDailyObjectValue -Object $payload -Name "decision" -Default $null
-    $basket = Get-PyMercatorDailyObjectValue -Object $payload -Name "basket" -Default $null
-    $shortCandidates = @(Get-PyMercatorDailyObjectValue -Object $payload -Name "short_candidates" -Default @())
+    $decision = Get-AurumDailyObjectValue -Object $payload -Name "decision" -Default $null
+    $basket = Get-AurumDailyObjectValue -Object $payload -Name "basket" -Default $null
+    $shortCandidates = @(Get-AurumDailyObjectValue -Object $payload -Name "short_candidates" -Default @())
     if ($shortCandidates.Count -eq 0) {
-        $defensiveBook = Get-PyMercatorDailyObjectValue -Object $payload -Name "defensive_book" -Default $null
-        $shortCandidates = @(Get-PyMercatorDailyObjectValue -Object $defensiveBook -Name "short_candidates" -Default @())
+        $defensiveBook = Get-AurumDailyObjectValue -Object $payload -Name "defensive_book" -Default $null
+        $shortCandidates = @(Get-AurumDailyObjectValue -Object $defensiveBook -Name "short_candidates" -Default @())
     }
-    $observationCandidates = @(Get-PyMercatorDailyObjectValue -Object $payload -Name "observation_candidates" -Default @())
+    $observationCandidates = @(Get-AurumDailyObjectValue -Object $payload -Name "observation_candidates" -Default @())
 
-    $updateStatus = Get-PyMercatorDailyObjectValue -Object $updatePayload -Name "status" -Default "-"
-    $freshness = Get-PyMercatorDailyObjectValue -Object (Get-PyMercatorDailyObjectValue -Object $updatePayload -Name "freshness" -Default $null) -Name "freshness_status" -Default "-"
-    $market = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "market_regime" -Default (Get-PyMercatorDailyObjectValue -Object $marketRegime -Name "regime" -Default "-")
-    $trend = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "market_trend" -Default (Get-PyMercatorDailyObjectValue -Object $marketContext -Name "market_trend" -Default "-")
-    $volatility = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "market_volatility" -Default (Get-PyMercatorDailyObjectValue -Object $marketContext -Name "market_volatility" -Default "-")
-    $contextScore = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "context_score" -Default "-"
-    $behavior = Get-PyMercatorDailyObjectValue -Object $prediction -Name "behavior" -Default "-"
-    $alignment = Get-PyMercatorDailyObjectValue -Object $prediction -Name "horizon_alignment" -Default "-"
-    $longBasket = Get-PyMercatorDailyObjectValue -Object $basket -Name "status" -Default "-"
-    $actionable = [int](Get-PyMercatorDailyObjectValue -Object $decision -Name "actionable" -Default 0)
-    $blocked = [int](Get-PyMercatorDailyObjectValue -Object $decision -Name "blocked" -Default 0)
-    $shortPermission = Get-PyMercatorShortPermissionSummary -Candidates $shortCandidates
+    $updateStatus = Get-AurumDailyObjectValue -Object $updatePayload -Name "status" -Default "-"
+    $freshness = Get-AurumDailyObjectValue -Object (Get-AurumDailyObjectValue -Object $updatePayload -Name "freshness" -Default $null) -Name "freshness_status" -Default "-"
+    $market = Get-AurumDailyObjectValue -Object $regimeSummary -Name "market_regime" -Default (Get-AurumDailyObjectValue -Object $marketRegime -Name "regime" -Default "-")
+    $trend = Get-AurumDailyObjectValue -Object $regimeSummary -Name "market_trend" -Default (Get-AurumDailyObjectValue -Object $marketContext -Name "market_trend" -Default "-")
+    $volatility = Get-AurumDailyObjectValue -Object $regimeSummary -Name "market_volatility" -Default (Get-AurumDailyObjectValue -Object $marketContext -Name "market_volatility" -Default "-")
+    $contextScore = Get-AurumDailyObjectValue -Object $regimeSummary -Name "context_score" -Default "-"
+    $behavior = Get-AurumDailyObjectValue -Object $prediction -Name "behavior" -Default "-"
+    $alignment = Get-AurumDailyObjectValue -Object $prediction -Name "horizon_alignment" -Default "-"
+    $longBasket = Get-AurumDailyObjectValue -Object $basket -Name "status" -Default "-"
+    $actionable = [int](Get-AurumDailyObjectValue -Object $decision -Name "actionable" -Default 0)
+    $blocked = [int](Get-AurumDailyObjectValue -Object $decision -Name "blocked" -Default 0)
+    $shortPermission = Get-AurumShortPermissionSummary -Candidates $shortCandidates
     $finalDecision = if ($actionable -gt 0 -and "$longBasket" -eq "OK") {
         "REVIEW BASKET"
     } elseif ($actionable -gt 0) {
@@ -525,26 +525,26 @@ function Show-PyMercatorDailySummary {
         "NO LONG TRADE"
     }
 
-    Write-PyMercatorSummaryValue -Label "update" -Value $updateStatus -Status $updateStatus
-    Write-PyMercatorSummaryValue -Label "data_freshness" -Value $freshness -Status $freshness
-    Write-PyMercatorSummaryValue -Label "market" -Value $market -Status $market
-    Write-PyMercatorSummaryValue -Label "trend" -Value $trend -Status $trend
-    Write-PyMercatorSummaryValue -Label "volatility" -Value $volatility -Status $volatility
-    Write-PyMercatorSummaryValue -Label "context_score" -Value $contextScore
-    Write-PyMercatorSummaryValue -Label "model_quality" -Value $modelQuality -Status $modelQuality
-    Write-PyMercatorSummaryValue -Label "edge" -Value $edge
-    Write-PyMercatorSummaryValue -Label "behavior" -Value $behavior -Status $behavior
-    Write-PyMercatorSummaryValue -Label "alignment" -Value $alignment -Status $alignment
-    Write-PyMercatorSummaryValue -Label "long_basket" -Value $longBasket -Status $longBasket
-    Write-PyMercatorSummaryValue -Label "actionable" -Value $actionable
-    Write-PyMercatorSummaryValue -Label "blocked" -Value $blocked
-    Write-PyMercatorSummaryValue -Label "observation" -Value ("{0} candidates" -f $observationCandidates.Count)
-    Write-PyMercatorSummaryValue -Label "short_setups" -Value ("{0} candidates" -f $shortCandidates.Count)
-    Write-PyMercatorSummaryValue -Label "short_permission" -Value $shortPermission -Status $shortPermission
-    Write-PyMercatorSummaryValue -Label "decision" -Value $finalDecision -Status $finalDecision
+    Write-AurumSummaryValue -Label "update" -Value $updateStatus -Status $updateStatus
+    Write-AurumSummaryValue -Label "data_freshness" -Value $freshness -Status $freshness
+    Write-AurumSummaryValue -Label "market" -Value $market -Status $market
+    Write-AurumSummaryValue -Label "trend" -Value $trend -Status $trend
+    Write-AurumSummaryValue -Label "volatility" -Value $volatility -Status $volatility
+    Write-AurumSummaryValue -Label "context_score" -Value $contextScore
+    Write-AurumSummaryValue -Label "model_quality" -Value $modelQuality -Status $modelQuality
+    Write-AurumSummaryValue -Label "edge" -Value $edge
+    Write-AurumSummaryValue -Label "behavior" -Value $behavior -Status $behavior
+    Write-AurumSummaryValue -Label "alignment" -Value $alignment -Status $alignment
+    Write-AurumSummaryValue -Label "long_basket" -Value $longBasket -Status $longBasket
+    Write-AurumSummaryValue -Label "actionable" -Value $actionable
+    Write-AurumSummaryValue -Label "blocked" -Value $blocked
+    Write-AurumSummaryValue -Label "observation" -Value ("{0} candidates" -f $observationCandidates.Count)
+    Write-AurumSummaryValue -Label "short_setups" -Value ("{0} candidates" -f $shortCandidates.Count)
+    Write-AurumSummaryValue -Label "short_permission" -Value $shortPermission -Status $shortPermission
+    Write-AurumSummaryValue -Label "decision" -Value $finalDecision -Status $finalDecision
 }
 
-function Get-PyMercatorSignalColorCode {
+function Get-AurumSignalColorCode {
     param([string]$Status)
 
     $key = "$Status".ToUpperInvariant()
@@ -566,17 +566,17 @@ function Get-PyMercatorSignalColorCode {
     return ""
 }
 
-function Format-PyMercatorSignalText {
+function Format-AurumSignalText {
     param(
         [object]$Text,
         [string]$Status = ""
     )
 
     $value = if ($null -eq $Text -or "$Text" -eq "") { "-" } else { "$Text" }
-    if ($script:PYMERCATOR_COLOR -eq "never" -or -not $Status) {
+    if ($script:AURUM_COLOR -eq "never" -or -not $Status) {
         return $value
     }
-    $code = Get-PyMercatorSignalColorCode -Status $Status
+    $code = Get-AurumSignalColorCode -Status $Status
     if (-not $code) {
         return $value
     }
@@ -584,7 +584,7 @@ function Format-PyMercatorSignalText {
     return "$esc[${code}m$value$esc[0m"
 }
 
-function Format-PyMercatorSignalCell {
+function Format-AurumSignalCell {
     param(
         [object]$Text,
         [int]$Width,
@@ -601,10 +601,10 @@ function Format-PyMercatorSignalCell {
     } else {
         $value.PadRight($Width)
     }
-    return Format-PyMercatorSignalText -Text $padded -Status $Status
+    return Format-AurumSignalText -Text $padded -Status $Status
 }
 
-function Format-PyMercatorSignalNumber {
+function Format-AurumSignalNumber {
     param(
         [object]$Value,
         [int]$Decimals = 1
@@ -617,7 +617,7 @@ function Format-PyMercatorSignalNumber {
     }
 }
 
-function Normalize-PyMercatorSignalStatus {
+function Normalize-AurumSignalStatus {
     param([object]$Value)
 
     $text = "$Value".Trim().ToUpperInvariant()
@@ -642,7 +642,7 @@ function Normalize-PyMercatorSignalStatus {
     return $text
 }
 
-function Get-PyMercatorObservationClassForTicker {
+function Get-AurumObservationClassForTicker {
     param(
         [string]$Ticker,
         [object[]]$Candidates,
@@ -655,16 +655,16 @@ function Get-PyMercatorObservationClassForTicker {
     }
 
     foreach ($candidate in @($Candidates)) {
-        $candidateTicker = "$(Get-PyMercatorDailyObjectValue -Object $candidate -Name 'ticker' -Default '')".Trim().ToUpperInvariant()
+        $candidateTicker = "$(Get-AurumDailyObjectValue -Object $candidate -Name 'ticker' -Default '')".Trim().ToUpperInvariant()
         if ($candidateTicker -eq $tickerKey) {
-            return Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $candidate -Name "class" -Default $Default)
+            return Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $candidate -Name "class" -Default $Default)
         }
     }
 
     return $Default
 }
 
-function Get-PyMercatorBoardSignal {
+function Get-AurumBoardSignal {
     param(
         [object]$Value,
         [string]$Default
@@ -691,7 +691,7 @@ function Get-PyMercatorBoardSignal {
     return $Default
 }
 
-function Get-PyMercatorLongSignalRows {
+function Get-AurumLongSignalRows {
     param(
         [object[]]$Decisions,
         [object[]]$ObservationCandidates = @(),
@@ -700,23 +700,23 @@ function Get-PyMercatorLongSignalRows {
 
     $rows = @()
     foreach ($item in @($Decisions | Select-Object -First $Limit)) {
-        $asset = Get-PyMercatorDailyObjectValue -Object $item -Name "asset" -Default $null
-        $ranking = Get-PyMercatorDailyObjectValue -Object $item -Name "ranking" -Default $null
-        $permission = Get-PyMercatorDailyObjectValue -Object $item -Name "permission" -Default $null
-        $validation = Get-PyMercatorDailyObjectValue -Object $item -Name "validation" -Default $null
-        $execution = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $permission -Name "status" -Default "")
+        $asset = Get-AurumDailyObjectValue -Object $item -Name "asset" -Default $null
+        $ranking = Get-AurumDailyObjectValue -Object $item -Name "ranking" -Default $null
+        $permission = Get-AurumDailyObjectValue -Object $item -Name "permission" -Default $null
+        $validation = Get-AurumDailyObjectValue -Object $item -Name "validation" -Default $null
+        $execution = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $permission -Name "status" -Default "")
         if ($execution -eq "-") {
-            $execution = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $validation -Name "status" -Default "-")
+            $execution = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $validation -Name "status" -Default "-")
         }
-        $score = Get-PyMercatorDailyObjectValue -Object $ranking -Name "context_score" -Default (Get-PyMercatorDailyObjectValue -Object $ranking -Name "raw_score" -Default "-")
-        $signalRaw = Get-PyMercatorDailyObjectValue -Object $ranking -Name "context_signal" -Default (Get-PyMercatorDailyObjectValue -Object $ranking -Name "raw_signal" -Default "BUY")
-        $reason = Get-PyMercatorDailyObjectValue -Object $item -Name "decision_label" -Default ""
-        $reasons = @(Get-PyMercatorDailyObjectValue -Object $item -Name "blocker_reasons" -Default @())
+        $score = Get-AurumDailyObjectValue -Object $ranking -Name "context_score" -Default (Get-AurumDailyObjectValue -Object $ranking -Name "raw_score" -Default "-")
+        $signalRaw = Get-AurumDailyObjectValue -Object $ranking -Name "context_signal" -Default (Get-AurumDailyObjectValue -Object $ranking -Name "raw_signal" -Default "BUY")
+        $reason = Get-AurumDailyObjectValue -Object $item -Name "decision_label" -Default ""
+        $reasons = @(Get-AurumDailyObjectValue -Object $item -Name "blocker_reasons" -Default @())
         if ($reasons.Count -gt 0) {
             $reason = $reasons -join "+"
         } elseif (-not $reason) {
-            $permissionReasons = @(Get-PyMercatorDailyObjectValue -Object $permission -Name "reasons" -Default @())
-            $validationReasons = @(Get-PyMercatorDailyObjectValue -Object $validation -Name "reasons" -Default @())
+            $permissionReasons = @(Get-AurumDailyObjectValue -Object $permission -Name "reasons" -Default @())
+            $validationReasons = @(Get-AurumDailyObjectValue -Object $validation -Name "reasons" -Default @())
             if ($permissionReasons.Count -gt 0) {
                 $reason = $permissionReasons[0]
             } elseif ($validationReasons.Count -gt 0) {
@@ -725,11 +725,11 @@ function Get-PyMercatorLongSignalRows {
                 $reason = "-"
             }
         }
-        $ticker = Get-PyMercatorDailyObjectValue -Object $asset -Name "ticker" -Default "-"
+        $ticker = Get-AurumDailyObjectValue -Object $asset -Name "ticker" -Default "-"
         $rows += [pscustomobject]@{
             Ticker = $ticker
-            ObsClass = Get-PyMercatorObservationClassForTicker -Ticker $ticker -Candidates $ObservationCandidates -Default "WATCH"
-            Signal = Get-PyMercatorBoardSignal -Value $signalRaw -Default "BUY_SETUP"
+            ObsClass = Get-AurumObservationClassForTicker -Ticker $ticker -Candidates $ObservationCandidates -Default "WATCH"
+            Signal = Get-AurumBoardSignal -Value $signalRaw -Default "BUY_SETUP"
             Execution = $execution
             Score = $score
             MainReason = $reason
@@ -738,7 +738,7 @@ function Get-PyMercatorLongSignalRows {
     return $rows
 }
 
-function Get-PyMercatorShortSignalRows {
+function Get-AurumShortSignalRows {
     param(
         [object[]]$Candidates,
         [int]$Limit = 10
@@ -746,32 +746,32 @@ function Get-PyMercatorShortSignalRows {
 
     $rows = @()
     foreach ($item in @($Candidates | Select-Object -First $Limit)) {
-        $borrow = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $item -Name "borrow_status" -Default "-")
-        $permission = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $item -Name "short_permission" -Default (Get-PyMercatorDailyObjectValue -Object $item -Name "permission" -Default "-"))
-        $shortExecution = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $item -Name "short_execution_status" -Default "")
+        $borrow = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $item -Name "borrow_status" -Default "-")
+        $permission = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $item -Name "short_permission" -Default (Get-AurumDailyObjectValue -Object $item -Name "permission" -Default "-"))
+        $shortExecution = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $item -Name "short_execution_status" -Default "")
         $execution = $permission
-        $reason = Get-PyMercatorDailyObjectValue -Object $item -Name "reason" -Default (Get-PyMercatorDailyObjectValue -Object $item -Name "setup_reason" -Default "-")
+        $reason = Get-AurumDailyObjectValue -Object $item -Name "reason" -Default (Get-AurumDailyObjectValue -Object $item -Name "setup_reason" -Default "-")
         if ($shortExecution -and $shortExecution -ne "-") {
             $execution = $shortExecution
-            $reason = Get-PyMercatorDailyObjectValue -Object $item -Name "short_execution_reason" -Default $reason
+            $reason = Get-AurumDailyObjectValue -Object $item -Name "short_execution_reason" -Default $reason
         } elseif ($borrow -eq "DATA_MISSING" -or $borrow -eq "BORROW_DATA_MISSING") {
             $execution = "DATA_BLOCKED"
             $reason = "borrow data missing"
         }
-        $setup = Get-PyMercatorDailyObjectValue -Object $item -Name "short_setup_status" -Default (Get-PyMercatorDailyObjectValue -Object $item -Name "class" -Default "SHORT_SETUP")
+        $setup = Get-AurumDailyObjectValue -Object $item -Name "short_setup_status" -Default (Get-AurumDailyObjectValue -Object $item -Name "class" -Default "SHORT_SETUP")
         $rows += [pscustomobject]@{
-            Ticker = Get-PyMercatorDailyObjectValue -Object $item -Name "ticker" -Default "-"
-            ObsClass = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $item -Name "class" -Default $setup)
-            Signal = Get-PyMercatorBoardSignal -Value $setup -Default "SELL_SETUP"
+            Ticker = Get-AurumDailyObjectValue -Object $item -Name "ticker" -Default "-"
+            ObsClass = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $item -Name "class" -Default $setup)
+            Signal = Get-AurumBoardSignal -Value $setup -Default "SELL_SETUP"
             Execution = $execution
-            Score = Get-PyMercatorDailyObjectValue -Object $item -Name "short_score" -Default (Get-PyMercatorDailyObjectValue -Object $item -Name "score" -Default "-")
+            Score = Get-AurumDailyObjectValue -Object $item -Name "short_score" -Default (Get-AurumDailyObjectValue -Object $item -Name "score" -Default "-")
             MainReason = $reason
         }
     }
     return $rows
 }
 
-function Get-PyMercatorLongObservationRows {
+function Get-AurumLongObservationRows {
     param(
         [object[]]$Candidates,
         [object[]]$Decisions,
@@ -780,21 +780,21 @@ function Get-PyMercatorLongObservationRows {
 
     $rows = @()
     foreach ($candidate in @($Candidates | Select-Object -First $Limit)) {
-        $ticker = Get-PyMercatorDailyObjectValue -Object $candidate -Name "ticker" -Default "-"
-        $obsClass = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $candidate -Name "class" -Default "WATCH")
-        $score = Get-PyMercatorDailyObjectValue -Object $candidate -Name "score" -Default (Get-PyMercatorDailyObjectValue -Object $candidate -Name "obs_index" -Default "-")
-        $mainReason = Get-PyMercatorDailyObjectValue -Object $candidate -Name "reason" -Default "-"
+        $ticker = Get-AurumDailyObjectValue -Object $candidate -Name "ticker" -Default "-"
+        $obsClass = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $candidate -Name "class" -Default "WATCH")
+        $score = Get-AurumDailyObjectValue -Object $candidate -Name "score" -Default (Get-AurumDailyObjectValue -Object $candidate -Name "obs_index" -Default "-")
+        $mainReason = Get-AurumDailyObjectValue -Object $candidate -Name "reason" -Default "-"
         $signal = "BUY_SETUP"
         $execution = "WATCH"
 
         foreach ($decision in @($Decisions)) {
-            $asset = Get-PyMercatorDailyObjectValue -Object $decision -Name "asset" -Default $null
-            $decisionTicker = Get-PyMercatorDailyObjectValue -Object $asset -Name "ticker" -Default ""
+            $asset = Get-AurumDailyObjectValue -Object $decision -Name "asset" -Default $null
+            $decisionTicker = Get-AurumDailyObjectValue -Object $asset -Name "ticker" -Default ""
             if ("$decisionTicker".Trim().ToUpperInvariant() -ne "$ticker".Trim().ToUpperInvariant()) {
                 continue
             }
 
-            $matched = @(Get-PyMercatorLongSignalRows -Decisions @($decision) -ObservationCandidates $Candidates -Limit 1)
+            $matched = @(Get-AurumLongSignalRows -Decisions @($decision) -ObservationCandidates $Candidates -Limit 1)
             if ($matched.Count -gt 0) {
                 $signal = $matched[0].Signal
                 $execution = $matched[0].Execution
@@ -817,7 +817,7 @@ function Get-PyMercatorLongObservationRows {
     return $rows
 }
 
-function Write-PyMercatorSignalBoardRows {
+function Write-AurumSignalBoardRows {
     param(
         [string]$Title,
         [object[]]$Rows,
@@ -829,8 +829,8 @@ function Write-PyMercatorSignalBoardRows {
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ("{0,2}  {1,-8} {2,-13} {3,-11} {4,-12} {5,7}  {6}" -f "#", "TICKER", "OBS_CLASS", "SIGNAL", "EXECUTION", "SCORE", "MAIN_REASON")
     if (-not $Rows -or $Rows.Count -eq 0) {
-        Write-PyMercatorSummaryValue -Label "status" -Value "EMPTY"
-        Write-PyMercatorSummaryValue -Label "reason" -Value $EmptyReason
+        Write-AurumSummaryValue -Label "status" -Value "EMPTY"
+        Write-AurumSummaryValue -Label "reason" -Value $EmptyReason
         return
     }
 
@@ -840,17 +840,17 @@ function Write-PyMercatorSignalBoardRows {
             "{0,2}  {1,-8} {2} {3} {4} {5,7}  {6}" -f
             $index,
             $row.Ticker,
-            (Format-PyMercatorSignalCell -Text $row.ObsClass -Width 13 -Status $row.ObsClass),
-            (Format-PyMercatorSignalCell -Text $row.Signal -Width 11 -Status $row.Signal),
-            (Format-PyMercatorSignalCell -Text $row.Execution -Width 12 -Status $row.Execution),
-            (Format-PyMercatorSignalNumber -Value $row.Score -Decimals 1),
+            (Format-AurumSignalCell -Text $row.ObsClass -Width 13 -Status $row.ObsClass),
+            (Format-AurumSignalCell -Text $row.Signal -Width 11 -Status $row.Signal),
+            (Format-AurumSignalCell -Text $row.Execution -Width 12 -Status $row.Execution),
+            (Format-AurumSignalNumber -Value $row.Score -Decimals 1),
             $row.MainReason
         )
         $index += 1
     }
 }
 
-function Show-PyMercatorSignals {
+function Show-AurumSignals {
     param(
         [string]$ReportJson,
         [string]$BasketFile,
@@ -863,88 +863,88 @@ function Show-PyMercatorSignals {
     )
 
     Write-Host ""
-    Write-Host "PYMERCATOR SIGNALS"
+    Write-Host "AURUM SIGNALS"
     Write-Host "--------------------------------------------------------------------------------"
 
     if (-not (Test-Path -LiteralPath $ReportJson)) {
-        Write-PyMercatorSummaryValue -Label "warning" -Value "report json not found" -Status "WARNING"
-        Write-PyMercatorSummaryValue -Label "json" -Value $ReportJson
-        Write-PyMercatorSummaryValue -Label "run_log" -Value $RunLog
+        Write-AurumSummaryValue -Label "warning" -Value "report json not found" -Status "WARNING"
+        Write-AurumSummaryValue -Label "json" -Value $ReportJson
+        Write-AurumSummaryValue -Label "run_log" -Value $RunLog
         return
     }
 
     try {
         $payload = Get-Content -LiteralPath $ReportJson -Raw | ConvertFrom-Json
     } catch {
-        Write-PyMercatorSummaryValue -Label "warning" -Value "unable to parse report json" -Status "WARNING"
-        Write-PyMercatorSummaryValue -Label "json" -Value $ReportJson
-        Write-PyMercatorSummaryValue -Label "run_log" -Value $RunLog
+        Write-AurumSummaryValue -Label "warning" -Value "unable to parse report json" -Status "WARNING"
+        Write-AurumSummaryValue -Label "json" -Value $ReportJson
+        Write-AurumSummaryValue -Label "run_log" -Value $RunLog
         return
     }
 
-    $marketContext = Get-PyMercatorDailyObjectValue -Object $payload -Name "market_context" -Default $null
-    $regimeSummary = Get-PyMercatorDailyObjectValue -Object $marketContext -Name "regime_summary" -Default $null
-    $marketRegime = Get-PyMercatorDailyObjectValue -Object $payload -Name "market_regime" -Default $null
-    $prediction = Get-PyMercatorDailyObjectValue -Object $payload -Name "prediction" -Default $null
-    $predictionQuality = Get-PyMercatorDailyObjectValue -Object $prediction -Name "model_quality" -Default $null
-    $modelQuality = Get-PyMercatorDailyObjectValue -Object $payload -Name "model_quality" -Default $null
+    $marketContext = Get-AurumDailyObjectValue -Object $payload -Name "market_context" -Default $null
+    $regimeSummary = Get-AurumDailyObjectValue -Object $marketContext -Name "regime_summary" -Default $null
+    $marketRegime = Get-AurumDailyObjectValue -Object $payload -Name "market_regime" -Default $null
+    $prediction = Get-AurumDailyObjectValue -Object $payload -Name "prediction" -Default $null
+    $predictionQuality = Get-AurumDailyObjectValue -Object $prediction -Name "model_quality" -Default $null
+    $modelQuality = Get-AurumDailyObjectValue -Object $payload -Name "model_quality" -Default $null
     if ($modelQuality -isnot [string]) {
-        $modelQuality = Get-PyMercatorDailyObjectValue -Object $modelQuality -Name "status" -Default $null
+        $modelQuality = Get-AurumDailyObjectValue -Object $modelQuality -Name "status" -Default $null
     }
     if (-not $modelQuality -or "$modelQuality" -eq "-") {
-        $modelQuality = Get-PyMercatorDailyObjectValue -Object $predictionQuality -Name "status" -Default "-"
+        $modelQuality = Get-AurumDailyObjectValue -Object $predictionQuality -Name "status" -Default "-"
     }
 
-    $decision = Get-PyMercatorDailyObjectValue -Object $payload -Name "decision" -Default $null
-    $basket = Get-PyMercatorDailyObjectValue -Object $payload -Name "basket" -Default $null
-    $defensiveBook = Get-PyMercatorDailyObjectValue -Object $payload -Name "defensive_book" -Default $null
-    $shortCandidates = @(Get-PyMercatorDailyObjectValue -Object $payload -Name "short_candidates" -Default @())
+    $decision = Get-AurumDailyObjectValue -Object $payload -Name "decision" -Default $null
+    $basket = Get-AurumDailyObjectValue -Object $payload -Name "basket" -Default $null
+    $defensiveBook = Get-AurumDailyObjectValue -Object $payload -Name "defensive_book" -Default $null
+    $shortCandidates = @(Get-AurumDailyObjectValue -Object $payload -Name "short_candidates" -Default @())
     if ($shortCandidates.Count -eq 0) {
-        $shortCandidates = @(Get-PyMercatorDailyObjectValue -Object $defensiveBook -Name "short_candidates" -Default @())
+        $shortCandidates = @(Get-AurumDailyObjectValue -Object $defensiveBook -Name "short_candidates" -Default @())
     }
-    $hedgeCandidates = @(Get-PyMercatorDailyObjectValue -Object $payload -Name "hedge_candidates" -Default @())
+    $hedgeCandidates = @(Get-AurumDailyObjectValue -Object $payload -Name "hedge_candidates" -Default @())
     if ($hedgeCandidates.Count -eq 0) {
-        $hedgeCandidates = @(Get-PyMercatorDailyObjectValue -Object $defensiveBook -Name "hedge_candidates" -Default @())
+        $hedgeCandidates = @(Get-AurumDailyObjectValue -Object $defensiveBook -Name "hedge_candidates" -Default @())
     }
-    $observationCandidates = @(Get-PyMercatorDailyObjectValue -Object $payload -Name "observation_candidates" -Default @())
-    $shortObservationCandidates = @(Get-PyMercatorDailyObjectValue -Object $payload -Name "short_observation_candidates" -Default @())
+    $observationCandidates = @(Get-AurumDailyObjectValue -Object $payload -Name "observation_candidates" -Default @())
+    $shortObservationCandidates = @(Get-AurumDailyObjectValue -Object $payload -Name "short_observation_candidates" -Default @())
     if ($shortObservationCandidates.Count -eq 0) {
         $shortObservationCandidates = $shortCandidates
     }
-    $decisions = @(Get-PyMercatorDailyObjectValue -Object $payload -Name "decisions" -Default @())
+    $decisions = @(Get-AurumDailyObjectValue -Object $payload -Name "decisions" -Default @())
 
-    $profile = Get-PyMercatorDailyObjectValue -Object $payload -Name "profile" -Default "CON"
-    $market = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "market_regime" -Default (Get-PyMercatorDailyObjectValue -Object $marketRegime -Name "regime" -Default "-")
-    $trend = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "market_trend" -Default (Get-PyMercatorDailyObjectValue -Object $marketContext -Name "market_trend" -Default "-")
-    $contextScore = Get-PyMercatorDailyObjectValue -Object $regimeSummary -Name "context_score" -Default "-"
+    $profile = Get-AurumDailyObjectValue -Object $payload -Name "profile" -Default "CON"
+    $market = Get-AurumDailyObjectValue -Object $regimeSummary -Name "market_regime" -Default (Get-AurumDailyObjectValue -Object $marketRegime -Name "regime" -Default "-")
+    $trend = Get-AurumDailyObjectValue -Object $regimeSummary -Name "market_trend" -Default (Get-AurumDailyObjectValue -Object $marketContext -Name "market_trend" -Default "-")
+    $contextScore = Get-AurumDailyObjectValue -Object $regimeSummary -Name "context_score" -Default "-"
     $dataFreshness = "-"
     $dataQuality = "-"
     if ($UpdateStatusFile -and (Test-Path -LiteralPath $UpdateStatusFile)) {
         try {
             $updateStatus = Get-Content -LiteralPath $UpdateStatusFile -Raw | ConvertFrom-Json
-            $freshness = Get-PyMercatorDailyObjectValue -Object $updateStatus -Name "freshness" -Default $null
-            $dataFreshness = Get-PyMercatorDailyObjectValue -Object $freshness -Name "freshness_status" -Default "-"
-            $dataQuality = Get-PyMercatorDailyObjectValue -Object $freshness -Name "data_quality_score" -Default "-"
+            $freshness = Get-AurumDailyObjectValue -Object $updateStatus -Name "freshness" -Default $null
+            $dataFreshness = Get-AurumDailyObjectValue -Object $freshness -Name "freshness_status" -Default "-"
+            $dataQuality = Get-AurumDailyObjectValue -Object $freshness -Name "data_quality_score" -Default "-"
         } catch {
             $dataFreshness = "UNKNOWN"
             $dataQuality = "-"
         }
     }
-    $behavior = Get-PyMercatorDailyObjectValue -Object $prediction -Name "behavior" -Default "-"
-    $longBasket = Get-PyMercatorDailyObjectValue -Object $basket -Name "status" -Default "-"
-    $defensiveMode = Get-PyMercatorDailyObjectValue -Object $defensiveBook -Name "defensive_mode" -Default "inactive"
+    $behavior = Get-AurumDailyObjectValue -Object $prediction -Name "behavior" -Default "-"
+    $longBasket = Get-AurumDailyObjectValue -Object $basket -Name "status" -Default "-"
+    $defensiveMode = Get-AurumDailyObjectValue -Object $defensiveBook -Name "defensive_mode" -Default "inactive"
     if ($longBasket -eq "BLOCKED" -and $defensiveMode -eq "-") {
         $defensiveMode = "active"
     }
-    $actionable = [int](Get-PyMercatorDailyObjectValue -Object $decision -Name "actionable" -Default 0)
-    $watch = [int](Get-PyMercatorDailyObjectValue -Object $decision -Name "watch" -Default 0)
-    $blocked = [int](Get-PyMercatorDailyObjectValue -Object $decision -Name "blocked" -Default 0)
-    $shortPermission = Get-PyMercatorShortPermissionSummary -Candidates $shortCandidates
+    $actionable = [int](Get-AurumDailyObjectValue -Object $decision -Name "actionable" -Default 0)
+    $watch = [int](Get-AurumDailyObjectValue -Object $decision -Name "watch" -Default 0)
+    $blocked = [int](Get-AurumDailyObjectValue -Object $decision -Name "blocked" -Default 0)
+    $shortPermission = Get-AurumShortPermissionSummary -Candidates $shortCandidates
     $shortReady = 0
     $shortDataBlocked = 0
     foreach ($candidate in $shortCandidates) {
-        $permission = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $candidate -Name "short_permission" -Default (Get-PyMercatorDailyObjectValue -Object $candidate -Name "permission" -Default "-"))
-        $borrow = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $candidate -Name "borrow_status" -Default "-")
+        $permission = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $candidate -Name "short_permission" -Default (Get-AurumDailyObjectValue -Object $candidate -Name "permission" -Default "-"))
+        $borrow = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $candidate -Name "borrow_status" -Default "-")
         if ($permission -eq "READY" -and $borrow -ne "DATA_MISSING") {
             $shortReady += 1
         }
@@ -955,36 +955,36 @@ function Show-PyMercatorSignals {
     $hedgeStatus = if ($hedgeCandidates.Count -gt 0) { "WATCH" } else { "NONE" }
     $cashStatus = if ("$defensiveMode".ToLowerInvariant() -eq "active" -or $longBasket -eq "BLOCKED") { "PREFERRED" } else { "NEUTRAL" }
 
-    Write-PyMercatorSummaryValue -Label "date" -Value (Get-Date -Format "yyyy-MM-dd")
-    Write-PyMercatorSummaryValue -Label "profile" -Value $profile
-    Write-PyMercatorSummaryValue -Label "market" -Value $market -Status $market
-    Write-PyMercatorSummaryValue -Label "trend" -Value $trend -Status $trend
-    Write-PyMercatorSummaryValue -Label "context_score" -Value (Format-PyMercatorSignalNumber -Value $contextScore -Decimals 1)
-    Write-PyMercatorSummaryValue -Label "data_freshness" -Value $dataFreshness -Status $dataFreshness
-    Write-PyMercatorSummaryValue -Label "data_quality" -Value (Format-PyMercatorSignalNumber -Value $dataQuality -Decimals 1)
-    Write-PyMercatorSummaryValue -Label "model_quality" -Value $modelQuality -Status $modelQuality
-    Write-PyMercatorSummaryValue -Label "behavior" -Value $behavior -Status $behavior
-    Write-PyMercatorSummaryValue -Label "long_basket" -Value $longBasket -Status $longBasket
-    Write-PyMercatorSummaryValue -Label "defensive_mode" -Value $defensiveMode -Status $defensiveMode
+    Write-AurumSummaryValue -Label "date" -Value (Get-Date -Format "yyyy-MM-dd")
+    Write-AurumSummaryValue -Label "profile" -Value $profile
+    Write-AurumSummaryValue -Label "market" -Value $market -Status $market
+    Write-AurumSummaryValue -Label "trend" -Value $trend -Status $trend
+    Write-AurumSummaryValue -Label "context_score" -Value (Format-AurumSignalNumber -Value $contextScore -Decimals 1)
+    Write-AurumSummaryValue -Label "data_freshness" -Value $dataFreshness -Status $dataFreshness
+    Write-AurumSummaryValue -Label "data_quality" -Value (Format-AurumSignalNumber -Value $dataQuality -Decimals 1)
+    Write-AurumSummaryValue -Label "model_quality" -Value $modelQuality -Status $modelQuality
+    Write-AurumSummaryValue -Label "behavior" -Value $behavior -Status $behavior
+    Write-AurumSummaryValue -Label "long_basket" -Value $longBasket -Status $longBasket
+    Write-AurumSummaryValue -Label "defensive_mode" -Value $defensiveMode -Status $defensiveMode
 
     Write-Host ""
     Write-Host "SIGNAL SUMMARY"
     Write-Host "--------------------------------------------------------------------------------"
     Write-Host ("{0,-18} {1} READY | {2} WATCH | {3} BLOCKED" -f "LONG/BUY", $actionable, $watch, $blocked)
     Write-Host ("{0,-18} {1} SETUPS | {2} EXEC_READY | {3} DATA_BLOCKED" -f "SELL-SHORT", $shortCandidates.Count, $shortReady, $shortDataBlocked)
-    Write-Host ("{0,-18} {1}" -f "HEDGE", (Format-PyMercatorSignalText -Text $hedgeStatus -Status $hedgeStatus))
-    Write-Host ("{0,-18} {1}" -f "CASH", (Format-PyMercatorSignalText -Text $cashStatus -Status $cashStatus))
+    Write-Host ("{0,-18} {1}" -f "HEDGE", (Format-AurumSignalText -Text $hedgeStatus -Status $hedgeStatus))
+    Write-Host ("{0,-18} {1}" -f "CASH", (Format-AurumSignalText -Text $cashStatus -Status $cashStatus))
 
-    $longRows = @(Get-PyMercatorLongSignalRows -Decisions $decisions -ObservationCandidates $observationCandidates -Limit $LongLimit)
-    Write-PyMercatorSignalBoardRows -Title "LONG / BUY BOARD" -Rows $longRows -EmptyReason "no long candidates in report"
+    $longRows = @(Get-AurumLongSignalRows -Decisions $decisions -ObservationCandidates $observationCandidates -Limit $LongLimit)
+    Write-AurumSignalBoardRows -Title "LONG / BUY BOARD" -Rows $longRows -EmptyReason "no long candidates in report"
     if ($longRows.Count -eq 0) {
         Write-Host "No long candidates in report."
     } elseif ($actionable -eq 0) {
         Write-Host "No READY long execution."
     }
 
-    $shortRows = @(Get-PyMercatorShortSignalRows -Candidates $shortCandidates -Limit $ShortLimit)
-    Write-PyMercatorSignalBoardRows -Title "SHORT / SELL BOARD" -Rows $shortRows -EmptyReason "no short setup candidates"
+    $shortRows = @(Get-AurumShortSignalRows -Candidates $shortCandidates -Limit $ShortLimit)
+    Write-AurumSignalBoardRows -Title "SHORT / SELL BOARD" -Rows $shortRows -EmptyReason "no short setup candidates"
 
     Write-Host ""
     Write-Host "HEDGE / DEFENSE"
@@ -995,19 +995,19 @@ function Show-PyMercatorSignals {
     } else {
         $printedCashDefense = $false
         foreach ($row in @($hedgeCandidates | Select-Object -First 5)) {
-            $target = Get-PyMercatorDailyObjectValue -Object $row -Name "target" -Default "-"
+            $target = Get-AurumDailyObjectValue -Object $row -Name "target" -Default "-"
             if ("$target".ToUpperInvariant() -eq "CASH") {
                 $printedCashDefense = $true
             }
-            $status = Normalize-PyMercatorSignalStatus -Value (Get-PyMercatorDailyObjectValue -Object $row -Name "status" -Default (Get-PyMercatorDailyObjectValue -Object $row -Name "action" -Default "WATCH"))
+            $status = Normalize-AurumSignalStatus -Value (Get-AurumDailyObjectValue -Object $row -Name "status" -Default (Get-AurumDailyObjectValue -Object $row -Name "action" -Default "WATCH"))
             if ($status -eq "HEDGE_WATCH") {
                 $status = "WATCH"
             }
-            $reason = Get-PyMercatorDailyObjectValue -Object $row -Name "reason" -Default "-"
+            $reason = Get-AurumDailyObjectValue -Object $row -Name "reason" -Default "-"
             Write-Host (
                 "{0,-10}  {1}  {2}" -f
                 $target,
-                (Format-PyMercatorSignalCell -Text $status -Width 9 -Status $status),
+                (Format-AurumSignalCell -Text $status -Width 9 -Status $status),
                 $reason
             )
         }
@@ -1015,35 +1015,35 @@ function Show-PyMercatorSignals {
             Write-Host (
                 "{0,-10}  {1}  {2}" -f
                 "CASH",
-                (Format-PyMercatorSignalCell -Text "PREFERRED" -Width 9 -Status "PREFERRED"),
+                (Format-AurumSignalCell -Text "PREFERRED" -Width 9 -Status "PREFERRED"),
                 "no long basket allowed"
             )
         }
     }
 
-    $longObservationRows = @(Get-PyMercatorLongObservationRows -Candidates $observationCandidates -Decisions $decisions -Limit $ObservationLimit)
-    Write-PyMercatorSignalBoardRows -Title "LONG OBSERVATION" -Rows $longObservationRows -EmptyReason "no long observation candidates"
+    $longObservationRows = @(Get-AurumLongObservationRows -Candidates $observationCandidates -Decisions $decisions -Limit $ObservationLimit)
+    Write-AurumSignalBoardRows -Title "LONG OBSERVATION" -Rows $longObservationRows -EmptyReason "no long observation candidates"
 
-    $shortObservationRows = @(Get-PyMercatorShortSignalRows -Candidates $shortObservationCandidates -Limit $ObservationLimit)
-    Write-PyMercatorSignalBoardRows -Title "SHORT OBSERVATION" -Rows $shortObservationRows -EmptyReason "no short observation candidates"
+    $shortObservationRows = @(Get-AurumShortSignalRows -Candidates $shortObservationCandidates -Limit $ObservationLimit)
+    Write-AurumSignalBoardRows -Title "SHORT OBSERVATION" -Rows $shortObservationRows -EmptyReason "no short observation candidates"
 
     Write-Host ""
     Write-Host "BASKET"
     Write-Host "--------------------------------------------------------------------------------"
-    Write-PyMercatorSummaryValue -Label "status" -Value $longBasket -Status $longBasket
-    Write-PyMercatorSummaryValue -Label "assets" -Value (Get-PyMercatorDailyObjectValue -Object $basket -Name "assets" -Default 0)
-    Write-PyMercatorSummaryValue -Label "reason" -Value (Get-PyMercatorDailyObjectValue -Object $basket -Name "reason" -Default "-")
+    Write-AurumSummaryValue -Label "status" -Value $longBasket -Status $longBasket
+    Write-AurumSummaryValue -Label "assets" -Value (Get-AurumDailyObjectValue -Object $basket -Name "assets" -Default 0)
+    Write-AurumSummaryValue -Label "reason" -Value (Get-AurumDailyObjectValue -Object $basket -Name "reason" -Default "-")
 
     Write-Host ""
     Write-Host "FINAL DECISION"
     Write-Host "--------------------------------------------------------------------------------"
     if ($longBasket -eq "OK" -and $actionable -gt 0) {
-        Write-Host (Format-PyMercatorSignalText -Text "REVIEW LONG BASKET." -Status "REVIEW LONG BASKET")
+        Write-Host (Format-AurumSignalText -Text "REVIEW LONG BASKET." -Status "REVIEW LONG BASKET")
         Write-Host "Execution requires human confirmation."
     } else {
-        Write-Host (Format-PyMercatorSignalText -Text "NO LONG TRADE." -Status "NO LONG TRADE")
+        Write-Host (Format-AurumSignalText -Text "NO LONG TRADE." -Status "NO LONG TRADE")
         if ("$defensiveMode".ToLowerInvariant() -eq "active" -or $shortCandidates.Count -gt 0 -or $hedgeCandidates.Count -gt 0) {
-            Write-Host (Format-PyMercatorSignalText -Text "DEFENSIVE MODE ACTIVE." -Status "DEFENSIVE MODE ACTIVE")
+            Write-Host (Format-AurumSignalText -Text "DEFENSIVE MODE ACTIVE." -Status "DEFENSIVE MODE ACTIVE")
         }
         if ($shortCandidates.Count -gt 0 -and $shortPermission -eq "DATA_MISSING") {
             Write-Host "Short setups exist, but execution is blocked until borrow/cost data is available."
@@ -1085,7 +1085,7 @@ function Read-RuntimeConfig {
     return $config
 }
 
-function Test-PyMercatorPython {
+function Test-AurumPython {
     param([string]$Command)
 
     $previousPreference = $ErrorActionPreference
@@ -1100,7 +1100,7 @@ function Test-PyMercatorPython {
     }
 }
 
-function Resolve-PyMercatorPython {
+function Resolve-AurumPython {
     param(
         [string]$Requested = "",
         [string]$Configured = ""
@@ -1109,8 +1109,8 @@ function Resolve-PyMercatorPython {
     $candidate = ""
     if ($Requested) {
         $candidate = $Requested
-    } elseif ($env:PYMERCATOR_PYTHON) {
-        $candidate = $env:PYMERCATOR_PYTHON
+    } elseif ($env:AURUM_PYTHON) {
+        $candidate = $env:AURUM_PYTHON
     } elseif ($Configured) {
         $candidate = $Configured
     }
@@ -1136,7 +1136,7 @@ function Resolve-PyMercatorPython {
         throw "Configured Python not found: $candidate"
     }
 
-    if (-not (Test-PyMercatorPython -Command $resolved)) {
+    if (-not (Test-AurumPython -Command $resolved)) {
         throw "Configured Python is not executable: $resolved"
     }
 
@@ -1178,7 +1178,7 @@ function Get-GitInfo {
     }
 }
 
-function Initialize-PyMercatorScript {
+function Initialize-AurumScript {
     param(
         [string]$RequestedPython = "",
         [string]$ScriptName = ""
@@ -1188,16 +1188,16 @@ function Initialize-PyMercatorScript {
     $script:PROJECT_ROOT = (Resolve-Path -LiteralPath $config.project_root).Path
     Set-Location $script:PROJECT_ROOT
 
-    $script:PYMERCATOR_DEFAULT_LIST = "$($config.default_list)"
-    $script:PYMERCATOR_COLOR = "$($config.color)"
-    $script:PYMERCATOR_SCRIPT_NAME = if ($ScriptName) { $ScriptName } else { "unknown_script.ps1" }
-    $script:PY = Resolve-PyMercatorPython -Requested $RequestedPython -Configured "$($config.python_executable)"
+    $script:AURUM_DEFAULT_LIST = "$($config.default_list)"
+    $script:AURUM_COLOR = "$($config.color)"
+    $script:AURUM_SCRIPT_NAME = if ($ScriptName) { $ScriptName } else { "unknown_script.ps1" }
+    $script:PY = Resolve-AurumPython -Requested $RequestedPython -Configured "$($config.python_executable)"
     $script:PYTHON_VERSION = Get-PythonVersion -Python $script:PY
     $script:GIT_INFO = Get-GitInfo
     return $script:PY
 }
 
-function New-PyMercatorLogDir {
+function New-AurumLogDir {
     param(
         [string]$Prefix,
         [string]$ScriptName = ""
@@ -1206,11 +1206,11 @@ function New-PyMercatorLogDir {
     $ts = Get-Date -Format "yyyyMMdd_HHmmss"
     $logDir = Join-Path "runtime" "${Prefix}_$ts"
     New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-    $script:PYMERCATOR_RUNTIME_DIR = $logDir
-    $script:PYMERCATOR_MANIFEST_PATH = Join-Path $logDir "manifest.json"
+    $script:AURUM_RUNTIME_DIR = $logDir
+    $script:AURUM_MANIFEST_PATH = Join-Path $logDir "manifest.json"
 
-    $resolvedScript = if ($ScriptName) { $ScriptName } elseif ($script:PYMERCATOR_SCRIPT_NAME) { $script:PYMERCATOR_SCRIPT_NAME } else { "unknown_script.ps1" }
-    $script:PYMERCATOR_MANIFEST = [ordered]@{
+    $resolvedScript = if ($ScriptName) { $ScriptName } elseif ($script:AURUM_SCRIPT_NAME) { $script:AURUM_SCRIPT_NAME } else { "unknown_script.ps1" }
+    $script:AURUM_MANIFEST = [ordered]@{
         schema_version = "runtime_manifest.v1"
         script = $resolvedScript
         created_at = (Get-Date).ToUniversalTime().ToString("o")
@@ -1232,7 +1232,7 @@ function New-PyMercatorLogDir {
     return $logDir
 }
 
-function Write-PyMercatorRuntimeHeader {
+function Write-AurumRuntimeHeader {
     param([string]$Title)
 
     Write-Host ""
@@ -1242,7 +1242,7 @@ function Write-PyMercatorRuntimeHeader {
     Write-Host "PYTHON : $script:PY"
     Write-Host "VERSION: $script:PYTHON_VERSION"
     Write-Host "GIT    : $($script:GIT_INFO.branch) $($script:GIT_INFO.commit) dirty=$($script:GIT_INFO.dirty)"
-    Write-Host "RUNTIME: $script:PYMERCATOR_RUNTIME_DIR"
+    Write-Host "RUNTIME: $script:AURUM_RUNTIME_DIR"
     Write-Host ""
 }
 
@@ -1252,26 +1252,26 @@ function Write-RunManifest {
         [hashtable]$Outputs = @{}
     )
 
-    if (-not $script:PYMERCATOR_MANIFEST -or -not $script:PYMERCATOR_MANIFEST_PATH) {
+    if (-not $script:AURUM_MANIFEST -or -not $script:AURUM_MANIFEST_PATH) {
         return
     }
 
     if ($Status) {
-        $script:PYMERCATOR_MANIFEST.status = $Status
+        $script:AURUM_MANIFEST.status = $Status
     }
     if ($Outputs -and $Outputs.Count -gt 0) {
         $orderedOutputs = [ordered]@{}
         foreach ($key in $Outputs.Keys) {
             $orderedOutputs[$key] = "$($Outputs[$key])"
         }
-        $script:PYMERCATOR_MANIFEST.outputs = $orderedOutputs
+        $script:AURUM_MANIFEST.outputs = $orderedOutputs
     }
-    $script:PYMERCATOR_MANIFEST.updated_at = (Get-Date).ToUniversalTime().ToString("o")
-    $json = $script:PYMERCATOR_MANIFEST | ConvertTo-Json -Depth 12
-    Set-Content -LiteralPath $script:PYMERCATOR_MANIFEST_PATH -Value $json -Encoding UTF8
+    $script:AURUM_MANIFEST.updated_at = (Get-Date).ToUniversalTime().ToString("o")
+    $json = $script:AURUM_MANIFEST | ConvertTo-Json -Depth 12
+    Set-Content -LiteralPath $script:AURUM_MANIFEST_PATH -Value $json -Encoding UTF8
 }
 
-function Show-PyMercatorLogTail {
+function Show-AurumLogTail {
     param(
         [string]$LogFile,
         [int]$Lines = 100
@@ -1347,14 +1347,14 @@ function Run-Step {
     $entry.exit_code = [int]$code
     $entry.finished_at = (Get-Date).ToUniversalTime().ToString("o")
     $entry.status = if ($code -eq 0) { "OK" } else { "FAIL" }
-    $script:PYMERCATOR_MANIFEST.commands = @($script:PYMERCATOR_MANIFEST.commands) + @($entry)
+    $script:AURUM_MANIFEST.commands = @($script:AURUM_MANIFEST.commands) + @($entry)
     Write-RunManifest
 
     if ($code -ne 0) {
         Write-Host "FAILED: $Name" -ForegroundColor Red
         if ($Critical) {
             Write-RunManifest -Status "FAIL"
-            Show-PyMercatorLogTail -LogFile $LogFile -Lines 100
+            Show-AurumLogTail -LogFile $LogFile -Lines 100
             throw "FAILED: $Name"
         }
     }
@@ -1373,7 +1373,7 @@ function Invoke-NativeStep {
     return Run-Step -Name $Name -Command $Command -LogFile $LogFile -Critical $Critical
 }
 
-function Invoke-PyMercatorStep {
+function Invoke-AurumStep {
     param(
         [string]$Python,
         [string]$Name,
@@ -1384,7 +1384,7 @@ function Invoke-PyMercatorStep {
 
     return Run-Step `
         -Name $Name `
-        -Command (@($Python, "-m", "pymercator") + (Get-PyMercatorColorArgs) + $PyArgs) `
+        -Command (@($Python, "-m", "aurum") + (Get-AurumColorArgs) + $PyArgs) `
         -LogFile $LogFile `
         -Critical $Critical
 }
@@ -1398,7 +1398,7 @@ function Invoke-PythonCode {
         [bool]$Critical = $true
     )
 
-    $tempFile = Join-Path $env:TEMP ("pymercator_step_" + [guid]::NewGuid().ToString("N") + ".py")
+    $tempFile = Join-Path $env:TEMP ("aurum_step_" + [guid]::NewGuid().ToString("N") + ".py")
     Set-Content -LiteralPath $tempFile -Value $Code -Encoding UTF8
     try {
         return Run-Step `

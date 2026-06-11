@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pymercator.context_engine.bcb import _date_range_url, fetch_bcb_series
-from pymercator.context_engine.sources import SourceResult
+from aurum.context_engine.bcb import _date_range_url, fetch_bcb_series
+from aurum.context_engine.sources import SourceResult
 
 
 def test_bcb_date_range_url_keeps_date_slashes_unencoded() -> None:
@@ -26,7 +26,7 @@ def test_bcb_series_uses_unencoded_date_range_on_retry(monkeypatch) -> None:
             data=[{"data": "01/06/2026", "valor": "10.50"}],
         )
 
-    monkeypatch.setattr("pymercator.context_engine.bcb.http_get_json", fake_http_get_json)
+    monkeypatch.setattr("aurum.context_engine.bcb.http_get_json", fake_http_get_json)
 
     result = fetch_bcb_series(432)
 

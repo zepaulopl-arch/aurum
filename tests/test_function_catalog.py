@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pymercator.function_catalog import (
+from aurum.function_catalog import (
     catalog_functions,
     render_function_catalog,
     write_function_catalog,
@@ -10,7 +10,7 @@ from pymercator.function_catalog import (
 
 
 def test_catalog_functions_detects_functions_classes_domains_and_roles(tmp_path: Path) -> None:
-    module = tmp_path / "src" / "pymercator" / "feature_engine.py"
+    module = tmp_path / "src" / "aurum" / "feature_engine.py"
     module.parent.mkdir(parents=True, exist_ok=True)
     module.write_text(
         """
@@ -44,7 +44,7 @@ def _private_helper():
 
 
 def test_render_function_catalog_contains_sections(tmp_path: Path) -> None:
-    module = tmp_path / "src" / "pymercator" / "context_engine.py"
+    module = tmp_path / "src" / "aurum" / "context_engine.py"
     module.parent.mkdir(parents=True, exist_ok=True)
     module.write_text(
         """
@@ -67,7 +67,7 @@ def render_context(payload):
 
 
 def test_write_function_catalog_writes_json(tmp_path: Path) -> None:
-    module = tmp_path / "src" / "pymercator" / "short_execution.py"
+    module = tmp_path / "src" / "aurum" / "short_execution.py"
     module.parent.mkdir(parents=True, exist_ok=True)
     module.write_text("def evaluate_short_execution():\\n    return {}\\n", encoding="utf-8")
 

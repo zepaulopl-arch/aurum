@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_universe_check_command_accepts_sample(capsys):
@@ -16,7 +16,7 @@ def test_universe_check_command_accepts_sample(capsys):
     assert exit_code == 0
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR UNIVERSE CHECK" in captured.out
+    assert "AURUM UNIVERSE CHECK" in captured.out
     assert "VALID" in captured.out
     assert "True" in captured.out
 
@@ -34,7 +34,7 @@ def test_universe_summary_command_prints_summary(capsys):
     assert exit_code == 0
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR UNIVERSE SUMMARY" in captured.out
+    assert "AURUM UNIVERSE SUMMARY" in captured.out
     assert "SECTORS" in captured.out
     assert "TOP VOLUME" in captured.out
 

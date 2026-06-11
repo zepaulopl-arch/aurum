@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def _context_file(tmp_path: Path) -> Path:

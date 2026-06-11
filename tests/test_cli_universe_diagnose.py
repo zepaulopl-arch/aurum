@@ -1,7 +1,7 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
-from pymercator.data.universe_csv import write_universe_template
+from aurum.cli import main
+from aurum.data.universe_csv import write_universe_template
 
 
 def test_universe_diagnose_command_prints_report(tmp_path: Path, capsys):
@@ -20,7 +20,7 @@ def test_universe_diagnose_command_prints_report(tmp_path: Path, capsys):
     assert exit_code in {0, 1}
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR UNIVERSE DIAGNOSE" in captured.out
+    assert "AURUM UNIVERSE DIAGNOSE" in captured.out
     assert "status" in captured.out
     assert "SECTOR WARNING SUMMARY" in captured.out
     assert "TOTAL" in captured.out

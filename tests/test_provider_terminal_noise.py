@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-from pymercator.data.prices_yahoo import fetch_yahoo_prices
-from pymercator.indices_prices import _download_yfinance
+from aurum.data.prices_yahoo import fetch_yahoo_prices
+from aurum.indices_prices import _download_yfinance
 
 
 def test_indices_yfinance_download_suppresses_provider_terminal_noise(

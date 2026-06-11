@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pymercator.context_engine.bcb import fetch_bcb_series
-from pymercator.context_engine.sources import SourceResult
+from aurum.context_engine.bcb import fetch_bcb_series
+from aurum.context_engine.sources import SourceResult
 
 
 def test_bcb_series_retries_date_range_when_latest_returns_non_json(monkeypatch) -> None:
@@ -23,7 +23,7 @@ def test_bcb_series_retries_date_range_when_latest_returns_non_json(monkeypatch)
             data=[{"data": "01/06/2026", "valor": "10.50"}],
         )
 
-    monkeypatch.setattr("pymercator.context_engine.bcb.http_get_json", fake_http_get_json)
+    monkeypatch.setattr("aurum.context_engine.bcb.http_get_json", fake_http_get_json)
 
     result = fetch_bcb_series(432)
 
@@ -38,7 +38,7 @@ def test_bcb_series_preserves_both_errors(monkeypatch) -> None:
     def fake_http_get_json(url: str, timeout: float = 12.0) -> SourceResult:
         return SourceResult(name="http", status="ERROR", url=url, error="network down")
 
-    monkeypatch.setattr("pymercator.context_engine.bcb.http_get_json", fake_http_get_json)
+    monkeypatch.setattr("aurum.context_engine.bcb.http_get_json", fake_http_get_json)
 
     result = fetch_bcb_series(432)
 

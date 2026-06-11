@@ -1,8 +1,8 @@
 from datetime import date
 
-from pymercator.pipeline import run_daily_pipeline
-from pymercator.reports.json_report import daily_report_to_dict
-from pymercator.update_freshness import build_data_freshness
+from aurum.pipeline import run_daily_pipeline
+from aurum.reports.json_report import daily_report_to_dict
+from aurum.update_freshness import build_data_freshness
 
 
 def test_freshness_warns_for_stale_asset():

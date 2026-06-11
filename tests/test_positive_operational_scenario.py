@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_positive_operational_scenario_command_releases_actionable_basket(

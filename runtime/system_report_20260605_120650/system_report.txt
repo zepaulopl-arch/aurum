@@ -1,6 +1,6 @@
-PYMERCATOR SYSTEM REPORT
+AURUM SYSTEM REPORT
 Generated: 2026-06-05 12:06:50 America/Sao_Paulo
-Repository: C:\Users\zepau\ML\projetos\pyMercator
+Repository: C:\Users\zepau\ML\projetos\Aurum
 Branch: main
 Head: a3c0be3
 
@@ -36,12 +36,12 @@ Status: implemented and validated.
 
 Files:
 - config/features.json
-- src/pymercator/features_v2.py
-- src/pymercator/cli_features.py
+- src/aurum/features_v2.py
+- src/aurum/cli_features.py
 
 Commands:
-- python -m pymercator features build --list IBOV
-- python -m pymercator features audit
+- python -m aurum features build --list IBOV
+- python -m aurum features audit
 
 Current feature audit:
 - feature_set: core_v2
@@ -74,11 +74,11 @@ Tables:
 - simulation_trades
 
 CLI:
-- python -m pymercator db status
-- python -m pymercator db last-run
-- python -m pymercator db signal <TICKER>
-- python -m pymercator db rank-last
-- python -m pymercator db sim-last
+- python -m aurum db status
+- python -m aurum db last-run
+- python -m aurum db signal <TICKER>
+- python -m aurum db rank-last
+- python -m aurum db sim-last
 
 Current DB status at validation:
 - daily_runs: 90
@@ -109,7 +109,7 @@ Operational default was not changed:
 - gradientboosting
 
 Benchmark command:
-- python -m pymercator train benchmark-engines
+- python -m aurum train benchmark-engines
 
 Benchmark output:
 - storage/prediction/latest_engine_benchmark.json
@@ -125,7 +125,7 @@ OPERATIONAL UX
 Status: implemented and validated.
 
 Daily signal now shows:
-- PYMERCATOR SIGNALS
+- AURUM SIGNALS
 - SIGNAL SUMMARY
 - BUY / LONG SIGNALS
 - SELL-SHORT SIGNALS
@@ -149,7 +149,7 @@ Color behavior:
 
 Zero ghost fix:
 - No isolated "0" lines were found in validated daily_signal, daily_train, or weekend_full output.
-- A final PowerShell rendering issue in Write-PyMercatorSummaryValue was fixed.
+- A final PowerShell rendering issue in Write-AurumSummaryValue was fixed.
 
 REFRACTOR AND DOCUMENTATION
 --------------------------------------------------------------------------------
@@ -239,7 +239,7 @@ FAILURES FOUND DURING WORK
    sklearn autotune path. Fixed by capping feature history and sampling autotune.
 
 5. The local PowerShell profile prints a Set-Location warning for a missing
-   TradeChat path on every shell invocation. This is external to pyMercator.
+   TradeChat path on every shell invocation. This is external to Aurum.
 
 KNOWN LIMITS
 --------------------------------------------------------------------------------

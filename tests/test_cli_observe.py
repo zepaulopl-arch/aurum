@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def _write_observation_universe(path: Path) -> None:

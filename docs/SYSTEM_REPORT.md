@@ -1,4 +1,4 @@
-# pyMercator System Report
+# Aurum System Report
 
 Generated: 2026-06-04 22:19:02 -03:00
 
@@ -9,7 +9,7 @@ This report records the current operational state after the CLI/script documenta
 Related commits:
 
 - `7048523` Polish daily signal panel
-- `56dc58e` Document pyMercator commands
+- `56dc58e` Document Aurum commands
 - `efcce4b` Audit autotune and add engine benchmark
 - `634f440` Improve operational script summaries
 - `0645b37` Add code audit and refactor report
@@ -22,7 +22,7 @@ Existing audit artifacts:
 
 ## Successes
 
-- `scripts/signal.ps1` now ends with `PYMERCATOR SIGNALS`, showing market header, signal summary, buy/long candidates, sell-short setups, observation candidates, hedge/defense, basket state, final decision, and key files.
+- `scripts/signal.ps1` now ends with `AURUM SIGNALS`, showing market header, signal summary, buy/long candidates, sell-short setups, observation candidates, hedge/defense, basket state, final decision, and key files.
 - Short setups are visible even when execution is blocked by missing borrow/cost data. They are marked as setup candidates, not automatic sell orders.
 - Short execution wording was clarified: `EXEC_READY`, `DATA_BLOCKED`, and `EXECUTION` replace the older ambiguous wording.
 - `HEDGE / DEFENSE` makes cash and hedge watch explicit when the long basket is blocked.
@@ -38,7 +38,7 @@ Existing audit artifacts:
 
 - `python -m pytest tests -q`: `284 passed, 1 skipped in 43.67s`.
 - `.\scripts\signal.ps1`: exit `0`, runtime `runtime\daily_signal_20260604_220826`.
-- `.\scripts\signal.ps1`: now shows `PYMERCATOR SIGNALS`, `LONG / BUY BOARD`, `SHORT / SELL BOARD`, `HEDGE / DEFENSE`, `EXECUTION`, and `DATA_BLOCKED`.
+- `.\scripts\signal.ps1`: now shows `AURUM SIGNALS`, `LONG / BUY BOARD`, `SHORT / SELL BOARD`, `HEDGE / DEFENSE`, `EXECUTION`, and `DATA_BLOCKED`.
 - `.\scripts\signal.ps1`: no loose `0` lines detected; no ANSI detected in terminal capture; no ANSI detected in runtime artifacts.
 - `.\scripts\signal.ps1 -Color`: exit `0`, runtime `runtime\daily_signal_20260604_221241`.
 - `.\scripts\signal.ps1 -Color`: binary capture confirmed ANSI in terminal output; no ANSI detected in runtime artifacts.

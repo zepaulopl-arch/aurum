@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
 
-from pymercator.domain import ExecutionStatus, MarketRegime
-from pymercator.position_actions import build_position_actions, render_position_books
-from pymercator.position_actions_config import load_position_actions_config
+from aurum.domain import ExecutionStatus, MarketRegime
+from aurum.position_actions import build_position_actions, render_position_books
+from aurum.position_actions_config import load_position_actions_config
 
 from test_position_actions import _decision, _report
 

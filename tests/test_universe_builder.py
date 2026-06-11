@@ -1,11 +1,11 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.data.prices_csv import write_price_rows_csv
-from pymercator.data.universe_builder import (
+from aurum.data.prices_csv import write_price_rows_csv
+from aurum.data.universe_builder import (
     build_asset_from_price_file,
     build_universe_csv_from_prices,
 )
-from pymercator.data.universe_csv import validate_universe_csv
+from aurum.data.universe_csv import validate_universe_csv
 
 
 def _write_price_file(path: Path, start_close: float = 10.0) -> None:

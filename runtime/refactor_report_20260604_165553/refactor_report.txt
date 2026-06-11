@@ -1,7 +1,7 @@
-PYMERCATOR REFACTOR REPORT
+AURUM REFACTOR REPORT
 ================================================================================
 timestamp: 20260604_165553
-root: C:\Users\zepau\ML\projetos\pyMercator
+root: C:\Users\zepau\ML\projetos\Aurum
 code_audit: runtime/code_audit_20260604_141850/code_audit.json
 
 SUMMARY
@@ -23,7 +23,7 @@ project_source_delta              -175 (-0.46%)
 
 TRACKED ARTIFACT CLEANUP
 --------------------------------------------------------------------------------
-Removed generated tracked artifacts from src/pymercator.egg-info/ and storage/legacy_inventory/.
+Removed generated tracked artifacts from src/aurum.egg-info/ and storage/legacy_inventory/.
 Measured against HEAD tracked text files: 830460 -> 596525 lines (-233935, -28.17%).
 This is repository weight reduction, not active trading-code reduction.
 
@@ -38,22 +38,22 @@ FILES CREATED
 - config/short_policy.json
 - config/short_thresholds.json
 - scripts/legacy/README.md
-- src/pymercator/cli_args.py
-- src/pymercator/cli_borrow.py
-- src/pymercator/config_loader.py
-- src/pymercator/market_context_sources.py
-- src/pymercator/short_policy.py
-- src/pymercator/short_render.py
-- src/pymercator/terminal_render.py
+- src/aurum/cli_args.py
+- src/aurum/cli_borrow.py
+- src/aurum/config_loader.py
+- src/aurum/market_context_sources.py
+- src/aurum/short_policy.py
+- src/aurum/short_render.py
+- src/aurum/terminal_render.py
 
 FILES DELETED FROM VERSION CONTROL
 --------------------------------------------------------------------------------
-- src/pymercator.egg-info/PKG-INFO
-- src/pymercator.egg-info/SOURCES.txt
-- src/pymercator.egg-info/dependency_links.txt
-- src/pymercator.egg-info/entry_points.txt
-- src/pymercator.egg-info/requires.txt
-- src/pymercator.egg-info/top_level.txt
+- src/aurum.egg-info/PKG-INFO
+- src/aurum.egg-info/SOURCES.txt
+- src/aurum.egg-info/dependency_links.txt
+- src/aurum.egg-info/entry_points.txt
+- src/aurum.egg-info/requires.txt
+- src/aurum.egg-info/top_level.txt
 - storage/legacy_inventory/legacy_classification.json
 - storage/legacy_inventory/legacy_classification.txt
 - storage/legacy_inventory/legacy_inventory.json
@@ -66,29 +66,29 @@ FILES MODIFIED
 - scripts/run_daily_signal.ps1
 - scripts/run_daily_train.ps1
 - scripts/run_weekend_full.ps1
-- src/pymercator.egg-info/PKG-INFO
-- src/pymercator.egg-info/SOURCES.txt
-- src/pymercator/basket.py
-- src/pymercator/borrow_data.py
-- src/pymercator/cli.py
-- src/pymercator/cli_basket.py
-- src/pymercator/cli_context.py
-- src/pymercator/cli_daily_auto.py
-- src/pymercator/cli_observe.py
-- src/pymercator/cli_packs.py
-- src/pymercator/cli_parsers.py
-- src/pymercator/cli_predict.py
-- src/pymercator/cli_run.py
-- src/pymercator/cli_train.py
-- src/pymercator/cli_update.py
-- src/pymercator/features_matrix.py
-- src/pymercator/manifest.py
-- src/pymercator/market_context_consolidator.py
-- src/pymercator/observation.py
-- src/pymercator/position_actions.py
-- src/pymercator/position_actions_config.py
-- src/pymercator/prediction_config.py
-- src/pymercator/reports/json_report.py
+- src/aurum.egg-info/PKG-INFO
+- src/aurum.egg-info/SOURCES.txt
+- src/aurum/basket.py
+- src/aurum/borrow_data.py
+- src/aurum/cli.py
+- src/aurum/cli_basket.py
+- src/aurum/cli_context.py
+- src/aurum/cli_daily_auto.py
+- src/aurum/cli_observe.py
+- src/aurum/cli_packs.py
+- src/aurum/cli_parsers.py
+- src/aurum/cli_predict.py
+- src/aurum/cli_run.py
+- src/aurum/cli_train.py
+- src/aurum/cli_update.py
+- src/aurum/features_matrix.py
+- src/aurum/manifest.py
+- src/aurum/market_context_consolidator.py
+- src/aurum/observation.py
+- src/aurum/position_actions.py
+- src/aurum/position_actions_config.py
+- src/aurum/prediction_config.py
+- src/aurum/reports/json_report.py
 - tests/test_cli_context.py
 - tests/test_cli_observe.py
 - tests/test_cli_run_simplified.py
@@ -101,7 +101,7 @@ FILES MODIFIED
 
 FUNCTIONS / DUPLICATIONS CONSOLIDATED
 --------------------------------------------------------------------------------
-- Created terminal_render.py as terminal rendering facade over pymercator.ui.
+- Created terminal_render.py as terminal rendering facade over aurum.ui.
 - Moved position/book rendering into short_render.py; position_actions.py keeps compatibility wrapper.
 - Centralized recursive config merge in config_loader.deep_merge.
 - Centralized CLI CSV parsing in cli_args.parse_csv_arg.
@@ -158,28 +158,28 @@ DIFF STAT
  scripts/run_daily_signal.ps1                       |     21 +-
  scripts/run_daily_train.ps1                        |     33 +-
  scripts/run_weekend_full.ps1                       |     37 +-
- src/pymercator.egg-info/SOURCES.txt                |     41 +-
- src/pymercator/basket.py                           |     11 +-
- src/pymercator/borrow_data.py                      |    476 +-
- src/pymercator/cli.py                              |     52 +-
- src/pymercator/cli_basket.py                       |      7 +-
- src/pymercator/cli_context.py                      |    114 +
- src/pymercator/cli_daily_auto.py                   |     10 +-
- src/pymercator/cli_observe.py                      |     30 +-
- src/pymercator/cli_packs.py                        |      8 +-
- src/pymercator/cli_parsers.py                      |     64 +
- src/pymercator/cli_predict.py                      |     12 +-
- src/pymercator/cli_run.py                          |    213 +-
- src/pymercator/cli_train.py                        |     19 -
- src/pymercator/cli_update.py                       |     59 +-
- src/pymercator/features_matrix.py                  |     13 +-
- src/pymercator/manifest.py                         |      1 +
- src/pymercator/market_context_consolidator.py      |     70 +-
- src/pymercator/observation.py                      |     31 +-
- src/pymercator/position_actions.py                 |    513 +-
- src/pymercator/position_actions_config.py          |     14 +-
- src/pymercator/prediction_config.py                |     14 +-
- src/pymercator/reports/json_report.py              |      1 +
+ src/aurum.egg-info/SOURCES.txt                |     41 +-
+ src/aurum/basket.py                           |     11 +-
+ src/aurum/borrow_data.py                      |    476 +-
+ src/aurum/cli.py                              |     52 +-
+ src/aurum/cli_basket.py                       |      7 +-
+ src/aurum/cli_context.py                      |    114 +
+ src/aurum/cli_daily_auto.py                   |     10 +-
+ src/aurum/cli_observe.py                      |     30 +-
+ src/aurum/cli_packs.py                        |      8 +-
+ src/aurum/cli_parsers.py                      |     64 +
+ src/aurum/cli_predict.py                      |     12 +-
+ src/aurum/cli_run.py                          |    213 +-
+ src/aurum/cli_train.py                        |     19 -
+ src/aurum/cli_update.py                       |     59 +-
+ src/aurum/features_matrix.py                  |     13 +-
+ src/aurum/manifest.py                         |      1 +
+ src/aurum/market_context_consolidator.py      |     70 +-
+ src/aurum/observation.py                      |     31 +-
+ src/aurum/position_actions.py                 |    513 +-
+ src/aurum/position_actions_config.py          |     14 +-
+ src/aurum/prediction_config.py                |     14 +-
+ src/aurum/reports/json_report.py              |      1 +
  .../legacy_inventory/legacy_classification.json    | 149001 ------------------
  storage/legacy_inventory/legacy_classification.txt |    233 -
  storage/legacy_inventory/legacy_inventory.json     |  85618 ----------

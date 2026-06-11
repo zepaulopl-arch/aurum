@@ -1,6 +1,6 @@
-# pyMercator Commands
+# Aurum Commands
 
-Atualizado em 2026-06-05 a partir do parser real de `python -m pymercator --help`.
+Atualizado em 2026-06-05 a partir do parser real de `python -m aurum --help`.
 
 Este manual documenta os comandos vivos apos a limpeza de legado. A operacao
 normal deve ficar concentrada nos tres scripts PowerShell principais; comandos
@@ -12,7 +12,7 @@ Python diretos sao para diagnostico, desenvolvimento ou execucao pontual.
 2. `.\scripts\review.ps1`
 3. `.\scripts\train.ps1`
 4. `.\scripts\weekend.ps1`
-5. `python -m pymercator diag`
+5. `python -m aurum diag`
 
 ## Operacao simplificada recomendada
 
@@ -22,8 +22,8 @@ Python diretos sao para diagnostico, desenvolvimento ou execucao pontual.
 | Fim da tarde | `.\scripts\review.ps1` | UTIL |
 | Treino eventual | `.\scripts\train.ps1` | ESSENCIAL |
 | Fim de semana | `.\scripts\weekend.ps1` | ESSENCIAL |
-| Diagnostico rapido | `python -m pymercator diag` | DIAGNOSTICO |
-| Auditoria de fontes | `python -m pymercator context sources` | DIAGNOSTICO |
+| Diagnostico rapido | `python -m aurum diag` | DIAGNOSTICO |
+| Auditoria de fontes | `python -m aurum context sources` | DIAGNOSTICO |
 
 ## Scripts PowerShell
 
@@ -32,7 +32,7 @@ Python diretos sao para diagnostico, desenvolvimento ou execucao pontual.
 Classe: ESSENCIAL.
 
 Finalidade: atualiza dados, roda o perfil CON, observa o universo IBOV e mostra
-o painel executivo `PYMERCATOR SIGNALS`.
+o painel executivo `AURUM SIGNALS`.
 
 Quando usar: todo dia operacional.
 
@@ -175,7 +175,7 @@ Exemplo:
 Comando base:
 
 ```powershell
-python -m pymercator [--color auto|always|never] [--no-color] <command> ...
+python -m aurum [--color auto|always|never] [--no-color] <command> ...
 ```
 
 Sem `-Color` nos scripts, a chamada usa `--no-color`. Arquivos JSON, CSV, TXT,
@@ -212,12 +212,12 @@ logs e manifests nao devem conter ANSI.
 
 ## Comandos principais
 
-### `python -m pymercator update`
+### `python -m aurum update`
 
 Sintaxe:
 
 ```powershell
-python -m pymercator update [--list IBOV] [--start 2000-01-01] [--end YYYY-MM-DD] [--no-cache] [--json]
+python -m aurum update [--list IBOV] [--start 2000-01-01] [--end YYYY-MM-DD] [--no-cache] [--json]
 ```
 
 Defaults importantes:
@@ -238,12 +238,12 @@ auditoria de features e logs quando chamado pelos scripts.
 
 Quando nao usar: para tomada de decisao isolada; use `signal.ps1`.
 
-### `python -m pymercator train`
+### `python -m aurum train`
 
 Sintaxe:
 
 ```powershell
-python -m pymercator train [benchmark-engines] [--details] [--full] [--engines extratrees,randomforest,gradientboosting]
+python -m aurum train [benchmark-engines] [--details] [--full] [--engines extratrees,randomforest,gradientboosting]
 ```
 
 Defaults importantes:
@@ -269,17 +269,17 @@ Subacao:
 Exemplos:
 
 ```powershell
-python -m pymercator train --details
-python -m pymercator train benchmark-engines
-python -m pymercator train --engines extratrees,randomforest,gradientboosting,histgradientboosting --details
+python -m aurum train --details
+python -m aurum train benchmark-engines
+python -m aurum train --engines extratrees,randomforest,gradientboosting,histgradientboosting --details
 ```
 
-### `python -m pymercator run`
+### `python -m aurum run`
 
 Sintaxe:
 
 ```powershell
-python -m pymercator run [--profile CON] [--list IBOV] [--basket|--no-basket] [--json]
+python -m aurum run [--profile CON] [--list IBOV] [--basket|--no-basket] [--json]
 ```
 
 Defaults importantes:
@@ -301,18 +301,18 @@ Arquivos gerados quando os scripts chamam: `report_<PROFILE>.txt`,
 Regra operacional: `run` nunca deve transformar observacao em compra automatica;
 basket continua analysis-only.
 
-### `python -m pymercator observe`
+### `python -m aurum observe`
 
 Sintaxe:
 
 ```powershell
-python -m pymercator observe [--list IBOV] [--limit N] [--cluster] [--json]
-python -m pymercator observe calibrate ...
+python -m aurum observe [--list IBOV] [--limit N] [--cluster] [--json]
+python -m aurum observe calibrate ...
 ```
 
 Uso: ranking de observacao long; nao e sinal executavel.
 
-### `python -m pymercator basket`
+### `python -m aurum basket`
 
 Subcomandos:
 
@@ -324,17 +324,17 @@ Subcomandos:
 Exemplo:
 
 ```powershell
-python -m pymercator basket show
+python -m aurum basket show
 ```
 
-### `python -m pymercator mtm`
+### `python -m aurum mtm`
 
-Alias: `python -m pymercator review`.
+Alias: `python -m aurum review`.
 
 Sintaxe:
 
 ```powershell
-python -m pymercator mtm --run-dir runtime\daily_signal_<timestamp> [--capital 10000] [--mode observation]
+python -m aurum mtm --run-dir runtime\daily_signal_<timestamp> [--capital 10000] [--mode observation]
 ```
 
 Uso: revisao financeira pos-sinal. Le `report_CON.json`, compara observacoes,
@@ -360,7 +360,7 @@ hipotetico; bloqueio operacional mantem `real_pnl = 0`.
 
 ## Contexto e banco
 
-### `python -m pymercator context`
+### `python -m aurum context`
 
 Subcomandos:
 
@@ -378,13 +378,13 @@ Subcomandos:
 Exemplos:
 
 ```powershell
-python -m pymercator context sources
-python -m pymercator context show
-python -m pymercator context refresh --all
-python -m pymercator context refresh --source BCB
+python -m aurum context sources
+python -m aurum context show
+python -m aurum context refresh --all
+python -m aurum context refresh --source BCB
 ```
 
-### `python -m pymercator db`
+### `python -m aurum db`
 
 Subcomandos:
 
@@ -415,11 +415,11 @@ Default: `--db data/aurum.db`. Erro de banco nao deve impedir geracao de sinal.
 Exemplos:
 
 ```powershell
-python -m pymercator features build --list IBOV
-python -m pymercator features audit
-python -m pymercator universe diagnose --file data/universes/ibov_live.csv
-python -m pymercator borrow diagnose
-python -m pymercator scenario run --preset positive_risk_on --basket
+python -m aurum features build --list IBOV
+python -m aurum features audit
+python -m aurum universe diagnose --file data/universes/ibov_live.csv
+python -m aurum borrow diagnose
+python -m aurum scenario run --preset positive_risk_on --basket
 ```
 
 ## Atalhos de diagnostico
@@ -462,4 +462,4 @@ Ja aplicados:
 
 Use os scripts para operar. Use comandos Python diretos para diagnosticar,
 validar, auditar ou desenvolver. Se um comando nao aparece neste documento nem
-em `python -m pymercator --help`, ele nao faz parte da superficie suportada.
+em `python -m aurum --help`, ele nao faz parte da superficie suportada.

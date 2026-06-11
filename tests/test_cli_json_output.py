@@ -1,7 +1,7 @@
-﻿import json
+import json
 from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_daily_cli_writes_json_output_file(tmp_path: Path):

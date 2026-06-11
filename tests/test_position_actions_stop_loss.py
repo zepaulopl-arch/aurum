@@ -1,8 +1,8 @@
 from dataclasses import replace
 from pathlib import Path
 
-from pymercator.domain import MarketRegime
-from pymercator.position_actions import build_position_actions, render_position_books
+from aurum.domain import MarketRegime
+from aurum.position_actions import build_position_actions, render_position_books
 
 from test_position_actions import _decision, _report
 

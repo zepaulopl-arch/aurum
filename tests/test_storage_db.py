@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pymercator.storage.repositories import (
+from aurum.storage.repositories import (
     latest_daily_run,
     latest_rankings,
     latest_simulation,

@@ -1,8 +1,8 @@
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_cli_diag_shows_operational_prediction_stack(monkeypatch, capsys):
-    import pymercator.legacy_prediction_engines as engines_mod
+    import aurum.legacy_prediction_engines as engines_mod
 
     monkeypatch.setattr(engines_mod, "SKLEARN_AVAILABLE", True)
 
@@ -10,7 +10,7 @@ def test_cli_diag_shows_operational_prediction_stack(monkeypatch, capsys):
 
     assert exit_code == 0
     output = capsys.readouterr().out
-    assert "PYMERCATOR DIAG" in output
+    assert "AURUM DIAG" in output
     assert "PREDICTION STACK" in output
     assert "status             OK" in output
     assert "config             config/prediction.json" in output
@@ -36,7 +36,7 @@ def test_cli_diag_shows_operational_prediction_stack(monkeypatch, capsys):
 
 
 def test_cli_diag_verbose_shows_technical_libraries_and_engines(monkeypatch, capsys):
-    import pymercator.legacy_prediction_engines as engines_mod
+    import aurum.legacy_prediction_engines as engines_mod
 
     monkeypatch.setattr(engines_mod, "SKLEARN_AVAILABLE", True)
 

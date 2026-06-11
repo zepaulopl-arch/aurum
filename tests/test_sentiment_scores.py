@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.sentiment_store import load_ticker_news_score
+from aurum.sentiment_store import load_ticker_news_score
 
 
 def test_load_ticker_news_score_maps_positive_sentiment(tmp_path: Path):

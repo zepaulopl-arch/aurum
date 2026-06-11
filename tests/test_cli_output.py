@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_daily_cli_writes_output_file(tmp_path: Path):
@@ -27,7 +27,7 @@ def test_daily_cli_writes_output_file(tmp_path: Path):
 
     text = output.read_text(encoding="utf-8")
 
-    assert "PYMERCATOR DAILY OPERATIONAL REPORT" in text
+    assert "AURUM DAILY OPERATIONAL REPORT" in text
     assert "1. MARKET REGIME" in text
     assert "2. UNIVERSE HEALTH" in text
     assert "3. ASSET RANKING" in text

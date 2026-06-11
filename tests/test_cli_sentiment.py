@@ -1,6 +1,6 @@
-﻿from pathlib import Path
+from pathlib import Path
 
-from pymercator.cli import main
+from aurum.cli import main
 
 
 def test_sentiment_check_command(tmp_path: Path, capsys):
@@ -21,6 +21,6 @@ def test_sentiment_check_command(tmp_path: Path, capsys):
     assert exit_code == 0
 
     captured = capsys.readouterr()
-    assert "PYMERCATOR SENTIMENT CHECK" in captured.out
+    assert "AURUM SENTIMENT CHECK" in captured.out
     assert "VALID FILES" in captured.out
     assert "PETR4.SA" in captured.out

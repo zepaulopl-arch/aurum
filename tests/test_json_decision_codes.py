@@ -1,5 +1,5 @@
-﻿from pymercator.pipeline import run_daily_pipeline
-from pymercator.reports.json_report import daily_report_to_dict
+from aurum.pipeline import run_daily_pipeline
+from aurum.reports.json_report import daily_report_to_dict
 
 
 def test_json_report_contains_decision_codes_and_label():

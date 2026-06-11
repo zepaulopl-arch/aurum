@@ -2,12 +2,12 @@ import csv
 import json
 from pathlib import Path
 
-from pymercator.cli import main
-from pymercator.cli_train import render_train_summary
-from pymercator.cli_universe import _render_universe_build
-from pymercator.data.universe_csv import REQUIRED_COLUMNS
-from pymercator.prediction_lab import render_prediction_lab_summary
-from pymercator.ui import (
+from aurum.cli import main
+from aurum.cli_train import render_train_summary
+from aurum.cli_universe import _render_universe_build
+from aurum.data.universe_csv import REQUIRED_COLUMNS
+from aurum.prediction_lab import render_prediction_lab_summary
+from aurum.ui import (
     available_palettes,
     color_metric,
     colorize,
@@ -19,7 +19,7 @@ from pymercator.ui import (
     short_sector,
     strip_ansi,
 )
-from pymercator.ui.colors import ANSI_RE
+from aurum.ui.colors import ANSI_RE
 
 
 def test_color_flags_control_terminal_output(capsys) -> None:

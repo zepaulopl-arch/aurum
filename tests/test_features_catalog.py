@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pymercator.features_catalog import (
+from aurum.features_catalog import (
     validate_features_catalog,
     write_features_catalog,
 )

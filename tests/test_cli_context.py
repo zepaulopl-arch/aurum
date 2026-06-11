@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from pymercator.cli import main
-from pymercator.market_context_sources import collect_external_source
+from aurum.cli import main
+from aurum.market_context_sources import collect_external_source
 
 
 def test_context_template_and_check_commands(tmp_path: Path, capsys):
@@ -33,7 +33,7 @@ def test_context_template_and_check_commands(tmp_path: Path, capsys):
 
     captured = capsys.readouterr()
     assert "Market context template written to:" in captured.out
-    assert "PYMERCATOR MARKET CONTEXT CHECK" in captured.out
+    assert "AURUM MARKET CONTEXT CHECK" in captured.out
     assert "VALID" in captured.out
     assert "True" in captured.out
 
@@ -105,7 +105,7 @@ def test_context_sources_command_renders_source_diagnostics(tmp_path: Path, caps
 
 
 def test_context_refresh_updates_source_diagnostics(tmp_path: Path, monkeypatch, capsys):
-    import pymercator.cli_context as context_mod
+    import aurum.cli_context as context_mod
 
     context = tmp_path / "latest_market_context.json"
     context.write_text(
